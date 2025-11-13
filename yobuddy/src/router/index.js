@@ -1,0 +1,46 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    component: () => import('../pages/Home.vue')
+  },
+  {
+    path: '/kpi',
+    name: 'KPI',
+    component: () => import('../pages/KPI.vue')
+  },
+  {
+    path: '/organization',
+    name: 'Organization',
+    component: () => import('../pages/Organization.vue')
+  },
+  {
+    path: '/onboarding',
+    name: 'Onboarding',
+    component: () => import('../pages/Onboarding.vue')
+  },
+  {
+    path: '/mentoring',
+    name: 'Mentoring',
+    component: () => import('../pages/Mentoring.vue')
+  },
+  {
+    path: '/education',
+    name: 'Education',
+    component: () => import('../pages/Education.vue')
+  },
+  {
+    path: '/content',
+    name: 'Content',
+    component: () => import('../pages/Content.vue')
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(process.env.BASE_URL),
+  routes
+})
+
+export default router
