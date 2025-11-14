@@ -19,7 +19,11 @@ http.interceptors.request.use((config) => {
   // Debug: log outgoing request info to help diagnose network issues
   try {
     // don't log bodies to avoid sensitive leaks in production
-    console.debug('[http] request]', config.method, config.baseURL + config.url)
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[http] request]', config.method, config.baseURL + config.url)
+      // show whether a token is present (do NOT print token value)
+      console.debug('[http] auth token present:', token ? 'yes' : 'no', token ? ('len=' + String(token.length)) : '')
+    }
   } catch (e) {
     /* ignore */
   }
@@ -45,8 +49,8 @@ http.interceptors.response.use(
   const { response, config } = error
     if (!response) return Promise.reject(error)
 
-    // If not 401, propagate
-    if (response.status !== 401) {
+    // If not 401 or 403, propagate
+    if (response.status !== 401 && response.status !== 403) {
       // Log network-level info for easier debugging
       console.error('[http] response error', {
         url: config && (config.baseURL + config.url),
@@ -61,6 +65,16 @@ http.interceptors.response.use(
     if (config && config._retry) return Promise.reject(error)
     config._retry = true
 
+    // Avoid attempting refresh for the refresh endpoint itself
+    const refreshUrl = process.env.VUE_APP_AUTH_REFRESH || '/api/v1/auth/refresh'
+    const requestUrl = config && (config.url || '')
+    if (requestUrl && requestUrl.indexOf(refreshUrl) !== -1) {
+      // refresh endpoint failed with 401/403 -> force logout
+      auth.logout()
+      window.location.href = '/auth/login'
+      return Promise.reject(error)
+    }
+
     const refreshToken = auth.getRefreshToken()
     if (!refreshToken) {
       auth.logout()
@@ -71,7 +85,6 @@ http.interceptors.response.use(
     try {
       if (!isRefreshing) {
         isRefreshing = true
-        const refreshUrl = process.env.VUE_APP_AUTH_REFRESH || '/api/v1/auth/refresh'
         const base = process.env.VUE_APP_API_BASE || ''
 
         // Use plain axios here to avoid invoking this interceptor again
