@@ -4,7 +4,14 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../pages/Home.vue')
+    component: () => import('../pages/Home.vue'),
+    meta: { hideHeader: true, hideSidebar: true }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../pages/Login.vue'),
+    meta: { hideHeader: true, hideSidebar: true }
   },
   {
     path: '/kpi',

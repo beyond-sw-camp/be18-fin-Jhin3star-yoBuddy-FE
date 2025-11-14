@@ -1,10 +1,10 @@
 <template>
   <div id="app" class="app-container">
     <!-- Header Bar -->
-    <HeaderBar @toggle-menu="toggleSidebar" />
+    <HeaderBar v-if="!hideHeader" @toggle-menu="toggleSidebar" />
     <div class="main-wrapper">
       <!-- Sidebar -->
-      <SidebarMenu />
+      <SidebarMenu v-if="!hideSidebar" />
       <!-- Main Content -->
       <main class="main-content">
         <router-view />
@@ -14,9 +14,10 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SidebarMenu from './components/Sidebar.vue'
 import HeaderBar from './components/Header.vue'
+import { useRoute } from 'vue-router'
 
 export default {
   name: 'App',
@@ -26,6 +27,10 @@ export default {
   },
   setup() {
     const isSidebarOpen = ref(false)
+    const route = useRoute()
+
+    const hideHeader = computed(() => !!(route.meta && route.meta.hideHeader))
+    const hideSidebar = computed(() => !!(route.meta && route.meta.hideSidebar))
 
     const toggleSidebar = () => {
       isSidebarOpen.value = !isSidebarOpen.value
@@ -34,6 +39,7 @@ export default {
     return {
       toggleSidebar,
       isSidebarOpen
+      , hideHeader, hideSidebar
     }
   }
 }

@@ -56,14 +56,17 @@
             <div class="user-details-list">
               <div class="detail-row">
                 <span class="detail-label">이메일</span>
+                <br/>
                 <span class="detail-value">{{ user?.email || '' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">부서</span>
+                <br/>
                 <span class="detail-value">{{ user?.department || '' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">입사일</span>
+                <br/>
                 <span class="detail-value">{{ user?.joinDate || '' }}</span>
               </div>
             </div>
@@ -99,7 +102,8 @@
 
 <script>
 import { useRoute } from 'vue-router';
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import auth from '@/services/auth'
 
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
@@ -117,7 +121,50 @@ export default {
     const avatarUrl = ref(null); // set to image path if available
     const activeSubmenu = ref(null);
     const showUserDetail = ref(false);
-    const userEmail = ref('honggildong@example.com');
+    const user = ref({ email: '', department: '', joinDate: '' });
+
+    const loadUserFromAuth = () => {
+      const u = auth.getUser()
+      // Prefer an explicitly saved display name, then server-provided name, then id
+      const savedName = sessionStorage.getItem('yb_user_name') || localStorage.getItem('yb_user_name')
+      if (savedName) {
+        userName.value = savedName
+      } else if (u && u.name) {
+        userName.value = String(u.name)
+      } else if (u && u.id) {
+        userName.value = String(u.id)
+      }
+
+      if (u && u.role) userRole.value = String(u.role)
+
+      // email: prefer saved email from login remember flow
+      const savedEmail = localStorage.getItem('yb_saved_email') || sessionStorage.getItem('yb_saved_email')
+      if (savedEmail) user.value.email = savedEmail
+      else if (u && u.email) user.value.email = String(u.email)
+
+      // department and joinDate: optional fields stored at login if backend provides them
+      const savedDept = sessionStorage.getItem('yb_user_department') || localStorage.getItem('yb_user_department')
+      if (savedDept) user.value.department = savedDept
+      else if (u && u.department) user.value.department = String(u.department)
+
+      const savedJoin = sessionStorage.getItem('yb_user_joinDate') || localStorage.getItem('yb_user_joinDate')
+      if (savedJoin) user.value.joinDate = savedJoin
+      else if (u && u.joinDate) user.value.joinDate = String(u.joinDate)
+
+      // avatar: optional stored key
+      const avatar = sessionStorage.getItem('yb_user_avatar') || localStorage.getItem('yb_user_avatar')
+      if (avatar) avatarUrl.value = avatar
+    }
+
+    // update on mount and when storage changes (in another tab)
+    onMounted(() => {
+      loadUserFromAuth()
+      window.addEventListener('storage', loadUserFromAuth)
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('storage', loadUserFromAuth)
+    })
 
     const menuItems = ref([
       {
@@ -206,7 +253,7 @@ export default {
       userName,
       avatarUrl,
       userRole,
-      userEmail,
+      user,
       isActive,
       isSubmenuActive,
       openSettings,
@@ -224,18 +271,19 @@ export default {
 
 <style scoped>
 .user-details-list {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-top: 0;
+  margin-bottom: 0;
+  /* compact padding to fit narrow sidebar */
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 0.98em;
+  box-shadow: 0 4px 12px rgba(41,69,148,0.12);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 100%;
-  margin-top: 18px;
-}
-.detail-row {
-  display: flex;
-  align-items: center;
-  background: rgba(255,255,255,0.13);
-  border-radius: 6px;
-  padding: 10px 16px;
+  padding: 6px 10px;
   box-shadow: none;
 }
 .detail-label {
@@ -249,7 +297,7 @@ export default {
   color: #fff;
   font-weight: 400;
   word-break: break-all;
-  font-size: 1.08em;
+  font-size: 1.01em;
 }
 /* 내정보 카드 슬라이드 애니메이션 */
 .user-detail-slide-enter-active, .user-detail-slide-leave-active {
@@ -270,52 +318,53 @@ export default {
 
 /* Glassmorphism profile card styles */
 .glass-card {
-  background: #f7f7f7;
-  border-radius: 12px;
+  /* make glass-card visually harmonize with dark sidebar */
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border-radius: 10px;
   margin: 0;
-  padding: 24px 20px 20px 20px;
-  color: #222;
-  font-size: 1em;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 12px 14px;
+  color: #ffffff;
+  font-size: 0.95em;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 10px;
   position: relative;
-  border: 1px solid #e0e0e0;
+  border: 1px solid rgba(255,255,255,0.06);
   width: 100%;
-  max-width: 360px;
+  max-width: 220px;
   box-sizing: border-box;
 }
 .glass-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 90px;
-  height: 90px;
+  width: 56px;
+  height: 56px;
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .avatar-ring {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 90px;
-  height: 90px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: conic-gradient(from 180deg at 50% 50%, #FFEA7E 0%, #294594 100%);
+  background: radial-gradient(circle at 30% 20%, rgba(255,234,126,0.18), rgba(41,69,148,0.85));
   padding: 3px;
-  box-shadow: 0 2px 14px rgba(255,234,126,0.18);
+  box-shadow: 0 4px 14px rgba(41,69,148,0.18);
 }
 .avatar-ring img, .avatar-ring span {
-  width: 84px;
-  height: 84px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: #294594;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 38px;
+  font-size: 20px;
   color: #FFEA7E;
 }
 .glass-info {
@@ -326,27 +375,26 @@ export default {
   width: 100%;
 }
 .glass-name {
-  font-size: 28px;
+  font-size: 17px;
   font-weight: 700;
   color: #FFEA7E;
   margin: 0;
-  letter-spacing: 0.14em;
-  text-shadow: 0 2px 8px rgba(255,234,126,0.18);
+  letter-spacing: 0.06em;
+  text-shadow: none;
 }
 .glass-role {
-  font-size: 18px;
-  color: #fff;
+  font-size: 12px;
+  color: rgba(255,255,255,0.92);
   margin: 2px 0 0;
-  opacity: 0.92;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.04em;
 }
 .glass-divider {
-  width: 80%;
+  width: 70%;
   height: 2px;
-  background: linear-gradient(90deg, #FFEA7E 0%, #294594 100%);
+  background: linear-gradient(90deg, rgba(255,234,126,0.95) 0%, rgba(41,69,148,0.9) 100%);
   border-radius: 2px;
-  margin: 12px 0 10px 0;
-  opacity: 0.7;
+  margin: 10px 0 8px 0;
+  opacity: 0.85;
 }
 .glass-labels {
   display: flex;
@@ -357,12 +405,12 @@ export default {
 .glass-label {
   display: flex;
   align-items: center;
-  font-size: 1em;
-  color: #444;
+  font-size: 0.95em;
+  color: rgba(255,255,255,0.95);
   font-weight: 400;
-  background: #fff;
+  background: rgba(255,255,255,0.02);
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   min-width: 0;
   box-shadow: none;
 }
@@ -396,36 +444,36 @@ export default {
   letter-spacing: 0.11em;
 }
 .label-value {
-  color: #294594;
+  color: #F6F7FA;
   font-weight: 600;
   margin-left: 10px;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.03em;
   word-break: break-all;
   white-space: normal;
   overflow-wrap: anywhere;
-  font-size: 1.13em;
-  background: rgba(255,255,255,0.85);
+  font-size: 0.98em;
+  background: rgba(255,255,255,0.03);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   text-align: left;
-  box-shadow: 0 1px 4px rgba(41,69,148,0.08);
+  box-shadow: none;
 }
 .glass-btn {
-  margin-top: 22px;
-  padding: 15px 40px 15px 32px;
-  border-radius: 16px;
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 12px;
   border: none;
   background: linear-gradient(90deg, #FFEA7E 60%, #294594 100%);
   color: #294594;
-  font-size: 1.16em;
+  font-size: 0.98em;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 18px rgba(41,69,148,0.18);
+  box-shadow: 0 3px 12px rgba(41,69,148,0.14);
   transition: background 0.18s, color 0.18s, box-shadow 0.18s;
   display: flex;
   align-items: center;
-  gap: 12px;
-  letter-spacing: 0.15em;
+  gap: 10px;
+  letter-spacing: 0.12em;
   border: 2px solid #FFEA7E;
   position: relative;
   z-index: 1;
@@ -443,7 +491,8 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  width: 17.6em;
+  /* Narrower sidebar to improve content space */
+  width: 220px;
   height: 100%;
   background: #294594;
   color: white;
@@ -469,8 +518,9 @@ export default {
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 10px;
+  /* slightly tighter padding for compact sidebar */
+  padding: 6px 10px;
   margin: 2px 8px 2px 0.1em;
   color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
@@ -479,8 +529,8 @@ export default {
   position: relative;
   border-radius: 6px;
   font-weight: 500;
-  margin-top: 0.7em;
-  margin-left: 0.2em;
+  margin-top: 0.6em;
+  margin-left: 0.15em;
 }
 
 .nav-link:hover {
@@ -503,8 +553,9 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  /* smaller icons to match narrower sidebar */
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   background: transparent center/contain no-repeat;
 }
@@ -549,7 +600,7 @@ export default {
 
 
 .nav-label {
-  font-size: 1.2em;
+  font-size: 1em;
   font-weight: 500;
 }
 
@@ -593,14 +644,14 @@ export default {
 .submenu ul {
   list-style: none;
   margin: 0;
-  padding: 4px 0 4px 24px;
+  padding: 4px 0 4px 18px;
   position: relative;
 }
 
 .submenu ul::before {
   content: '';
   position: absolute;
-  left: 16px;
+  left: 12px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -610,10 +661,11 @@ export default {
 
 .submenu .sub-link {
   display: block;
-  padding: 6px 12px;
+  /* tighter vertical spacing and slightly smaller text for compact submenu */
+  padding: 4px 10px;
   color: rgba(255,255,255,0.7);
   text-decoration: none;
-  font-size: 1.1em;
+  font-size: 0.95em;
   transition: all 0.15s ease;
   border-radius: 4px;
   margin: 1px 0;
@@ -627,8 +679,8 @@ export default {
   left: -10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   transition: all 0.15s ease;
@@ -684,16 +736,17 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  /* scaled down for compact sidebar */
+  width: 44px;
+  height: 44px;
   background: rgba(255, 255, 255, 0.14);
   border-radius: 50%;
-  font-size: 26px;
+  font-size: 20px;
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  border: 3px solid rgba(255,255,255,0.12);
+  border: 2px solid rgba(255,255,255,0.12);
   overflow: hidden;
-  margin-right: 10px;
+  margin-right: 8px;
 }
 
 .user-avatar img {
@@ -710,18 +763,18 @@ export default {
 
 .user-name {
   margin: 0;
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .user-role {
   margin: 4px 0 0;
-  font-size: 17px;
+  font-size: 14px;
   color: rgba(255,255,255,0.85);
   opacity: 0.98;
   white-space: nowrap;
@@ -733,14 +786,14 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   background: rgba(255, 255, 255, 0.06);
   border: none;
   border-radius: 10px;
   color: #fff;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   transition: all 0.18s ease;
   flex-shrink: 0;
   margin-top: 0;
@@ -812,13 +865,13 @@ export default {
   font-weight: 400;
 }
 .user-detail-btn {
-  margin-top: 12px;
-  padding: 10px 20px;
+  margin-top: 8px;
+  padding: 8px 12px;
   border-radius: 8px;
   border: none;
   background: #294594;
   color: #fff;
-  font-size: 1em;
+  font-size: 0.95em;
   cursor: pointer;
   transition: background 0.18s;
 }

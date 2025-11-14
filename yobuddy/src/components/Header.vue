@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="logo-section">
         <div class="logo">
-            <img src="@/assets/logo_main.png" alt="YoBuddy Logo" class="logo-icon" width="226em" height="100em" />
+            <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
         </div>
       </div>
       <div class="breadcrumb">
@@ -193,7 +193,8 @@ export default {
   background: white;
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  height: 7%;
+  /* use theme header height for consistent sizing */
+  height: var(--header-height, 72px);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -213,6 +214,7 @@ export default {
   gap: 16px;
   /* border-right: 1px solid #e0e0e0; */
   padding-right: 1.2em;
+  margin-left: 2.1%;
 }
 
 .logo {
@@ -229,7 +231,7 @@ export default {
 
 .logo-icon {
   display: inline-block;
-  font-size: 24px;
+  font-size: 20px;
   /* Move logo slightly to the left as requested */
   transform: translateX(-0.25em);
 }
@@ -245,28 +247,39 @@ export default {
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 2.3em;
+  gap: 10px;
+  margin-left: 1%;
 }
 
 .chevron {
-  font-size: 80px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* enlarge only the chevron box for better visibility */
+  width: 30px;
+  height: 30px;
   color: #999;
-  font-weight: 300;
-  font-style: bold;
-  margin-bottom: 0.1em;
-  /* bring chevron and page-name 0.1em closer */
-  margin-right: -0.2em;
+  margin-right: -0.06em;
+}
+
+/* override logo-icon only when used as breadcrumb chevron image */
+.chevron .logo-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  object-fit: contain;
+  transform: none;
 }
 
 .page-name {
-  font-size: 25px;
-  font-weight: 500;
-  margin-top: 0.41em;
-  font-style: bold;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 0;
   color: #333;
   white-space: nowrap;
-
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
 }
 
 .header-right {
@@ -280,15 +293,16 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 65px;
-  height: 65px;
+  /* make buttons size relative to header height so they fill the header vertically */
+  width: calc(var(--header-height, 72px) - 18px);
+  height: calc(var(--header-height, 72px) - 18px);
   background: none;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
   margin-left: 12px;
 }
@@ -302,6 +316,16 @@ export default {
 .notification-btn .icon,
 .menu-btn .icon {
   font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-btn .icon img,
+.menu-btn .icon img {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
 }
 
 .badge {
@@ -316,7 +340,7 @@ export default {
   background: #ff6b6b;
   color: white;
   border-radius: 50%;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   border: 2px solid white;
 }
