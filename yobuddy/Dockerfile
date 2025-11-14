@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build --mode qa
+RUN npm run build:qa
 
 FROM nginx:alpine
 
