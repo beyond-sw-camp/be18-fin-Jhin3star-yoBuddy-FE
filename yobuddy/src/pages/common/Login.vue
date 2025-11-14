@@ -5,7 +5,7 @@
       <div class="right"></div>
     </div>
 
-    <a class="home-link" href="#/">← Home</a>
+    <a class="home-link" href="/">← Home</a>
 
     <div class="login-card">
       <div class="logo-wrap">
@@ -29,7 +29,7 @@
           <label class="remember">
             <input type="checkbox" v-model="remember" /> 기억하기
           </label>
-          <a class="forgot" href="#">비밀번호 찾기</a>
+          <a class="forgot" href="/">비밀번호 찾기</a>
         </div>
 
         <button class="btn-submit" type="submit" :disabled="loading">
@@ -45,7 +45,7 @@
 <script>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import auth from '../services/auth'
+import auth from '../../services/auth'
 
 export default {
   name: 'LoginPage',
