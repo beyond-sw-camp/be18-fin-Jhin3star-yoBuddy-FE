@@ -24,6 +24,11 @@ const routes = [
     component: () => import('../pages/admin/organization/Organization.vue')
   },
   {
+    path: '/organization/usermanagement',
+    name: 'UserManagements',
+    component: () => import('../pages/admin/organization/User/UserManagement.vue')
+  },
+  {
     path: '/onboarding',
     name: 'Onboarding',
     component: () => import('../pages/Onboarding.vue')

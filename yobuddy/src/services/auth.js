@@ -61,7 +61,8 @@ export default {
     }
   },
 
-  setToken(token) {
+  setToken(token, options = {}) {
+    const persistLocal = options && typeof options.persistLocal !== 'undefined' ? Boolean(options.persistLocal) : true
     // Backwards-compatible: accept string token or object { accessToken, refreshToken, expiresIn }
     if (!token) {
       sessionStorage.removeItem(TOKEN_KEY)
@@ -76,7 +77,7 @@ export default {
     if (typeof token === 'string') {
       // store token in both session and local so both storages have it
       sessionStorage.setItem(TOKEN_KEY, token)
-      localStorage.setItem(TOKEN_KEY, token)
+      if (persistLocal) localStorage.setItem(TOKEN_KEY, token)
       return
     }
 
@@ -84,19 +85,19 @@ export default {
     const refresh = token.refreshToken || token.refresh_token
     const expiresIn = token.expiresIn || token.expires_in || token.accessExpiresIn || token.access_expires_in
 
-    // Always write to both storages so both sessionStorage and localStorage contain the tokens/user info
+    // Write to sessionStorage always; write to localStorage only when persistLocal is true
     if (access) {
       sessionStorage.setItem(TOKEN_KEY, access)
-      localStorage.setItem(TOKEN_KEY, access)
+      if (persistLocal) localStorage.setItem(TOKEN_KEY, access)
     }
     if (refresh) {
       sessionStorage.setItem(REFRESH_KEY, refresh)
-      localStorage.setItem(REFRESH_KEY, refresh)
+      if (persistLocal) localStorage.setItem(REFRESH_KEY, refresh)
     }
     if (expiresIn) {
       const expiryAt = Date.now() + Number(expiresIn)
       sessionStorage.setItem(EXPIRES_KEY, String(expiryAt))
-      localStorage.setItem(EXPIRES_KEY, String(expiryAt))
+      if (persistLocal) localStorage.setItem(EXPIRES_KEY, String(expiryAt))
     }
     // If the token object contains user info, persist that to both storages as well
     const userId = token.userId || token.user_id || (token.user && (token.user.id || token.user.userId))
@@ -104,15 +105,15 @@ export default {
     const userName = token.userName || token.name || token.fullName || token.displayName || (token.user && (token.user.name || token.user.fullName || token.user.displayName))
     if (userId) {
       sessionStorage.setItem(USERID_KEY, String(userId))
-      localStorage.setItem(USERID_KEY, String(userId))
+      if (persistLocal) localStorage.setItem(USERID_KEY, String(userId))
     }
     if (role) {
       sessionStorage.setItem(USERROLE_KEY, String(role))
-      localStorage.setItem(USERROLE_KEY, String(role))
+      if (persistLocal) localStorage.setItem(USERROLE_KEY, String(role))
     }
     if (userName) {
       sessionStorage.setItem(USERNAME_KEY, String(userName))
-      localStorage.setItem(USERNAME_KEY, String(userName))
+      if (persistLocal) localStorage.setItem(USERNAME_KEY, String(userName))
     }
   },
 
@@ -135,6 +136,8 @@ export default {
     sessionStorage.removeItem(USERROLE_KEY)
     localStorage.removeItem(USERID_KEY)
     localStorage.removeItem(USERROLE_KEY)
+    sessionStorage.removeItem(USERNAME_KEY)
+    localStorage.removeItem(USERNAME_KEY)
   },
 
   getRefreshToken() {
