@@ -91,9 +91,13 @@ export default {
 			if (!d) return '—'
 			try {
 				const dt = new Date(d)
-				return dt.toLocaleDateString()
+				if (Number.isNaN(dt.getTime())) return d
+				const y = dt.getFullYear()
+				const m = String(dt.getMonth() + 1).padStart(2, '0')
+				const day = String(dt.getDate()).padStart(2, '0')
+				return `${y}-${m}-${day}`
 			} catch (e) {
-				return d
+				return e
 			}
 		}
 	}

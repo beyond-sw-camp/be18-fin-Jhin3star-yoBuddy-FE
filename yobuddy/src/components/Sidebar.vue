@@ -181,7 +181,7 @@ export default {
         id: 2,
         icon: orgIcon,
         label: '조직 관리',
-        path: '/organization/usermanagementn',
+        path: '/organization/usermanagement',
         subItems: [
           { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
           { id: '2-2', label: '부서 관리', path: '/organization/final' }
