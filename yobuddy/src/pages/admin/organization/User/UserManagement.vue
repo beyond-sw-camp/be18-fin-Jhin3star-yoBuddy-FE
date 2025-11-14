@@ -45,7 +45,7 @@
               <td>{{ u.phone }}</td>
               <td><span :class="['tag', u.role === 'ADMIN' ? 'tag-admin' : u.role === 'MENTOR'? 'tag-mentor' : 'tag-newbie']">{{ u.roleLabel }}</span></td>
               <td>{{ u.department }}</td>
-              <td>{{ u.joinDate }}</td>
+              <td>{{ u.joinDate.slice(0,10) }}</td>
             </tr>
           </tbody>
         </table>
@@ -67,6 +67,7 @@
       :user="selectedUser"
       :mentors="(selectedUser && selectedUser.mentors) ? selectedUser.mentors : []"
       @close="closeDetail"
+      @edit="onEdit"
     />
   </div>
 </template>
@@ -262,6 +263,15 @@ export default {
       this.$router.push({ path: '/organization/user/create' }).catch(()=>{})
     },
 
+    onEdit(user) {
+      try {
+        sessionStorage.setItem('yb_edit_user', JSON.stringify(user))
+      } catch (e) {
+        console.warn('Could not store edit user', e)
+      }
+      this.$router.push({ path: `/organization/usermanagement/${user.id}/edit` }).catch(()=>{})
+    },
+
     prevPage() {
       if (this.page > 0) {
         this.page -= 1
@@ -304,7 +314,7 @@ export default {
 .meta .email { font-size:13px; color:#6d859a }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag-admin { background:#ffe9e9; color:#c94242 }
-.tag-mentor { background:#fcffbd; color:#c7d01d }
+.tag-mentor { background:#f6f8d1; color:#b0b900 }
 .tag-newbie { background:#f0fff6; color:#0a9a52 }
 
 .card-footer { padding: 16px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:flex-end }

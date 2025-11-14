@@ -71,14 +71,14 @@ http.interceptors.response.use(
     if (requestUrl && requestUrl.indexOf(refreshUrl) !== -1) {
       // refresh endpoint failed with 401/403 -> force logout
       auth.logout()
-      window.location.href = '/auth/login'
+      window.location.href = '/login'
       return Promise.reject(error)
     }
 
     const refreshToken = auth.getRefreshToken()
     if (!refreshToken) {
       auth.logout()
-      window.location.href = '/auth/login'
+      window.location.href = '/login'
       return Promise.reject(error)
     }
 
@@ -97,10 +97,10 @@ http.interceptors.response.use(
         if (newAccess) {
           auth.setToken({ accessToken: newAccess, refreshToken: newRefresh, expiresIn })
           onRefreshed(auth.getToken())
-        } else {
+          } else {
           // refresh did not return a token -> force logout
           auth.logout()
-          window.location.href = '/auth/login'
+          window.location.href = '/login'
           return Promise.reject(error)
         }
       }
@@ -118,7 +118,7 @@ http.interceptors.response.use(
       // Refresh failed
       isRefreshing = false
       auth.logout()
-      window.location.href = '/auth/login'
+      window.location.href = '/login'
       return Promise.reject(errRefresh)
     } finally {
       isRefreshing = false
