@@ -4,24 +4,24 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../pages/Home.vue'),
+    component: () => import('../pages/common/Home.vue'),
     meta: { hideHeader: true, hideSidebar: true }
   },
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../pages/Login.vue'),
+    component: () => import('../pages/common/Login.vue'),
     meta: { hideHeader: true, hideSidebar: true }
   },
   {
     path: '/kpi',
     name: 'KPI',
-    component: () => import('../pages/KPI.vue')
+    component: () => import('../pages/admin/kpi/KPI.vue')
   },
   {
     path: '/organization',
     name: 'Organization',
-    component: () => import('../pages/Organization.vue')
+    component: () => import('../pages/admin/organization/Organization.vue')
   },
   {
     path: '/onboarding',
