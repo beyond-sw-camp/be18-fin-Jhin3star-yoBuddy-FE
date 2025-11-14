@@ -1,0 +1,187 @@
+<template>
+  <div class="chatbot-popup-card">
+    <div class="chatbot-header">
+      <div class="chatbot-header-left">
+        <img src='@/assets/logo_chatbot.svg' class="chatbot-avatar" alt="icon" />
+        <div>
+          <div class="chatbot-title">{{ title || 'BuddyBot' }}</div>
+          <div class="chatbot-status"><span class="online-dot"></span> Online</div>
+        </div>
+      </div>
+      <button class="chatbot-close" @click="$emit('close')">×</button>
+    </div>
+
+    <div class="chatbot-content">
+      <div class="chatbot-section-title">
+        회사 적응 꿀팁! ✨
+        <br />
+        <span class="chatbot-section-sub">가장 많이 찾는 질문 TOP 5</span>
+      </div>
+
+      <div class="chatbot-question-space" v-if="!hasStarted">
+        <ul class="chatbot-question-list">
+          <li v-for="(q, i) in questions" :key="i" @click="animateQuestion(q)">
+            <img src="@/assets/logo_chatbot.svg" class="question-avatar" alt="Q" />
+            <span class="question-text">{{ q }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <transition name="fade">
+        <div v-if="hasStarted" class="chatbot-chat-area" ref="chatArea">
+          <div v-for="(msg, i) in messages" :key="i" :class="['chatbot-bubble', msg.sender]">
+            <img v-if="msg.sender === 'bot'" src="@/assets/logo_chatbot.svg" class="bubble-avatar" alt="봇" />
+            <span class="bubble-text">{{ msg.text }}</span>
+          </div>
+        </div>
+      </transition>
+
+      <div class="chatbot-input-row">
+        <input
+          class="chatbot-input"
+          type="text"
+          v-model="inputText"
+          @keyup.enter="sendMessage"
+          placeholder="메시지를 입력하세요."
+        />
+        <button class="chatbot-send-btn" @click="sendMessage" aria-label="send">
+          <svg width="22" height="22" fill="none" viewBox="0 0 22 22">
+            <path d="M3 19L19 11L3 3V8.5L14 11L3 13.5V19Z" fill="#fff" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'ChatbotPopupCard',
+  props: {
+    title: String,
+    icon: {
+      type: String,
+      default: () => require('@/assets/logo_chatbot.svg')
+    }
+  },
+  data() {
+    return {
+      inputText: '',
+      messages: [
+        { sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }
+      ],
+      questions: [
+        '점심시간은 몇 시부터 몇 시까지인가요?',
+        '커피나 간식은 어디에 비치되어 있나요?',
+        '연차/반차 등 휴가를 쓰려면 어떻게 해야 하나요?',
+        '사무실 복장 규정은 어떻게 되나요?',
+        '내선 전화나 사내 메신저 사용법은 어떻게 되나요?'
+      ],
+      hasStarted: false
+    }
+  },
+  methods: {
+    sendMessage() {
+      const text = this.inputText && this.inputText.trim()
+      if (!text) return
+      this.messages.push({ sender: 'user', text })
+      this.inputText = ''
+      if (!this.hasStarted) this.hasStarted = true
+      this.$nextTick(this.scrollToBottom)
+
+      // fake bot reply for UI demo
+      setTimeout(() => {
+        this.messages.push({ sender: 'bot', text: '질문에 대한 답변을 준비 중입니다!' })
+        this.$nextTick(this.scrollToBottom)
+      }, 600)
+    },
+    animateQuestion(q) {
+      // insert question into input and start chat when sent
+      this.inputText = ''
+      setTimeout(() => {
+        this.inputText = q
+        this.$nextTick(() => {
+          this.sendMessage()
+        })
+      }, 120)
+    },
+    scrollToBottom() {
+      const area = this.$refs.chatArea
+      if (area) {
+        area.scrollTop = area.scrollHeight
+      }
+    }
+  }
+}
+</script>
+
+<style scoped>
+/* Unified, polished styles for Chatbot popup */
+.chatbot-popup-card {
+  min-width: 320px;
+  max-width: 420px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  color: #213048;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(21,34,80,0.12);
+  position: absolute;
+  top: 110%;
+  right: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Helvetica Neue', Arial;
+}
+
+.chatbot-header {
+  background: linear-gradient(90deg,#294594 0%, #2b57a0 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.chatbot-header-left { display:flex; align-items:center; gap:12px }
+.chatbot-avatar{ width:40px; height:40px; border-radius:8px; box-shadow:0 4px 12px rgba(33,48,72,0.12) }
+.chatbot-title{ font-size:1.02rem; font-weight:700 }
+.chatbot-status{ font-size:0.86rem; color: #bfe6b8 }
+.online-dot{ display:inline-block; width:8px; height:8px; background:#2ecc71; border-radius:50%; margin-right:6px }
+.chatbot-close{ background:transparent; border:none; color:#fff; font-size:1.25rem; cursor:pointer }
+
+.chatbot-content{ padding:14px; display:flex; flex-direction:column; gap:12px }
+.chatbot-section-title{ font-weight:700; color:#213048 }
+.chatbot-section-sub{ font-weight:500; color:#6b7280; font-size:0.95rem }
+
+.chatbot-question-space{ margin-bottom:6px }
+.chatbot-question-list{ display:flex; flex-direction:column; gap:8px; margin:0; padding:0; list-style:none }
+.chatbot-question-list li{
+  display:flex; align-items:center; gap:10px; background:#ffffff; border-radius:14px; padding:10px 14px; color:#294594; font-weight:600; box-shadow:0 6px 14px rgba(41,69,148,0.04); transition:transform .12s ease, box-shadow .12s ease; cursor:pointer; border:1px solid rgba(41,69,148,0.06);
+}
+.chatbot-question-list li:hover{ transform:translateY(-3px); box-shadow:0 10px 22px rgba(41,69,148,0.07) }
+.question-avatar{ width:20px; height:20px; border-radius:6px; }
+.question-text{ font-size:0.95rem }
+
+.chatbot-chat-area{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; min-height:160px; max-height:300px; overflow-y:auto; background:transparent; padding:8px }
+.chatbot-bubble{ display:flex; align-items:flex-end; gap:8px; width:100% }
+.chatbot-bubble.bot{ justify-content:flex-start }
+.chatbot-bubble.user{ justify-content:flex-end }
+
+.bubble-avatar{ width:28px; height:28px; border-radius:8px }
+.bubble-text{ display:inline-block; padding:10px 14px; border-radius:16px; max-width:78%; box-shadow:0 6px 18px rgba(33,48,72,0.06); color:#213048; background:#fff; word-break:break-word; white-space:pre-wrap }
+
+.chatbot-bubble.bot .bubble-text{ margin-left:6px }
+.chatbot-bubble.user .bubble-text{ background:#294594; color:#fff; margin-right:6px; position:relative }
+.chatbot-bubble.user .bubble-text::after{ content:''; position:absolute; right:10px; bottom:6px; width:10px; height:10px; background:#294594; transform:rotate(45deg); border-bottom-right-radius:2px }
+
+.chatbot-input-row{ display:flex; gap:8px; align-items:center }
+.chatbot-input{ flex:1; padding:10px 14px; border-radius:12px; border:1px solid rgba(33,48,72,0.06); background:#fbfdff }
+.chatbot-send-btn{ background:#294594; border:none; color:#fff; padding:8px 10px; border-radius:10px; display:flex; align-items:center; cursor:pointer }
+.chatbot-send-btn:hover{ filter:brightness(0.98) }
+
+/* subtle fade animation for chat appear */
+.fade-enter-active, .fade-leave-active{ transition:opacity 220ms ease, transform 220ms ease }
+.fade-enter-from, .fade-leave-to{ opacity:0; transform:translateY(8px) }
+.fade-enter-to, .fade-leave-from{ opacity:1; transform:translateY(0) }
+</style>
