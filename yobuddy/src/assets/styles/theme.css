@@ -1,0 +1,77 @@
+:root {
+  /* Layout widths */
+  --layout-max-width: 1680px;
+  --layout-content-padding: clamp(16px, 1.8vw, 36px);
+  --sidebar-width: 268px;
+  --sidebar-width-wide: 280px;
+  --header-height: 72px;
+
+  /* Spacing scale */
+  --gap-xxs: 4px;
+  --gap-xs: 8px;
+  --gap-sm: 12px;
+  --gap-md: 18px;
+  --gap-lg: 28px;
+  --gap-xl: 40px;
+
+  /* Typography (clamp for responsiveness) */
+  --font-size-xs: clamp(0.72rem, 0.68vw, 0.78rem);
+  --font-size-sm: clamp(0.82rem, 0.75vw, 0.9rem);
+  --font-size-base: clamp(0.95rem, 0.8vw, 1.02rem);
+  --font-size-md: clamp(1.05rem, 0.95vw, 1.18rem);
+  --font-size-lg: clamp(1.25rem, 1.2vw, 1.5rem);
+  --font-size-xl: clamp(1.6rem, 1.6vw, 2.1rem);
+
+  /* Color palette */
+  --color-bg: #f2f6fe;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fbfcff;
+  --color-border: #e2e6ee;
+  --color-shadow-rgb: 41,69,148;
+  --color-text: #213048;
+  --color-text-muted: #5b6a83;
+  --color-primary: #294594;
+  --color-primary-accent: #2b57a0;
+  --color-accent-warn: #ff6b6b;
+  --color-accent-yellow: #FFEA7E;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 4px 12px rgba(var(--color-shadow-rgb), 0.08);
+  --shadow-md: 0 8px 22px rgba(var(--color-shadow-rgb), 0.10);
+  --shadow-lg: 0 12px 34px rgba(var(--color-shadow-rgb), 0.14);
+}
+
+/* Slightly reduce base font size across the app for a more compact UI */
+html { font-size: 15px; }
+
+/* Global utility classes */
+.container-fluid {
+  width: 100%;
+  margin: 0 auto;
+  max-width: var(--layout-max-width);
+  padding-left: var(--layout-content-padding);
+  padding-right: var(--layout-content-padding);
+  box-sizing: border-box;
+}
+
+.text-muted { color: var(--color-text-muted); }
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+
+@media (min-width: 1600px) {
+  :root {
+    --sidebar-width: var(--sidebar-width-wide);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --header-height: 60px;
+  }
+}
