@@ -67,7 +67,8 @@
       :user="selectedUser"
       :mentors="(selectedUser && selectedUser.mentors) ? selectedUser.mentors : []"
       @close="closeDetail"
-      @edit="onEdit"
+      @saved="onSaved"
+      @delete="onDelete"
     />
   </div>
 </template>
@@ -270,6 +271,59 @@ export default {
         console.warn('Could not store edit user', e)
       }
       this.$router.push({ path: `/organization/usermanagement/${user.id}/edit` }).catch(()=>{})
+    },
+
+    onSaved(updated) {
+      console.debug('[UserManagement] onSaved updated:', updated)
+      // updated is server object; map for list view
+      const mapped = this.mapUser(updated)
+      const idx = this.users.findIndex(u => String(u.id) === String(mapped.id))
+      if (idx !== -1) {
+        // replace in list
+        this.users.splice(idx, 1, mapped)
+      } else {
+        this.users.unshift(mapped)
+      }
+      // update selected user shown in modal
+      this.selectedUser = updated
+      this.showDetail = false
+      // refresh list from server to ensure consistency
+      this.fetchUsers()
+    },
+
+    async onDelete(user) {
+      if (!user || !user.id) return
+      try {
+        if (process.env.NODE_ENV !== 'production') console.debug('[UserManagement] deleting user', user)
+        // try admin delete endpoint first
+        await http.delete(`/api/v1/admin/users/${user.id}`)
+        if (process.env.NODE_ENV !== 'production') console.debug('[UserManagement] delete succeeded (admin endpoint)')
+      } catch (err) {
+        const status = err && err.response && err.response.status
+        console.warn('[UserManagement] delete failed, status:', status, err)
+        if (status === 403) {
+          // try non-admin endpoint fallback
+          try {
+            await http.delete(`/api/v1/users/${user.id}`)
+            if (process.env.NODE_ENV !== 'production') console.debug('[UserManagement] delete succeeded (fallback endpoint)')
+          } catch (err2) {
+            console.error('Delete failed on fallback endpoint', err2)
+            this.error = (err2 && err2.response && err2.response.data && err2.response.data.message) || err2.message || '삭제 중 오류가 발생했습니다.'
+            return
+          }
+        } else {
+          this.error = (err && err.response && err.response.data && err.response.data.message) || err.message || '삭제 중 오류가 발생했습니다.'
+          return
+        }
+      }
+
+      // remove from local list if present
+      const idx = this.users.findIndex(u => String(u.id) === String(user.id))
+      if (idx !== -1) this.users.splice(idx, 1)
+
+      // close modal and refresh list to ensure consistency
+      this.closeDetail()
+      this.fetchUsers()
     },
 
     prevPage() {

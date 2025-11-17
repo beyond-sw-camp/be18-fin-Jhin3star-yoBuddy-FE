@@ -1,36 +1,28 @@
 import axios from 'axios'
 import auth from './auth'
 
-// Create an axios instance.
-// In development prefer a relative base so the dev-server proxy (vue.config.js) can forward /api requests
-const devBase = ''
-const prodBase = process.env.VUE_APP_API_BASE || ''
-const baseURL = process.env.NODE_ENV === 'development' ? devBase : prodBase
+// BASE URL은 포트까지만
+const API_BASE = process.env.VUE_APP_API_BASE
 
-const http = axios.create({ baseURL })
+console.log("[HTTP BASE URL] =", API_BASE)
 
-// Attach token automatically if present
+const http = axios.create({
+  baseURL: API_BASE
+})
+
+// ==================== Request Interceptor ====================
 http.interceptors.request.use((config) => {
   const token = auth.getToken()
+
   if (token) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
-  // Debug: log outgoing request info to help diagnose network issues
-  try {
-    // don't log bodies to avoid sensitive leaks in production
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('[http] request]', config.method, config.baseURL + config.url)
-      // show whether a token is present (do NOT print token value)
-      console.debug('[http] auth token present:', token ? 'yes' : 'no', token ? ('len=' + String(token.length)) : '')
-    }
-  } catch (e) {
-    /* ignore */
-  }
+
   return config
 }, (error) => Promise.reject(error))
 
-// Response interceptor: handle 401 by attempting to refresh the access token
+// ==================== Refresh Token Logic ====================
 let isRefreshing = false
 let refreshSubscribers = []
 
@@ -43,33 +35,26 @@ function onRefreshed(token) {
   refreshSubscribers = []
 }
 
+// Refresh path (하드코딩)
+const REFRESH_PATH = "/api/v1/auth/refresh"
+
 http.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   async (error) => {
-  const { response, config } = error
+    const { response, config } = error
+
     if (!response) return Promise.reject(error)
 
-    // If not 401 or 403, propagate
-    if (response.status !== 401 && response.status !== 403) {
-      // Log network-level info for easier debugging
-      console.error('[http] response error', {
-        url: config && (config.baseURL + config.url),
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data
-      })
+    // 401 / 403 이외 에러면 그냥 reject
+    if (![401, 403].includes(response.status)) {
       return Promise.reject(error)
     }
 
-    // Avoid retrying the same request endlessly
-    if (config && config._retry) return Promise.reject(error)
+    if (config._retry) return Promise.reject(error)
     config._retry = true
 
-    // Avoid attempting refresh for the refresh endpoint itself
-    const refreshUrl = process.env.VUE_APP_AUTH_REFRESH || '/api/v1/auth/refresh'
-    const requestUrl = config && (config.url || '')
-    if (requestUrl && requestUrl.indexOf(refreshUrl) !== -1) {
-      // refresh endpoint failed with 401/403 -> force logout
+    // refresh 요청 자체에서 401 나오면 강제 로그아웃
+    if (config.url.includes(REFRESH_PATH)) {
       auth.logout()
       window.location.href = '/login'
       return Promise.reject(error)
@@ -83,43 +68,40 @@ http.interceptors.response.use(
     }
 
     try {
+      // 최초 1번만 refresh 요청
       if (!isRefreshing) {
         isRefreshing = true
-        const base = process.env.VUE_APP_API_BASE || ''
 
-        // Use plain axios here to avoid invoking this interceptor again
-        const refreshResp = await axios.post(base + refreshUrl, { refreshToken })
-        const data = refreshResp && refreshResp.data ? refreshResp.data : {}
-        const newAccess = data.accessToken || data.token || data.access_token
-        const newRefresh = data.refreshToken || data.refresh_token
-        const expiresIn = data.expiresIn || data.expires_in
+        const refreshResp = await axios.post(API_BASE + REFRESH_PATH, { refreshToken })
+        const data = refreshResp.data
 
-        if (newAccess) {
-          auth.setToken({ accessToken: newAccess, refreshToken: newRefresh, expiresIn })
-          onRefreshed(auth.getToken())
-          } else {
-          // refresh did not return a token -> force logout
+        const newAccess = data.accessToken
+        const newRefresh = data.refreshToken
+        const expiresIn = data.expiresIn
+
+        if (!newAccess) {
           auth.logout()
           window.location.href = '/login'
           return Promise.reject(error)
         }
+
+        auth.setToken({ accessToken: newAccess, refreshToken: newRefresh, expiresIn })
+        onRefreshed(newAccess)
       }
 
-      // Queue the original request until refresh finishes
+      // refresh 끝날 때까지 기다림
       return new Promise((resolve, reject) => {
         subscribeTokenRefresh((token) => {
           if (!token) return reject(error)
-          config.headers = config.headers || {}
+
           config.headers.Authorization = `Bearer ${token}`
           resolve(http(config))
         })
       })
-    } catch (errRefresh) {
-      // Refresh failed
-      isRefreshing = false
+    } catch (e) {
       auth.logout()
-      window.location.href = '/login'
-      return Promise.reject(errRefresh)
+      window.location.href = '/auth/login'
+      return Promise.reject(e)
     } finally {
       isRefreshing = false
     }

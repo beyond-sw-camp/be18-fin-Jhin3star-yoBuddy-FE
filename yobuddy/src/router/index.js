@@ -34,11 +34,6 @@ const routes = [
     component: () => import('../pages/admin/organization/User/UserManagement.vue')
   },
   {
-    path: '/organization/usermanagement/:id/edit',
-    name: 'UserEdit',
-    component: () => import('../pages/admin/organization/User/UserEdit.vue')
-  },
-  {
     path: '/onboarding',
     name: 'Onboarding',
     component: () => import('../pages/Onboarding.vue')
