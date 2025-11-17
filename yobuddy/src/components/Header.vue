@@ -96,13 +96,13 @@ export default {
     const notificationCount = computed(() => notices.value.filter(notice => !notice.read).length)
 
     const pageTitleMap = {
-      '/': 'KPI',
       '/kpi': 'KPI',
       '/organization': '조직 관리',
       '/onboarding': '온보딩',
       '/mentoring': '멘토링',
       '/education': '교육',
-      '/content': '콘텐츠'
+      '/content': '콘텐츠',
+      '/organization/usermanagement': '유저 관리'
     }
 
     const pageTitle = computed(() => {
@@ -111,20 +111,15 @@ export default {
 
     // breadcrumb depth 표현
     const breadcrumbs = computed(() => {
-      // route.path 예시: /organization/submenu1/submenu2
       const segments = route.path.split('/').filter(Boolean)
-      // 첫 depth는 항상 pageTitleMap에서 가져옴
       const crumbs = []
       if (segments.length === 0) {
-        crumbs.push(pageTitleMap['/'])
+      crumbs.push(pageTitleMap['/'])
       } else {
-        // 첫 depth
-        const first = '/' + segments[0]
-        crumbs.push(pageTitleMap[first] || segments[0])
-        // 그 이후 depth는 그대로 표시
-        for (let i = 1; i < segments.length; i++) {
-          crumbs.push(segments[i])
-        }
+      for (let i = 0; i < segments.length; i++) {
+        const path = '/' + segments.slice(0, i + 1).join('/')
+        crumbs.push(pageTitleMap[path] || segments[i])
+      }
       }
       return crumbs
     })

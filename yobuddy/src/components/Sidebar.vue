@@ -92,7 +92,7 @@
             <p class="user-role" style="margin-top:4px;">{{ userRole }}</p>
           </div>
           <button class="logout-btn action-btn" @click="logout()" title="로그아웃" style="margin-left:auto;">
-            <span class="action-icon"><img src="@/assets/logo_logout.svg" alt="" srcset=""></span>
+            <span class="action-icon"><img src="@/assets/logo_logout.svg" alt="" srcset="" width="80%" height="80%"></span>
           </button>
         </div>
       </div>
@@ -101,7 +101,7 @@
 </template>
 
 <script>
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import auth from '@/services/auth'
 
@@ -181,9 +181,9 @@ export default {
         id: 2,
         icon: orgIcon,
         label: '조직 관리',
-        path: '/organization',
+        path: '/organization/usermanagement',
         subItems: [
-          { id: '2-1', label: '유저 관리', path: '/organization/criteria' },
+          { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
           { id: '2-2', label: '부서 관리', path: '/organization/department' }
         ]
       },
@@ -248,6 +248,26 @@ export default {
       activeSubmenu.value = null;
     };
 
+    const router = useRouter();
+
+    const logout = () => {
+      // Clear auth state in storage
+      auth.logout()
+      // clear reactive UI state immediately
+      userName.value = ''
+      userRole.value = ''
+      user.value = { email: '', department: '', joinDate: '' }
+      showUserDetail.value = false
+      // Notify other tabs about logout (storage event)
+      try {
+        localStorage.setItem('yb_logout', String(Date.now()))
+      } catch (e) {
+        // ignore
+      }
+      // navigate to login route
+      router.push({ path: '/login' }).catch(()=>{})
+    }
+
     return {
       menuItems,
       userName,
@@ -263,7 +283,8 @@ export default {
       shouldShowSubmenu,
       showUserDetail,
       toggleUserDetail,
-      editProfile
+      editProfile,
+      logout
     };
   }
 };
@@ -763,7 +784,7 @@ export default {
 
 .user-name {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
@@ -774,7 +795,7 @@ export default {
 
 .user-role {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255,255,255,0.85);
   opacity: 0.98;
   white-space: nowrap;
@@ -811,6 +832,7 @@ export default {
 
 .action-icon {
   font-size: 18px;
+  margin-top: 30%;
 }
 
 .sidebar::-webkit-scrollbar {
