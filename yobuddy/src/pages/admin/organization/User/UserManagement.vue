@@ -140,7 +140,7 @@ export default {
         // server may return phone as phoneNumber, phone or mobile
         phone: u.phoneNumber || u.phone || u.mobile || '',
         role: roleUpper,
-        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR'? '맨토' : '뉴비',
+        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR'? '멘토' : '뉴비',
         // server may return department as departmentName, department, or nested team.name
         department: u.departmentName || u.department || (u.team && u.team.name) || '',
         // server may return join date in various fields: joinedAt, joinDate, hireDate
@@ -292,13 +292,11 @@ export default {
     },
 
     async onCreated(newUser) {
-      // when a user is created via the modal, insert into list and refresh
       try {
         const mapped = this.mapUser(newUser)
         this.users.unshift(mapped)
       } catch (e) { console.warn('onCreated mapping failed', e) }
       this.showCreate = false
-      // refresh to ensure server-side consistency
       this.fetchUsers()
     },
 
