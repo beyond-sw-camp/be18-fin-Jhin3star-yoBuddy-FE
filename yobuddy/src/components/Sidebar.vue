@@ -62,12 +62,12 @@
               <div class="detail-row">
                 <span class="detail-label">부서</span>
                 <br/>
-                <span class="detail-value">{{ user?.department || '' }}</span>
+                <span class="detail-value">{{ user?.departmentName || '' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">입사일</span>
                 <br/>
-                <span class="detail-value">{{ user?.joinDate || '' }}</span>
+                <span class="detail-value">{{ joinDate }}</span>
               </div>
             </div>
         </div>
@@ -101,70 +101,38 @@
 </template>
 
 <script>
-import { useRoute, useRouter } from 'vue-router';
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import auth from '@/services/auth'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useAuthStore } from "@/store/authStore"
 
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
 import onboadingIcon from '@/assets/logo_onboading.svg'
 import eduIcon from '@/assets/logo_edu.svg'
 import contentIcon from '@/assets/logo_content.svg'
-import assignmentIcon from '@/assets/icon_assigment.svg';
+import assignmentIcon from '@/assets/icon_assigment.svg'
 
 export default {
-  name: 'SidebarMenu',
+  name: "SidebarMenu",
+
   setup() {
-    const route = useRoute();
-    const userName = ref('홍길동');
-    const userRole = ref('개발자');
-    const avatarUrl = ref(null); // set to image path if available
-    const activeSubmenu = ref(null);
-    const showUserDetail = ref(false);
-    const user = ref({ email: '', department: '', joinDate: '' });
+    const route = useRoute()
+    const router = useRouter()
+    const auth = useAuthStore()
+    const user = computed(() => auth.user)
 
-    const loadUserFromAuth = () => {
-      const u = auth.getUser()
-      // Prefer an explicitly saved display name, then server-provided name, then id
-      const savedName = sessionStorage.getItem('yb_user_name') || localStorage.getItem('yb_user_name')
-      if (savedName) {
-        userName.value = savedName
-      } else if (u && u.name) {
-        userName.value = String(u.name)
-      } else if (u && u.id) {
-        userName.value = String(u.id)
-      }
+    const userName = computed(() => user.value?.name || "이름 없음")
+    const userRole = computed(() => user.value?.role || "")
+    const avatarUrl = computed(() => user.value?.avatarUrl || null)
 
-      if (u && u.role) userRole.value = String(u.role)
+    const userEmail = computed(() => user.value?.email || "")
+    const userDept = computed(() => user.value?.departmentName || "")
+    const joinDate = computed(() =>
+      user.value?.joinedAt ? user.value.joinedAt.split('T')[0] : ""
+    )
 
-      // email: prefer saved email from login remember flow
-      const savedEmail = localStorage.getItem('yb_saved_email') || sessionStorage.getItem('yb_saved_email')
-      if (savedEmail) user.value.email = savedEmail
-      else if (u && u.email) user.value.email = String(u.email)
-
-      // department and joinDate: optional fields stored at login if backend provides them
-      const savedDept = sessionStorage.getItem('yb_user_department') || localStorage.getItem('yb_user_department')
-      if (savedDept) user.value.department = savedDept
-      else if (u && u.department) user.value.department = String(u.department)
-
-      const savedJoin = sessionStorage.getItem('yb_user_joinDate') || localStorage.getItem('yb_user_joinDate')
-      if (savedJoin) user.value.joinDate = savedJoin
-      else if (u && u.joinDate) user.value.joinDate = String(u.joinDate)
-
-      // avatar: optional stored key
-      const avatar = sessionStorage.getItem('yb_user_avatar') || localStorage.getItem('yb_user_avatar')
-      if (avatar) avatarUrl.value = avatar
-    }
-
-    // update on mount and when storage changes (in another tab)
-    onMounted(() => {
-      loadUserFromAuth()
-      window.addEventListener('storage', loadUserFromAuth)
-    })
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('storage', loadUserFromAuth)
-    })
+    const activeSubmenu = ref(null)
+    const showUserDetail = ref(false)
 
     const menuItems = ref([
       {
@@ -187,24 +155,9 @@ export default {
           { id: '2-2', label: '부서 관리', path: '/organization/department' }
         ]
       },
-      {
-        id: 3,
-        icon: onboadingIcon,
-        label: '온보딩',
-        path: '/onboarding'
-      },
-      {
-        id: 4,
-        icon: assignmentIcon,
-        label: '과제',
-        path: '/assignment'
-      },
-      {
-        id: 5,
-        icon: eduIcon,
-        label: '교육',
-        path: '/education'
-      },
+      { id: 3, icon: onboadingIcon, label: '온보딩', path: '/onboarding' },
+      { id: 4, icon: assignmentIcon, label: '과제', path: '/assignment' },
+      { id: 5, icon: eduIcon, label: '교육', path: '/education' },
       {
         id: 6,
         icon: contentIcon,
@@ -215,79 +168,66 @@ export default {
           { id: '6-2', label: '위키', path: '/content/library' }
         ]
       }
-    ]);
+    ])
 
-    const isActive = (path) => {
-      return route.path === path;
-    };
+    /** ----------------------
+     *  메뉴 UI helpers
+     ------------------------ */
+    const isActive = path => route.path === path
 
-    const isSubmenuActive = (item) => {
-      if (!item.subItems) return false;
-      return item.subItems.some(sub => route.path.startsWith(sub.path));
-    };
+    const isSubmenuActive = item => {
+      if (!item.subItems) return false
+      return item.subItems.some(sub => route.path.startsWith(sub.path))
+    }
 
-    const shouldShowSubmenu = (item) => {
-      return activeSubmenu.value === item.id || isSubmenuActive(item);
-    };
+    const shouldShowSubmenu = item =>
+      activeSubmenu.value === item.id || isSubmenuActive(item)
 
-    const openSettings = () => {
-      console.log('Settings clicked');
-    };
-    const toggleUserDetail = () => {
-      showUserDetail.value = !showUserDetail.value;
-    };
-    const editProfile = () => {
-      alert('프로필 수정 기능은 준비 중입니다.');
-    };
-
-    const showSubmenu = (id) => {
-      activeSubmenu.value = id;
-    };
+    const showSubmenu = id => {
+      activeSubmenu.value = id
+    }
 
     const hideSubmenu = () => {
-      activeSubmenu.value = null;
-    };
+      activeSubmenu.value = null
+    }
 
-    const router = useRouter();
+    /** ----------------------
+     *  프로필 카드
+     ------------------------ */
+    const toggleUserDetail = () => {
+      showUserDetail.value = !showUserDetail.value
+    }
 
+    /** ----------------------
+     *  로그아웃
+     ------------------------ */
     const logout = () => {
-      // Clear auth state in storage
       auth.logout()
-      // clear reactive UI state immediately
-      userName.value = ''
-      userRole.value = ''
-      user.value = { email: '', department: '', joinDate: '' }
-      showUserDetail.value = false
-      // Notify other tabs about logout (storage event)
-      try {
-        localStorage.setItem('yb_logout', String(Date.now()))
-      } catch (e) {
-        // ignore
-      }
-      // navigate to login route
-      router.push({ path: '/login' }).catch(()=>{})
+      router.push("/login")
     }
 
     return {
       menuItems,
-      userName,
-      avatarUrl,
-      userRole,
       user,
+      userName,
+      userRole,
+      avatarUrl,
+      userEmail,
+      userDept,
+      joinDate,
+
       isActive,
       isSubmenuActive,
-      openSettings,
-      activeSubmenu,
+      shouldShowSubmenu,
       showSubmenu,
       hideSubmenu,
-      shouldShowSubmenu,
+
       showUserDetail,
       toggleUserDetail,
-      editProfile,
       logout
-    };
+    }
   }
-};
+}
 </script>
 
 <style scoped>

@@ -51,7 +51,7 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import auth from '@/services/auth'
+import auth from '@/store/authStore'
 
 export default {
   name: 'HomePage',

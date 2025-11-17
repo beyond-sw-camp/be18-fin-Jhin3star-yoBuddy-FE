@@ -39,7 +39,7 @@
           <div class="form-row">
             <label class="label">역할</label>
             <select v-model="form.role">
-              <option value="USER">뉴비</option>
+              <option value="USER">신입</option>
               <option value="MENTOR">멘토</option>
               <option value="ADMIN">관리자</option>
             </select>

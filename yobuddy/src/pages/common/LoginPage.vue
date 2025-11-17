@@ -42,84 +42,38 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import auth from '../../services/auth'
+import { useAuthStore } from '@/store/authStore'
 
-export default {
-  name: 'LoginPage',
-  setup() {
-    const logoSrc = '/favicon.png'
-    const email = ref('')
-    const password = ref('')
-    const remember = ref(localStorage.getItem('yb_remember') === 'true')
-    const showPassword = ref(false)
-    const loading = ref(false)
-    const errorMsg = ref('')
-    const router = useRouter()
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const errorMsg = ref('')
 
-    // If the user previously chose "remember", prefill email
-    if (remember.value) {
-      const saved = localStorage.getItem('yb_saved_email')
-      if (saved) email.value = saved
-    }
+const router = useRouter()
+const auth = useAuthStore()
 
-    // If session already has token and user id, skip login flow and redirect
-    if (sessionStorage.getItem('yb_auth_token') && sessionStorage.getItem('yb_user_id')) {
-      router.replace({ path: '/kpi' })
-    }
+async function onSubmit() {
+  try {
+    loading.value = true
+    errorMsg.value = ''
 
-    const onSubmit = async () => {
-      errorMsg.value = ''
-      loading.value = true
-      try {
-        const result = await auth.login(email.value, password.value)
-        console.log('Login result:', result); // 디버깅용 로그
+    await auth.login(email.value, password.value)
 
-        // If login returned tokens (normalized in auth service), persist them
-        if (result && (result.accessToken || result.token || result.refreshToken)) {
-          // persist tokens and user info
-          // If user checked "remember", persist to localStorage as well; otherwise keep only in sessionStorage
-          auth.setToken(result, { persistLocal: remember.value })
-          if (remember.value) {
-            localStorage.setItem('yb_remember', 'true')
-            localStorage.setItem('yb_saved_email', email.value)
-          } else {
-            localStorage.removeItem('yb_remember')
-            localStorage.removeItem('yb_saved_email')
-          }
-          console.log('Redirecting to /kpi...'); // 디버깅용 로그
-          router.push({ path: '/kpi' })
-          return
-        }
+    if (auth.isMentor) router.push('/mentor/dashboard')
+    else if (auth.isAdmin) router.push('/kpi')
+    else router.push('/')
 
-        // If server returned object without tokens, try to show message
-        if (result && typeof result === 'object') {
-          errorMsg.value = result.message || JSON.stringify(result)
-        } else {
-          errorMsg.value = '로그인에 실패했습니다.'
-        }
-      } catch (err) {
-        errorMsg.value = err && err.message ? err.message : '로그인 요청 중 오류가 발생했습니다.'
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      logoSrc,
-      email,
-      password,
-      remember,
-      showPassword,
-      loading,
-      errorMsg,
-      onSubmit
-    }
+  } catch {
+    errorMsg.value = '로그인 실패'
+  } finally {
+    loading.value = false
   }
 }
 </script>
+
 
 <style scoped>
 :root{
