@@ -25,7 +25,6 @@
               <template v-else>
                 {{ user && user.email ? user.email : '—' }}
               </template>
-              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('email')">✎</button>
             </div>
           </div>
 
@@ -57,6 +56,7 @@
               <template v-else>
                 {{ user && (user.roleLabel || user.role) ? (user.roleLabel || user.role) : '—' }}
               </template>
+              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('role')">✎</button>
             </div>
           </div>
 
@@ -69,6 +69,7 @@
               <template v-else>
                 {{ user && (user.department || user.departmentName) ? (user.department || user.departmentName) : '—' }}
               </template>
+              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('department')">✎</button>
             </div>
           </div>
 
@@ -112,7 +113,7 @@
 </template>
 
 <script>
-import http from '@/services/http'
+import userService from '@/services/user'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 export default {
@@ -176,9 +177,9 @@ export default {
         if (this.form.joinDate) payload.joinDate = this.form.joinDate
 
         console.debug('[UserDetailpopup] PATCH payload:', payload)
-        const resp = await http.patch(`/api/v1/admin/users/${this.user.id}`, payload)
-        console.debug('[UserDetailpopup] PATCH resp:', resp && resp.data ? resp.data : resp)
-        const updated = resp && resp.data ? resp.data : Object.assign({}, this.user, payload)
+        const resp = await userService.updateUser(this.user.id, payload)
+        console.debug('[UserDetailpopup] PATCH resp:', resp)
+        const updated = resp && resp.data ? resp.data : (resp || Object.assign({}, this.user, payload))
         this.$emit('saved', updated)
         this.isEditMode = false; this.editingField = null
       } catch (e) {
@@ -196,7 +197,8 @@ export default {
       try { const dt = new Date(d); if (Number.isNaN(dt.getTime())) return d; const y = dt.getFullYear(); const m = String(dt.getMonth() + 1).padStart(2, '0'); const day = String(dt.getDate()).padStart(2, '0'); return `${y}-${m}-${day}` } catch (e) { return d }
     },
     confirmMessage() { const name = (this.user && (this.user.name || this.user.userName)) ? (this.user.name || this.user.userName) : '해당 사용자'; return `${name}님을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.` }
-  }
+  },
+  
 }
 </script>
 
@@ -232,6 +234,7 @@ export default {
   max-height: 92vh;
   overflow: auto;
   background: #fff;
+  border: 1px solid rgba(16,36,59,0.04);
   border-radius: 12px;
   padding: 20px 22px;
   box-shadow: 0 12px 40px rgba(3, 10, 18, 0.12);
@@ -241,6 +244,7 @@ export default {
 }
 
 .modal-top { position: relative; height: 52px; display:flex; align-items:center; justify-content:center }
+.modal-top::after { content: ''; position: absolute; right: 12px; width: 36px; height: 36px; }
 .back-btn {
   position: absolute;
   left: 12px;
@@ -254,19 +258,21 @@ export default {
 }
 .modal-title { font-size:18px; font-weight:700; color: var(--main-color); letter-spacing:0.2px }
 
-.center-area { text-align:center; padding: 6px 0 14px 0 }
+.center-area { text-align:center; padding: 10px 0 18px 0 }
 .avatar-large img { width: 100px; height:100px; border-radius:50%; object-fit:cover; border: 3px solid rgba(41,69,148,0.08); box-shadow: 0 8px 20px rgba(41,69,148,0.06) }
 .avatar-fallback-large { display:inline-block; width:100px; height:100px; line-height:100px; border-radius:50%; background: linear-gradient(180deg,var(--bg-soft),#eef4ff); color:var(--main-color); font-size:36px; border: 2px solid rgba(41,69,148,0.06) }
 .center-name { font-weight:700; margin-top:10px; font-size:20px; color:#10243b; letter-spacing:0.2px }
 
-.two-cols { display:flex; gap:24px; padding: 12px 0; align-items:flex-start; flex-wrap:wrap }
+.two-cols { display:flex; gap:24px; padding: 12px 0; align-items:flex-start; flex-wrap:wrap; margin-left: 12%; padding-bottom: 30px; }
 .col { flex:1; min-width:200px }
 .label { font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.6px }
-.val { margin-top:8px; color:#0f172a; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:500 }
+.val { margin-top:8px; color:#0f172a; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; font-weight:500; min-height:44px }
 
 input[type="text"], input[type="date"], select {
   width:100%;
-  padding:10px 12px;
+  padding:8px 10px;
+  height:38px;
+  line-height:18px;
   border:1px solid #eef3fb;
   border-radius:var(--radius);
   font-size:15px;
@@ -278,14 +284,14 @@ input[type="text"], input[type="date"], select {
 .inline-edit { background:transparent; border:none; color:var(--muted); cursor:pointer; padding:6px; font-size:14px }
 .inline-edit:hover { color:var(--main-color) }
 
-.info-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; padding-top:8px }
+.info-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; padding-top:6px; margin-left: 9%; padding-bottom: 5%; }
 .info-item { background:transparent; padding:6px 4px }
 .info-item .label { font-size:12px; font-weight:600; color:var(--muted); letter-spacing:0.5px }
-.info-item .val { margin-top:6px; font-size:15px; color:#0f172a }
+.info-item .val { margin-top:6px; font-size:15px; color:#0f172a; min-height:44px }
 
 .mentors-area { padding-top:8px }
 .mentor-list { margin-top:8px }
-.mentor-card { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.04) }
+.mentor-card { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid rgba(16,36,59,0.04) }
 .mentor-left img { width:40px; height:40px; border-radius:50%; object-fit:cover }
 .mentor-right { flex:1 }
 
@@ -296,7 +302,7 @@ input[type="text"], input[type="date"], select {
 .btn-primary:disabled { opacity:0.6; cursor:not-allowed }
 
 /* Section separators and spacing */
-.section { padding: 14px 0; border-top: 1px solid rgba(41,69,148,0.06) }
+.section { padding: 14px 0; border-top: 1px solid rgba(16,36,59,0.06); }
 
 /* Input focus */
 input[type="text"]:focus, input[type="date"]:focus, select:focus {
@@ -320,6 +326,8 @@ input, select, .btn-outline, .btn-primary { transition: all 180ms cubic-bezier(.
   .detail-modal { width: 100%; padding: 14px }
   .two-cols { flex-direction:column }
   .info-grid { grid-template-columns: 1fr }
+  .two-cols { padding-left: 8px }
+  .info-grid { padding-left: 8px }
   .avatar-large img, .avatar-fallback-large { width:84px; height:84px; line-height:84px }
   .center-name { font-size:16px }
   .modal-top { height:36px }
