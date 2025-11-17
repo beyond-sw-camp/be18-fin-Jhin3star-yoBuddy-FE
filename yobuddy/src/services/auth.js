@@ -32,8 +32,16 @@ export default {
 
       // Server responses vary; try common locations for tokens
       const data = resp && resp.data ? resp.data : {}
+      const headers = resp && resp.headers ? resp.headers : {}
 
-      const accessToken = data.token || data.accessToken || data.access_token || (data.data && (data.data.token || data.data.accessToken))
+      // 1. Check Headers (e.g., Authorization: 'Bearer ...')
+      let headerToken = headers.authorization || headers.Authorization
+      if (headerToken && headerToken.startsWith('Bearer ')) {
+        headerToken = headerToken.substring(7)
+      }
+
+      // 2. Check Body
+      const accessToken = headerToken || data.token || data.accessToken || data.access_token || (data.data && (data.data.token || data.data.accessToken))
       const refreshToken = data.refreshToken || data.refresh_token || (data.data && data.data.refreshToken)
       const expiresIn = data.expiresIn || data.expires_in || data.accessExpiresIn || data.access_expires_in || (data.data && data.data.expiresIn)
 
