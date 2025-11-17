@@ -301,22 +301,6 @@ export default {
       // refresh to ensure server-side consistency
       this.fetchUsers()
     },
-
-    openCreate() {
-      this.showCreate = true
-    },
-
-    async onCreated(newUser) {
-      // when a user is created via the modal, insert into list and refresh
-      try {
-        const mapped = this.mapUser(newUser)
-        this.users.unshift(mapped)
-      } catch (e) { console.warn('onCreated mapping failed', e) }
-      this.showCreate = false
-      // refresh to ensure server-side consistency
-      this.fetchUsers()
-    },
-
     onEdit(user) {
       try {
         sessionStorage.setItem('yb_edit_user', JSON.stringify(user))
