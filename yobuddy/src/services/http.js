@@ -56,14 +56,14 @@ http.interceptors.response.use(
     // refresh 요청 자체에서 401 나오면 강제 로그아웃
     if (config.url.includes(REFRESH_PATH)) {
       auth.logout()
-      window.location.href = '/auth/login'
+      window.location.href = '/login'
       return Promise.reject(error)
     }
 
     const refreshToken = auth.getRefreshToken()
     if (!refreshToken) {
       auth.logout()
-      window.location.href = '/auth/login'
+      window.location.href = '/login'
       return Promise.reject(error)
     }
 
@@ -81,7 +81,7 @@ http.interceptors.response.use(
 
         if (!newAccess) {
           auth.logout()
-          window.location.href = '/auth/login'
+          window.location.href = '/login'
           return Promise.reject(error)
         }
 
