@@ -102,6 +102,7 @@
                 v-for="m in filteredMembers"
                 :key="m.userId"
                 class="member-row"
+                @click="openUserDetail(m)"
               >
                 <span class="col-name">{{ m.name }}</span>
                 <span class="col-email">{{ m.email }}</span>
@@ -155,17 +156,26 @@
       </div>
     </div>
   </div>
+  <UserDetailpopup
+    :show="showUserDetail"
+    :user="selectedUser"
+    @close="showUserDetail = false"
+  />
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useDepartmentStore } from '@/store/modules/department';
+import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue';
+import userService from '@/services/user';
 
 const store = useDepartmentStore()
 const search = computed({
   get: () => store.searchName,
   set: (value) => store.setSearchName(value),
 })
+const showUserDetail = ref(false)
+const selectedUser = ref(null)
 
 onMounted(() => {
   store.resetState()
@@ -197,6 +207,20 @@ const roleLabel = (role) => {
 
 const selectDepartment = (department) => {
   store.fetchDepartmentById(department.departmentId)
+}
+
+const openUserDetail = async (member) => {
+try {
+    const data = await userService.getUserById(member.userId);
+    const withLabel = {
+      ...data,
+      roleLabel: roleLabel(data.role)
+    };
+    selectedUser.value = withLabel;
+    showUserDetail.value = true;
+  } catch (e) {
+    console.error('유저 상세 조회 실패', e);
+  }
 }
 
 /* 🔹 모달 상태 */
