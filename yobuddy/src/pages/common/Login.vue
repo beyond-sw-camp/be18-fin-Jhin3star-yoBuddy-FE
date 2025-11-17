@@ -16,7 +16,7 @@
 
       <form class="login-form" @submit.prevent="onSubmit">
         <label class="field">
-          <span class="label-text">아이디 (이메일) </span>
+          <span class="label-text">아이디 (이메일)</span>
           <input type="email" v-model.trim="email" required placeholder="example@company.com" />
         </label>
 
