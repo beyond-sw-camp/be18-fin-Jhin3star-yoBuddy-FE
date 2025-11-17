@@ -8,8 +8,7 @@
           class="search-input"
           type="text"
           placeholder="검색"
-          v-model="store.searchName"
-          @input="store.setSearchName(search)"
+          v-model="search"
         />
 
         <div class="search-actions">
@@ -160,6 +159,8 @@
     :show="showUserDetail"
     :user="selectedUser"
     @close="showUserDetail = false"
+    @saved="onUserSaved"
+    @delete="onUserDelete"
   />
 </template>
 
@@ -214,6 +215,7 @@ try {
     const data = await userService.getUserById(member.userId);
     const withLabel = {
       ...data,
+      id: data.userId,
       roleLabel: roleLabel(data.role)
     };
     selectedUser.value = withLabel;
@@ -271,6 +273,37 @@ const handleDeleteDepartment = async () => {
   if (!confirmed) return
 
   await store.deleteDepartment(store.selectedDepartment.departmentId)
+}
+
+const onUserSaved = (updated) => {
+  // 1) 멤버 리스트 갱신
+  const list = store.members || []
+  const id = updated.userId || updated.id
+
+  const idx = list.findIndex(m => m.userId === id)
+  if (idx !== -1) {
+    // 반응성 유지하려면 이렇게
+    list[idx] = { ...list[idx], ...updated }
+  }
+
+  // 2) 팝업 닫기
+  showUserDetail.value = false
+}
+
+const onUserDelete = async (user) => {
+  if (!user) return
+  const id = user.userId || user.id
+  const confirmed = window.confirm('해당 사용자를 삭제하시겠습니까?')
+  if (!confirmed) return
+
+  try {
+    await userService.deleteUser(id)       // 🔹 실제 삭제 API 호출
+    // 멤버 리스트에서 제거
+    store.members = (store.members || []).filter(m => m.userId !== id)
+    showUserDetail.value = false
+  } catch (e) {
+    console.error('유저 삭제 실패', e)
+  }
 }
 </script>
 
