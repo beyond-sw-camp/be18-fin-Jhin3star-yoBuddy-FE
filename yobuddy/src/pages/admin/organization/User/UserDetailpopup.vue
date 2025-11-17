@@ -64,7 +64,14 @@
             <div class="label">부서</div>
             <div class="val">
               <template v-if="isEditMode && editingField === 'department'">
-                <input v-model="form.department" />
+                <template v-if="departments && departments.length">
+                  <select v-model="form.departmentId">
+                    <option v-for="d in departments" :key="d.id || d.departmentId" :value="d.id || d.departmentId">{{ d.name || d.departmentName || d.department }}</option>
+                  </select>
+                </template>
+                <template v-else>
+                  <input v-model="form.department" />
+                </template>
               </template>
               <template v-else>
                 {{ user && (user.department || user.departmentName) ? (user.department || user.departmentName) : '—' }}
@@ -130,6 +137,7 @@ export default {
       isEditMode: false,
       editingField: null,
       form: {},
+      departments: [],
       saving: false,
       error: null,
       showConfirm: false
@@ -137,12 +145,23 @@ export default {
   },
   watch: {
     user: { immediate: true, handler(u) { this.form = u ? Object.assign({}, u) : {} } },
-    show(val) { if (!val) { this.isEditMode = false; this.editingField = null } }
+    show(val) {
+      if (val) {
+        this.fetchDepartments()
+      } else {
+        this.isEditMode = false; this.editingField = null
+      }
+    }
   },
   methods: {
     close() { this.$emit('close') },
-    enterEditMode() { this.isEditMode = true; this.editingField = null; this.form = this.user ? Object.assign({}, this.user) : {} },
-    toggleEditing(field) {
+    async enterEditMode() { 
+      this.isEditMode = true; 
+      this.editingField = null; 
+      this.form = this.user ? Object.assign({}, this.user) : {} 
+      try { await this.fetchDepartments() } catch(e) { /* ignore */ }
+    },
+    async toggleEditing(field) {
       if (this.editingField === field) { this.editingField = null }
       else {
         this.isEditMode = true
@@ -152,7 +171,21 @@ export default {
             case 'email': this.form.email = this.user.email || ''; break
             case 'phone': this.form.phone = this.user.phone || this.user.phoneNumber || ''; break
             case 'role': this.form.role = this.user.role || this.user.userRole || 'USER'; break
-            case 'department': this.form.department = this.user.department || this.user.departmentName || ''; if (this.user.departmentId) this.form.departmentId = this.user.departmentId; break
+            case 'department': {
+              this.form.department = this.user.department || this.user.departmentName || '';
+              if (this.user && this.user.departmentId) {
+                this.form.departmentId = this.user.departmentId
+              } else {
+                // ensure departments are loaded so we can map name -> id
+                try { await this.fetchDepartments() } catch (err) { /* ignore */ }
+                const deptName = this.form.department
+                if (deptName && this.departments && this.departments.length) {
+                  const found = this.departments.find(d => (d.name || d.departmentName || d.department || '').toLowerCase() === String(deptName).toLowerCase())
+                  if (found) this.form.departmentId = found.id || found.departmentId
+                }
+              }
+              break
+            }
             case 'joinDate': {
               const d = this.user.joinedAt || this.user.joinDate || this.user.hireDate || ''
               if (d) { const dt = new Date(d); if (!Number.isNaN(dt.getTime())) this.form.joinDate = dt.toISOString().slice(0,10); else this.form.joinDate = '' } else this.form.joinDate = ''
@@ -161,6 +194,22 @@ export default {
             default: break
           }
         }
+      }
+    },
+    async fetchDepartments() {
+      try {
+        const list = await userService.getDepartments()
+        this.departments = Array.isArray(list) ? list : []
+        // If form has no departmentId but user has department name, try to preselect by name
+        if ((!this.form.departmentId || this.form.departmentId === null) && this.user) {
+          const deptName = this.user.department || this.user.departmentName || this.user.departmentLabel || ''
+          if (deptName) {
+            const found = this.departments.find(d => (d.name || d.departmentName || d.department || '').toLowerCase() === String(deptName).toLowerCase())
+            if (found) this.form.departmentId = found.id || found.departmentId
+          }
+        }
+      } catch (e) {
+        this.departments = []
       }
     },
     cancelEdit() { this.isEditMode = false; this.editingField = null; this.form = this.user ? Object.assign({}, this.user) : {}; this.error = null },

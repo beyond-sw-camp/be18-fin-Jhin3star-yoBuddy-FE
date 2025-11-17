@@ -75,6 +75,11 @@
         @close="showCreate = false"
         @created="onCreated"
       />
+      <UserBulkUploadPopup
+        :show="showBulkUpload"
+        @close="showBulkUpload = false"
+        @uploaded="onBulkUploaded"
+      />
   </div>
 </template>
 
@@ -82,10 +87,11 @@
 import http from '@/services/http'
 import UserDetailpopup from './UserDetailpopup.vue'
 import UserCreatePopup from './UserCreatePopup.vue'
+import UserBulkUploadPopup from './UserBulkUploadPopup.vue'
 
 export default {
   name: 'OrganizationUserPage',
-  components: { UserDetailpopup, UserCreatePopup },
+  components: { UserDetailpopup, UserCreatePopup, UserBulkUploadPopup },
   data() {
     return {
       // query and filters
@@ -110,6 +116,9 @@ export default {
       ,
       // create modal
       showCreate: false
+      ,
+      // bulk upload modal
+      showBulkUpload: false
     }
   },
   mounted() {
@@ -269,8 +278,13 @@ export default {
     },
 
     onAdd() {
-      // placeholder for bulk upload route
-      this.$router.push({ path: '/organization/user/create' }).catch(()=>{})
+      // open bulk upload modal
+      this.showBulkUpload = true
+    },
+
+    async onBulkUploaded() {
+      // refresh list after bulk upload
+      this.fetchUsers()
     },
 
     openCreate() {

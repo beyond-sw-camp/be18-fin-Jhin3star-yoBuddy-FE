@@ -49,6 +49,27 @@ const userService = {
 	async searchUsers(params) {
 		const resp = await http.get('/api/v1/admin/users', { params })
 		return resp && resp.data ? resp.data : resp
+	},
+
+
+	async bulkCreate(file) {
+		// file: File or Blob
+		const form = new FormData()
+		form.append('file', file)
+		// backend may expect multipart POST to /api/v1/admin/users/bulk or /api/v1/admin/users/upload
+		// try the common bulk endpoint first
+		const endpoints = ['/api/v1/admin/users/bulk', '/api/v1/admin/users/upload', '/api/v1/admin/users']
+		let lastErr
+		for (const ep of endpoints) {
+			try {
+				const resp = await http.post(ep, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+				return resp && resp.data ? resp.data : resp
+			} catch (e) {
+				lastErr = e
+				// try next endpoint
+			}
+		}
+		throw lastErr
 	}
 }
 
