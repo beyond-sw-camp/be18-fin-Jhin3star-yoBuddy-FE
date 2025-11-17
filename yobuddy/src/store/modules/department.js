@@ -8,6 +8,9 @@ export const useDepartmentStore = defineStore('department', {
   state: () => ({
     departments: [],
     searchName: '',
+    selectedDepartment: null,
+    members: [],
+    roleFilter: 'all',
   }),
 
   actions: {
@@ -58,6 +61,14 @@ export const useDepartmentStore = defineStore('department', {
         this.selectedDepartment = null
         this.members = []
       }
+    },
+
+    resetState() {
+      this.searchName = ''
+      this.selectedDepartment = null
+      this.members = []
+      this.roleFilter = 'all'
+      this.departments = []
     },
   },
 })

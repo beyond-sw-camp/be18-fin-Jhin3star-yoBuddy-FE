@@ -168,6 +168,7 @@ const search = computed({
 })
 
 onMounted(() => {
+  store.resetState()
   store.fetchDepartments() // 초기 전체 조회
 })
 
