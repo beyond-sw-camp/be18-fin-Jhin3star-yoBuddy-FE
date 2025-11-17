@@ -24,6 +24,11 @@ const routes = [
     component: () => import('../pages/admin/organization/Organization.vue')
   },
   {
+    path: '/organization/department',
+    name: 'Department',
+    component: () => import('../pages/admin/organization/department/DepartmentView.vue')
+  },
+  {
     path: '/onboarding',
     name: 'Onboarding',
     component: () => import('../pages/Onboarding.vue')
