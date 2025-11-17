@@ -13,7 +13,7 @@
             <option value="">전체 역할</option>
             <option value="ADMIN">관리자</option>
             <option value="MENTOR">멘토</option>
-            <option value="NEWBIE">뉴비</option>
+            <option value="NEWBIE">신입</option>
           </select>
           <button class="btn-ghost" @click="onSearch">검색</button>
           <button class="btn-primary" @click="openCreate">+ 단건 등록</button>
@@ -140,7 +140,7 @@ export default {
         // server may return phone as phoneNumber, phone or mobile
         phone: u.phoneNumber || u.phone || u.mobile || '',
         role: roleUpper,
-        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR'? '맨토' : '뉴비',
+        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR'? '멘토' : '신입',
         // server may return department as departmentName, department, or nested team.name
         department: u.departmentName || u.department || (u.team && u.team.name) || '',
         // server may return join date in various fields: joinedAt, joinDate, hireDate

@@ -50,7 +50,7 @@
                 <select v-model="form.role">
                   <option value="ADMIN">관리자</option>
                   <option value="MENTOR">멘토</option>
-                  <option value="USER">뉴비</option>
+                  <option value="USER">신입</option>
                 </select>
               </template>
               <template v-else>
