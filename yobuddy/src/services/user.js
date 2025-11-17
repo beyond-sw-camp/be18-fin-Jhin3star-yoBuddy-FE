@@ -34,7 +34,7 @@ const userService = {
 
 	async deleteUser(id) {
 		try {
-			const resp = await http.delete(`/api/v1/admin/users/${id}`)
+			const resp = await http.delete(`/api/v1/admin/ausers/${id}`)
 			return resp && resp.data ? resp.data : resp
 		} catch (e) {
 			// 일부 백엔드는 /api/v1/users/{id}를 사용함 -> 폴백
@@ -51,25 +51,9 @@ const userService = {
 		return resp && resp.data ? resp.data : resp
 	},
 
-
-	async bulkCreate(file) {
-		// file: File or Blob
-		const form = new FormData()
-		form.append('file', file)
-		// backend may expect multipart POST to /api/v1/admin/users/bulk or /api/v1/admin/users/upload
-		// try the common bulk endpoint first
-		const endpoints = ['/api/v1/admin/users/bulk', '/api/v1/admin/users/upload', '/api/v1/admin/users']
-		let lastErr
-		for (const ep of endpoints) {
-			try {
-				const resp = await http.post(ep, form, { headers: { 'Content-Type': 'multipart/form-data' } })
-				return resp && resp.data ? resp.data : resp
-			} catch (e) {
-				lastErr = e
-				// try next endpoint
-			}
-		}
-		throw lastErr
+	async getUserById(userId) {
+		const resp = await http.get(`/api/v1/admin/users/${userId}`)
+		return resp && resp.data ? resp.data : resp
 	}
 }
 
