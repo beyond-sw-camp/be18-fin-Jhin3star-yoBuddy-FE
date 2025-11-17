@@ -266,7 +266,8 @@ const handleDeleteDepartment = async () => {
 
 /* 검색 영역 */
 .search-area {
-  width: 100%;
+  width: 1100px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -275,7 +276,7 @@ const handleDeleteDepartment = async () => {
 .search-input {
   flex: 1;
   width: 100%;
-  max-width: 1000px;
+  max-width: 800px;
   height: 40px;
   padding: 0 14px;
   border-radius: 20px;
@@ -292,11 +293,11 @@ const handleDeleteDepartment = async () => {
 
 .search-actions {
   display: flex;
-  gap: 8px;
+  gap: 20px;
 }
 
 .btn {
-  padding: 8px 18px;
+  padding: 9px 20px;
   border-radius: 10px;
   font-size: 14px;
   border: 1px solid transparent;
@@ -326,6 +327,8 @@ const handleDeleteDepartment = async () => {
 
 /* 카드 2컬럼 */
 .card-row {
+  width: 1100px;
+  margin: 0 auto;
   display: flex;
   gap: 24px;
   align-items: stretch;
@@ -335,12 +338,21 @@ const handleDeleteDepartment = async () => {
 .card {
   flex: 1;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 20px 24px;
   box-shadow: 0 4px 12px rgba(15, 35, 95, 0.08);
   display: flex;
   flex-direction: column;
   min-height: 450px;
+}
+
+.org-card {
+  width: 538px;
+  flex: none;
+}
+
+.member-card {
+  flex: 1;     
 }
 
 .card-title {
