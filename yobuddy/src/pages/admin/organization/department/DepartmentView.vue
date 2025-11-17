@@ -8,8 +8,7 @@
           class="search-input"
           type="text"
           placeholder="검색"
-          v-model="store.searchName"
-          @input="store.setSearchName(search)"
+          v-model="search"
         />
 
         <div class="search-actions">
@@ -102,6 +101,7 @@
                 v-for="m in filteredMembers"
                 :key="m.userId"
                 class="member-row"
+                @click="openUserDetail(m)"
               >
                 <span class="col-name">{{ m.name }}</span>
                 <span class="col-email">{{ m.email }}</span>
@@ -155,17 +155,28 @@
       </div>
     </div>
   </div>
+  <UserDetailpopup
+    :show="showUserDetail"
+    :user="selectedUser"
+    @close="showUserDetail = false"
+    @saved="onUserSaved"
+    @delete="onUserDelete"
+  />
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useDepartmentStore } from '@/store/modules/department';
+import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue';
+import userService from '@/services/user';
 
 const store = useDepartmentStore()
 const search = computed({
   get: () => store.searchName,
   set: (value) => store.setSearchName(value),
 })
+const showUserDetail = ref(false)
+const selectedUser = ref(null)
 
 onMounted(() => {
   store.resetState()
@@ -197,6 +208,21 @@ const roleLabel = (role) => {
 
 const selectDepartment = (department) => {
   store.fetchDepartmentById(department.departmentId)
+}
+
+const openUserDetail = async (member) => {
+try {
+    const data = await userService.getUserById(member.userId);
+    const withLabel = {
+      ...data,
+      id: data.userId,
+      roleLabel: roleLabel(data.role)
+    };
+    selectedUser.value = withLabel;
+    showUserDetail.value = true;
+  } catch (e) {
+    console.error('유저 상세 조회 실패', e);
+  }
 }
 
 /* 🔹 모달 상태 */
@@ -248,6 +274,37 @@ const handleDeleteDepartment = async () => {
 
   await store.deleteDepartment(store.selectedDepartment.departmentId)
 }
+
+const onUserSaved = (updated) => {
+  // 1) 멤버 리스트 갱신
+  const list = store.members || []
+  const id = updated.userId || updated.id
+
+  const idx = list.findIndex(m => m.userId === id)
+  if (idx !== -1) {
+    // 반응성 유지하려면 이렇게
+    list[idx] = { ...list[idx], ...updated }
+  }
+
+  // 2) 팝업 닫기
+  showUserDetail.value = false
+}
+
+const onUserDelete = async (user) => {
+  if (!user) return
+  const id = user.userId || user.id
+  const confirmed = window.confirm('해당 사용자를 삭제하시겠습니까?')
+  if (!confirmed) return
+
+  try {
+    await userService.deleteUser(id)       // 🔹 실제 삭제 API 호출
+    // 멤버 리스트에서 제거
+    store.members = (store.members || []).filter(m => m.userId !== id)
+    showUserDetail.value = false
+  } catch (e) {
+    console.error('유저 삭제 실패', e)
+  }
+}
 </script>
 
 <style scoped>
@@ -266,7 +323,8 @@ const handleDeleteDepartment = async () => {
 
 /* 검색 영역 */
 .search-area {
-  width: 100%;
+  width: 1100px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -275,7 +333,7 @@ const handleDeleteDepartment = async () => {
 .search-input {
   flex: 1;
   width: 100%;
-  max-width: 1000px;
+  max-width: 800px;
   height: 40px;
   padding: 0 14px;
   border-radius: 20px;
@@ -292,11 +350,11 @@ const handleDeleteDepartment = async () => {
 
 .search-actions {
   display: flex;
-  gap: 8px;
+  gap: 20px;
 }
 
 .btn {
-  padding: 8px 18px;
+  padding: 9px 20px;
   border-radius: 10px;
   font-size: 14px;
   border: 1px solid transparent;
@@ -326,6 +384,8 @@ const handleDeleteDepartment = async () => {
 
 /* 카드 2컬럼 */
 .card-row {
+  width: 1100px;
+  margin: 0 auto;
   display: flex;
   gap: 24px;
   align-items: stretch;
@@ -335,12 +395,21 @@ const handleDeleteDepartment = async () => {
 .card {
   flex: 1;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 20px 24px;
   box-shadow: 0 4px 12px rgba(15, 35, 95, 0.08);
   display: flex;
   flex-direction: column;
   min-height: 450px;
+}
+
+.org-card {
+  width: 538px;
+  flex: none;
+}
+
+.member-card {
+  flex: 1;     
 }
 
 .card-title {
