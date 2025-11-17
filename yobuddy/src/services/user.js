@@ -34,7 +34,7 @@ const userService = {
 
 	async deleteUser(id) {
 		try {
-			const resp = await http.delete(`/api/v1/admin/users/${id}`)
+			const resp = await http.delete(`/api/v1/admin/ausers/${id}`)
 			return resp && resp.data ? resp.data : resp
 		} catch (e) {
 			// 일부 백엔드는 /api/v1/users/{id}를 사용함 -> 폴백
@@ -48,6 +48,11 @@ const userService = {
 
 	async searchUsers(params) {
 		const resp = await http.get('/api/v1/admin/users', { params })
+		return resp && resp.data ? resp.data : resp
+	},
+
+	async getUserById(userId) {
+		const resp = await http.get(`/api/v1/admin/users/${userId}`)
 		return resp && resp.data ? resp.data : resp
 	}
 }
