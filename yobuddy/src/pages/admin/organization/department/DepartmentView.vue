@@ -11,6 +11,31 @@
           v-model="store.searchName"
           @input="store.setSearchName(search)"
         />
+
+        <div class="search-actions">
+          <button
+            class="btn btn-primary"
+            @click="openCreateModal"
+          >
+            + 부서 등록
+          </button>
+
+          <button
+            v-if="store.selectedDepartment"
+            class="btn btn-secondary"
+            @click="openEditModal"
+          >
+            수정
+          </button>
+
+          <button
+            v-if="store.selectedDepartment"
+            class="btn btn-danger"
+            @click="handleDeleteDepartment"
+          >
+            삭제
+          </button>
+        </div>
       </div>
 
       <!-- 카드 2컬럼 영역 -->
@@ -94,13 +119,46 @@
             </div>
           </div>
         </section>
+        <!-- 부서 생성/수정 모달 -->
+        <div v-if="isModalOpen" class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-header">
+              <h3 class="modal-title">
+                {{ modalMode === 'create' ? '부서 등록' : '부서 수정' }}
+              </h3>
+            </div>
+
+            <div class="modal-body">
+              <label class="modal-label">부서명</label>
+              <input
+                v-model="formName"
+                type="text"
+                class="modal-input"
+                placeholder="부서 이름을 입력하세요"
+              />
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeModal">
+                취소
+              </button>
+              <button
+                class="btn btn-primary"
+                @click="handleSubmit"
+                :disabled="!formName.trim()"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useDepartmentStore } from '@/store/modules/department';
 
 const store = useDepartmentStore()
@@ -139,6 +197,56 @@ const roleLabel = (role) => {
 const selectDepartment = (department) => {
   store.fetchDepartmentById(department.departmentId)
 }
+
+/* 🔹 모달 상태 */
+const isModalOpen = ref(false)
+const modalMode = ref('create') // 'create' | 'edit'
+const formName = ref('')
+
+// 🔹 모달 열기 - 등록
+const openCreateModal = () => {
+  modalMode.value = 'create'
+  formName.value = ''
+  isModalOpen.value = true
+}
+
+// 🔹 모달 열기 - 수정
+const openEditModal = () => {
+  if (!store.selectedDepartment) return
+  modalMode.value = 'edit'
+  formName.value = store.selectedDepartment.name || ''
+  isModalOpen.value = true
+}
+
+// 🔹 모달 닫기
+const closeModal = () => {
+  isModalOpen.value = false
+}
+
+// 🔹 저장 버튼 클릭
+const handleSubmit = async () => {
+  const name = formName.value.trim()
+  if (!name) return
+
+  if (modalMode.value === 'create') {
+    await store.createDepartment({ name })
+  } else {
+    // edit 모드
+    if (!store.selectedDepartment) return
+    await store.updateDepartment(store.selectedDepartment.departmentId, { name })
+  }
+
+  isModalOpen.value = false
+}
+
+// 🔹 삭제 버튼
+const handleDeleteDepartment = async () => {
+  if (!store.selectedDepartment) return
+  const confirmed = window.confirm('선택된 부서를 삭제하시겠습니까?')
+  if (!confirmed) return
+
+  await store.deleteDepartment(store.selectedDepartment.departmentId)
+}
 </script>
 
 <style scoped>
@@ -158,11 +266,15 @@ const selectDepartment = (department) => {
 /* 검색 영역 */
 .search-area {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .search-input {
+  flex: 1;
   width: 100%;
-  max-width: 760px;
+  max-width: 1000px;
   height: 40px;
   padding: 0 14px;
   border-radius: 20px;
@@ -175,6 +287,40 @@ const selectDepartment = (department) => {
 
 .search-input::placeholder {
   color: #b9c3dd;
+}
+
+.search-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 등록(파란색 버튼) */
+.btn-primary {
+  background-color: #294594;
+  color: #fff;
+}
+
+/* 수정(연한 회색 버튼) */
+.btn-secondary {
+  background-color: #ffffff;
+  color: #333;
+  border-color: #d0d4e0;
+}
+
+/* 삭제(연한 빨강 버튼) */
+.btn-danger {
+  background-color: #ffecec;
+  color: #d64545;
+  border-color: #f0b4b4;
 }
 
 /* 카드 2컬럼 */
@@ -341,5 +487,66 @@ const selectDepartment = (department) => {
   .card-row {
     flex-direction: column;
   }
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  width: 360px;
+  max-width: 90%;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 35, 95, 0.25);
+  padding: 20px 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #253053;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.modal-input {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
 }
 </style>
