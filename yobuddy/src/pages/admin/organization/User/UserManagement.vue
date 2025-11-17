@@ -16,7 +16,7 @@
             <option value="NEWBIE">뉴비</option>
           </select>
           <button class="btn-ghost" @click="onSearch">검색</button>
-          <button class="btn-primary" @click="onAdd">+ 단건 등록</button>
+          <button class="btn-primary" @click="openCreate">+ 단건 등록</button>
           <button class="btn-primary" @click="onAdd">+ 일괄 등록</button>
         </div>
       </div>
@@ -70,16 +70,22 @@
       @saved="onSaved"
       @delete="onDelete"
     />
+      <UserCreatePopup
+        :show="showCreate"
+        @close="showCreate = false"
+        @created="onCreated"
+      />
   </div>
 </template>
 
 <script>
 import http from '@/services/http'
 import UserDetailpopup from './UserDetailpopup.vue'
+import UserCreatePopup from './UserCreatePopup.vue'
 
 export default {
   name: 'OrganizationUserPage',
-  components: { UserDetailpopup },
+  components: { UserDetailpopup, UserCreatePopup },
   data() {
     return {
       // query and filters
@@ -101,6 +107,9 @@ export default {
       // detail modal
       showDetail: false,
       selectedUser: null
+      ,
+      // create modal
+      showCreate: false
     }
   },
   mounted() {
@@ -260,8 +269,23 @@ export default {
     },
 
     onAdd() {
-      // placeholder: route to user create form or open modal
+      // placeholder for bulk upload route
       this.$router.push({ path: '/organization/user/create' }).catch(()=>{})
+    },
+
+    openCreate() {
+      this.showCreate = true
+    },
+
+    async onCreated(newUser) {
+      // when a user is created via the modal, insert into list and refresh
+      try {
+        const mapped = this.mapUser(newUser)
+        this.users.unshift(mapped)
+      } catch (e) { console.warn('onCreated mapping failed', e) }
+      this.showCreate = false
+      // refresh to ensure server-side consistency
+      this.fetchUsers()
     },
 
     onEdit(user) {
