@@ -10,7 +10,7 @@ const routes = [
   {
     path: '/',
     component: () => import('@/pages/common/Home.vue'),
-    meta: { requiresAuth: true }
+    meta: { hideHeader: true, hideSidebar: true }
   },
 
   // --- 관리자 기능 ---
