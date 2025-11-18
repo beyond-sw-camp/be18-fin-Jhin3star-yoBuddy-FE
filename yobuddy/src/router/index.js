@@ -29,6 +29,8 @@ const routes = [
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+
+  // --- 멘토 기능 ---
   {
     path: '/admin/mentoring/sessions',
     component: () => import('@/pages/admin/mentoring/AdminMentoringSessionList.vue'),
