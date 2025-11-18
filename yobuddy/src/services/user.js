@@ -54,6 +54,11 @@ const userService = {
 	async getUserById(userId) {
 		const resp = await http.get(`/api/v1/admin/users/${userId}`)
 		return resp && resp.data ? resp.data : resp
+	},
+
+	async updateMyInfo(payload) {
+		const resp = await http.patch('/api/v1/account/me', payload)
+		return resp && resp.data ? resp.data : resp
 	}
 }
 

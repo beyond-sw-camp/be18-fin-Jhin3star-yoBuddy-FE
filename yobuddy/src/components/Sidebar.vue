@@ -44,51 +44,50 @@
       </ul>
     </nav>
 
-    <!-- User Detail Card -->
-    <transition name="user-detail-slide">
-      <div v-if="showUserDetail" class="user-detail-card glass-card">
-        
-        <div class="user-detail-avatar glass-avatar">
-          <span class="avatar-ring">
-            <img v-if="avatarUrl" :src="avatarUrl" alt="user avatar" />
-            <span v-else>👤</span>
-          </span>
-        </div>
+    <div class="sidebar-footer">
+      <!-- User Detail Card -->
+      <transition name="user-detail-slide">
+        <div v-if="showUserDetail" class="user-detail-card glass-card">
+          
+          <div class="user-detail-avatar glass-avatar">
+            <span class="avatar-ring">
+              <img v-if="avatarUrl" :src="avatarUrl" alt="user avatar" />
+              <span v-else>👤</span>
+            </span>
+          </div>
 
-        <div class="user-detail-info glass-info">
-          <p class="glass-name">{{ userName }}</p>
-          <p class="glass-role">{{ userRole }}</p>
+          <div class="user-detail-info glass-info">
+            <p class="glass-name">{{ userName }}</p>
+            <p class="glass-role">{{ userRole }}</p>
 
-          <div class="glass-divider"></div>
+            <div class="glass-divider"></div>
 
-          <div class="user-details-list">
-            <div class="detail-row">
-              <span class="detail-label">이메일</span><br/>
-              <span class="detail-value">{{ userEmail }}</span>
-            </div>
+            <div class="user-details-list">
+              <div class="detail-row">
+                <span class="detail-label">이메일</span><br/>
+                <span class="detail-value">{{ userEmail }}</span>
+              </div>
 
-            <div class="detail-row">
-              <span class="detail-label">부서</span><br/>
-              <span class="detail-value">{{ userDept }}</span>
-            </div>
+              <div class="detail-row">
+                <span class="detail-label">부서</span><br/>
+                <span class="detail-value">{{ userDept }}</span>
+              </div>
 
-            <div class="detail-row">
-              <span class="detail-label">입사일</span><br/>
-              <span class="detail-value">{{ joinDate }}</span>
+              <div class="detail-row">
+                <span class="detail-label">입사일</span><br/>
+                <span class="detail-value">{{ joinDate }}</span>
+              </div>
             </div>
           </div>
+
+          <button class="user-detail-btn glass-btn" @click.stop="editProfile">
+            <span class="edit-label">프로필 수정</span>
+          </button>
+
         </div>
-
-        <button class="user-detail-btn glass-btn" @click.stop="editProfile">
-          <span class="edit-label">프로필 수정</span>
-        </button>
-
-      </div>
-    </transition>
-
-    <!-- Footer -->
-    <div class="sidebar-footer" @click="toggleUserDetail" style="cursor:pointer;">
-      <div class="user-section">
+      </transition>
+      
+      <div class="user-section" @click="toggleUserDetail" style="cursor:pointer;">
         <div class="user-avatar">
           <img v-if="avatarUrl" :src="avatarUrl" alt="" />
           <span v-else>👤</span>
@@ -106,7 +105,7 @@
         </button>
       </div>
     </div>
-
+    <my-info-modal v-if="showMyInfoModal" @close="showMyInfoModal = false" />
   </aside>
 </template>
 
@@ -114,6 +113,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ref, computed } from 'vue'
 import { useAuthStore } from "@/store/authStore"
+import MyInfoModal from './popupcard/MyInfoModal.vue'
 
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
@@ -126,6 +126,9 @@ import mentoringIcon from '@/assets/logo_mentoring.svg'
 
 export default {
   name: "SidebarMenu",
+  components: {
+    MyInfoModal
+  },
 
   setup() {
     const route = useRoute()
@@ -224,6 +227,11 @@ export default {
     const showUserDetail = ref(false)
     const toggleUserDetail = () => (showUserDetail.value = !showUserDetail.value)
 
+    const showMyInfoModal = ref(false);
+    const editProfile = () => {
+      showMyInfoModal.value = true;
+    }
+
     /* logout */
     const logout = () => {
       auth.logout()
@@ -245,7 +253,9 @@ export default {
 
       showUserDetail,
       toggleUserDetail,
-      logout
+      logout,
+      editProfile,
+      showMyInfoModal
     }
   }
 }
@@ -290,7 +300,7 @@ export default {
   opacity: 0;
 }
 .user-detail-slide-enter-to, .user-detail-slide-leave-from {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
 }
 
@@ -822,7 +832,7 @@ export default {
   opacity: 0;
 }
 .user-detail-slide-enter-to, .user-detail-slide-leave-from {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
 }
 .user-detail-card {
