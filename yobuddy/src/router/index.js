@@ -29,12 +29,43 @@ const routes = [
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/mentoring/sessions',
+    component: () => import('@/pages/admin/mentoring/AdminMentoringSessionList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/mentoring/sessions/:sessionId',
+    component: () => import('@/pages/admin/mentoring/AdminMentoringSessionDetail.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/onboarding/programs',
+    component: () => import('@/pages/admin/onboarding/OnboardingProgramList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
     path: '/mentor/dashboard',
     component: () => import('@/pages/mentor/MentorDashboard.vue'),
     meta: { requiresAuth: true, mentorOnly: true }
+  },
+  {
+  path: '/mentor/sessions/create',
+  name: 'MentoringSessionCreate',
+  component: () => import('@/pages/mentor/MentoringSessionCreatePage.vue')
+  },
+    {
+    path: '/mentor/sessions',
+    component: () => import('@/pages/mentor/MentoringSessionListPage.vue'),
+    meta: { requiresAuth: true, mentorOnly: true }
+  },
+  {
+  path: "/mentor/sessions/:sessionId",
+  name: "MentorSessionDetail",
+  component: () =>
+    import("@/pages/mentor/MentorSessionDetailPage.vue")
   },
 ]
 
