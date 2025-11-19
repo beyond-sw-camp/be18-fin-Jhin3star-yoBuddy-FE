@@ -12,7 +12,10 @@
     <div class="ad-card">
       <!-- 카드 헤더 -->
       <header class="ad-card-header">
-        <h1 class="ad-title">{{ announcement?.title }}</h1>
+        <div class="ad-title-row">
+          <span class="badge">{{ categoryLabel(announcement?.type) }}</span>
+          <h1 class="ad-title">{{ announcement?.title }}</h1>
+        </div>
 
         <div class="ad-meta">
           <div class="meta-author">
@@ -60,6 +63,22 @@ export default {
         this.$router.back();
       } else {
         window.history.back();
+      }
+    },
+    categoryLabel(type) {
+      switch (type) {
+        case 'TRAINING':
+          return '교육';
+        case 'EVENT':
+          return '이벤트';
+        case 'TASK':
+          return '과제';
+        case 'MENTORING':
+          return '멘토링';
+        case 'NORMAL':
+          return '공지';
+        default:
+          return type;
       }
     },
     async fetchAnnouncementDetail() {
@@ -135,6 +154,25 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.ad-title-row {
+  display: flex;
+  align-items: center;
+  gap: 30px; /* 배지와 제목 사이 간격 */
+  margin-bottom: 6px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: #e8edf7;
+  color: #294594;
+  font-weight: 400;
+  min-width: 50px;
+  text-align: center;
 }
 
 .ad-title {

@@ -355,13 +355,13 @@ export default {
 
 .badge {
   display: inline-block;
-  font-size: 16px;
+  font-size: 14px;
   padding: 4px 8px;
   border-radius: 10px;
   background: #e8edf7;
   color: #294594;
-  font-weight: 600;
-  min-width: 60px;
+  font-weight: 400;
+  min-width: 50px;
   text-align: center;
 }
 
