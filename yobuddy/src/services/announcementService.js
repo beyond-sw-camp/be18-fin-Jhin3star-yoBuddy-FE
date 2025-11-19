@@ -17,6 +17,17 @@ const announcementService = {
       throw e;
     }
   },
+
+  async getAnnouncementDetail(announcementId) {
+    try {
+      const url = `/api/v1/announcements/${announcementId}`;
+      const resp = await http.get(url);
+      return resp.data;
+    } catch (e) {
+      console.error("공지사항 상세 조회 실패", e);
+      throw e;
+    }
+  },
 };
 
 export default announcementService;

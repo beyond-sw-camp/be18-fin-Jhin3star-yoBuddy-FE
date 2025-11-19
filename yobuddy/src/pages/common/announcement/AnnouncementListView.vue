@@ -35,6 +35,7 @@
         v-for="a in announcements" 
         :key="a.announcementId"
         class="announcement-item"
+        @click="goDetail(a.announcementId)"
       >
         <div class="badge-area">
           <span class="badge">{{ categoryLabel(a.type) }}</span>
@@ -113,6 +114,10 @@ export default {
 
       this.currentPage = 1;
       this.fetchAnnouncements();
+    },
+
+    goDetail(id) {
+      this.$router.push(`/content/announcement/${id}`);
     },
 
     categoryLabel(type) {
