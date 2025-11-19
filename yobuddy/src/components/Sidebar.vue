@@ -147,56 +147,29 @@ export default {
       user.value?.joinedAt ? user.value.joinedAt.split("T")[0] : ""
     )
 
-    /* Menu (role-based) */
-    const menuItems = computed(() => {
-      const role = user.value?.role
+    const activeSubmenu = ref(null)
+    const showUserDetail = ref(false)
 
-      if (role === "ADMIN") {
-        return [
-          {
-            id: 1,
-            icon: kpiIcon,
-            label: "KPI",
-            path: "/kpi",
-            subItems: [
-              { id: "1-1", label: "KPI 성과 지표", path: "/kpi/monthly" },
-              { id: "1-2", label: "신입 성과 조회", path: "/kpi/annual" }
-            ]
-          },
-          {
-            id: 2,
-            icon: orgIcon,
-            label: "조직 관리",
-            path: "/organization/usermanagement",
-            subItems: [
-              { id: "2-1", label: "유저 관리", path: "/organization/usermanagement" },
-              { id: "2-2", label: "부서 관리", path: "/organization/department" }
-            ]
-          },
-          {
-            id: 3,
-            icon: onboadingIcon,
-            label: "온보딩 관리",
-            path: "/admin/onboarding/programs",
-          },
-          {
-            id: 4,
-            icon: mentoringIcon,
-            label: "멘토링 관리",
-            path: "/admin/mentoring/sessions",
-          },
-          { id: 5, icon: assignmentIcon, label: "과제", path: "/assignment" },
-          { id: 6, icon: eduIcon, label: "교육", path: "/education" },
-          {
-            id: 7,
-            icon: contentIcon,
-            label: "콘텐츠",
-            path: "/content",
-            subItems: [
-              { id: "7-1", label: "공지사항", path: "/content/posts" },
-              { id: "7-2", label: "위키", path: "/content/library" }
-            ]
-          }
+    const menuItems = ref([
+      {
+        id: 1,
+        icon: kpiIcon,
+        label: 'KPI',
+        path: '/kpi',
+        subItems: [
+          { id: '1-1', label: 'KPI 성과 지표', path: '/kpi/monthly' },
+          { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' },
+          { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
+        ]
+      },
+      {
+        id: 2,
+        icon: orgIcon,
+        label: '조직 관리',
+        path: '/organization/usermanagement',
+        subItems: [
+          { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
+          { id: '2-2', label: '부서 관리', path: '/organization/department' }
         ]
       }
 
