@@ -2,7 +2,8 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
-const API_BASE = process.env.VUE_APP_API_BASE
+// default to localhost:8080 if VUE_APP_API_BASE is not provided
+const API_BASE = process.env.VUE_APP_API_BASE || 'http://192.168.0.47:8080'
 
 const http = axios.create({
   baseURL: API_BASE
