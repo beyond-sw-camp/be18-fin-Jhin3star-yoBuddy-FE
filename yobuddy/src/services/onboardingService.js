@@ -17,6 +17,20 @@ const onboardingService = {
       throw e;
     }
   },
+  /**
+   * (관리자용) 특정 온보딩 프로그램 상세 조회
+   * @param {string|number} programId
+   * @returns {Promise<Object>} 프로그램 상세 정보
+   */
+  async getAdminOnboardingProgram(programId) {
+    try {
+      const resp = await http.get(`/api/v1/admin/programs/${programId}`);
+      return resp.data || null;
+    } catch (e) {
+      console.error(`온보딩 프로그램 상세 조회 실패 (id=${programId})`, e);
+      throw e;
+    }
+  },
 };
 
 export default onboardingService;

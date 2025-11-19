@@ -40,7 +40,7 @@
                     </div>
                 </div>
 
-                <div class="content-card">
+                <div class="content-card weight-card">
                     <div class="card-title">KPI목표</div>
                     <div class="card-body small-list">
                         <ul>
@@ -49,7 +49,18 @@
                                 {{ goal.description || goal.title || goal.name || '무제' }}
                             </li>
                         </ul>
-                        <div class="weight-total">가중치 합계: <strong>{{ totalWeight.toFixed(3) }}</strong> — 남은 가중치: <strong>{{ Math.max(0, (1 - totalWeight)).toFixed(3) }}</strong></div>
+                                        <div class="weight-total">
+                                            <div class="wt-row">
+                                                <div class="wt-label">가중치 합계</div>
+                                                <div class="wt-values">
+                                                    <span class="wt-sum">{{ totalWeight.toFixed(3) }}</span>
+                                                    <span :class="['wt-remaining', remainingClass]">남음 {{ Math.max(0, (1 - totalWeight)).toFixed(3) }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="wt-bar" aria-hidden>
+                                                <div class="wt-fill" :style="{ width: Math.min(1, totalWeight) * 100 + '%' }"></div>
+                                            </div>
+                                        </div>
                     </div>
                 </div>
             </div>
@@ -269,15 +280,26 @@ export default {
                 return String(goalDept) === String(this.selectedDepartmentId)
             })
         }
-        ,totalWeight() {
-            const arr = this.filteredGoals || []
-            let sum = 0
-            arr.forEach(g => {
-                const w = Number(g.weight ?? g.weightValue ?? g.score ?? 0)
-                if (!Number.isNaN(w)) sum += w
-            })
-            return sum
-        }
+                ,totalWeight() {
+                        const arr = this.filteredGoals || []
+                        let sum = 0
+                        arr.forEach(g => {
+                                const w = Number(g.weight ?? g.weightValue ?? g.score ?? 0)
+                                if (!Number.isNaN(w)) sum += w
+                        })
+                        return sum
+                },
+                weightPercent() {
+                    return Math.min(1, this.totalWeight) * 100
+                },
+                remainingWeight() {
+                    return 1 - this.totalWeight
+                },
+                remainingClass() {
+                    if (this.totalWeight > 1) return 'over'
+                    if (this.totalWeight === 1) return 'full'
+                    return 'normal'
+                }
     }
 }
 </script>
@@ -320,8 +342,19 @@ export default {
 .small-list li{ padding:6px 0; cursor:pointer }
 .small-list li.active{ font-weight:700; color:#294594 }
 .small-list li:hover{ background: rgba(41,69,148,0.06); color: #294594; padding-left:10px; border-radius:6px; transition: background .12s ease, transform .08s ease; transform: translateX(4px); }
-.weight-total{ margin-top:12px; padding-top:8px; border-top:1px dashed #eef3fb; color:#10243b; font-weight:600 }
-.weight-total strong{ color:#294594 }
+.weight-total{ margin-top:12px; padding-top:12px; border-top:1px dashed #eef3fb; color:#10243b }
+.weight-card .card-body{ position:relative; padding-bottom:96px }
+.weight-card .weight-total{ position:absolute; bottom:16px; left:18px; right:18px; background:linear-gradient(180deg, #ffffff, #fbfdff); padding:12px; border-radius:8px; box-shadow:0 6px 12px rgba(16,36,59,0.04) }
+.wt-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px }
+.wt-label{ color:#6b7aa3; font-size:13px; font-weight:700 }
+.wt-values{ display:flex; gap:8px; align-items:center }
+.wt-sum{ font-weight:800; color:#10243b; background:#f3f6ff; padding:4px 8px; border-radius:6px }
+.wt-remaining{ font-size:13px; padding:4px 8px; border-radius:6px; color:#fff }
+.wt-remaining.normal{ background:#3fb37f }
+.wt-remaining.full{ background:#2b7dd7 }
+.wt-remaining.over{ background:#d64545 }
+.wt-bar{ height:8px; background:#eef6ff; border-radius:999px; overflow:hidden }
+.wt-fill{ height:100%; background: linear-gradient(90deg,#2b57a0,#3b82f6); width:0%; transition: width .3s ease }
 .member-list table{ width:100%; border-collapse:collapse }
 .member-list th, .member-list td{ text-align:left; padding:10px 8px; border-bottom:1px solid #f3f6ff }
 

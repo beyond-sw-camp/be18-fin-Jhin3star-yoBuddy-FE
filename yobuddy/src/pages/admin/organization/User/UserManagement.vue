@@ -169,7 +169,7 @@ export default {
         if (process.env.NODE_ENV !== 'production') {
           console.debug('[UserManagement] fetchUsers response:', data)
         }
-        const list = Array.isArray(data) ? data : (Array.isArray(data.content) ? data.content : [])
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.content) ? data.content : [])
         let mapped = list.map(this.mapUser)
         // If user provided a query, apply wildcard or partial match on the client
         if (this.query && this.query.trim()) {
@@ -203,7 +203,7 @@ export default {
           try {
             const resp2 = await http.get('/api/v1/users', { params })
             const data2 = resp2 && resp2.data ? resp2.data : []
-            const list2 = Array.isArray(data2) ? data2 : (Array.isArray(data2.content) ? data2.content : [])
+            const list2 = Array.isArray(data2) ? data2 : (data2 && Array.isArray(data2.content) ? data2.content : [])
             let mapped2 = list2.map(this.mapUser)
             if (this.query && this.query.trim()) {
               const q2 = this.query.trim()
