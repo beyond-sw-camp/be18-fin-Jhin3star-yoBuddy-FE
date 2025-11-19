@@ -5,7 +5,7 @@
       <div class="right"></div>
     </div>
 
-    <a class="home-link" href="/">← Home</a>
+    <router-link class="home-link" to="/">← Home</router-link> 
 
     <div class="login-card">
       <div class="logo-wrap">
