@@ -142,7 +142,8 @@ export default {
         path: '/kpi',
         subItems: [
           { id: '1-1', label: 'KPI 성과 지표', path: '/kpi/monthly' },
-          { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' }
+          { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' },
+          { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
         ]
       },
       {
