@@ -117,8 +117,7 @@ import MyInfoModal from './popupcard/MyInfoModal.vue'
 
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
-import onboadingIcon from '@/assets/logo_onboading.svg'
-import eduIcon from '@/assets/logo_edu.svg'
+// removed unused imports: onboadingIcon, eduIcon
 import contentIcon from '@/assets/logo_content.svg'
 import assignmentIcon from '@/assets/icon_assigment.svg'
 import dashboardIcon from '@/assets/icon_dashboard.svg'
@@ -147,42 +146,45 @@ export default {
       user.value?.joinedAt ? user.value.joinedAt.split("T")[0] : ""
     )
 
-    const activeSubmenu = ref(null)
-    const showUserDetail = ref(false)
+    
 
-    const menuItems = ref([
-      {
-        id: 1,
-        icon: kpiIcon,
-        label: 'KPI',
-        path: '/kpi',
-        subItems: [
-          { id: '1-1', label: 'KPI 성과 지표', path: '/kpi/monthly' },
-          { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' },
-          { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
-        ]
-      },
-      {
-        id: 2,
-        icon: orgIcon,
-        label: '조직 관리',
-        path: '/organization/usermanagement',
-        subItems: [
-          { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
-          { id: '2-2', label: '부서 관리', path: '/organization/department' }
-        ]
-      }
+    const menuItems = computed(() => {
+      // base menu for normal users / admins
+      const base = [
+        {
+          id: 1,
+          icon: kpiIcon,
+          label: 'KPI',
+          path: '/kpi',
+          subItems: [
+            { id: '1-1', label: 'KPI 성과 지표', path: '/kpi/monthly' },
+            { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' },
+            { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
+          ]
+        },
+        {
+          id: 2,
+          icon: orgIcon,
+          label: '조직 관리',
+          path: '/organization/usermanagement',
+          subItems: [
+            { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
+            { id: '2-2', label: '부서 관리', path: '/organization/department' }
+          ]
+        }
+      ]
 
-      if (role === "MENTOR") {
+      // mentor sees a different menu
+      if (userRole.value === 'MENTOR') {
         return [
-          { id: 1, icon: dashboardIcon, label: "대시보드", path: "/mentor/dashboard" },
-          { id: 2, icon: mentoringIcon, label: "멘토링", path: "/mentor/sessions" },
-          { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/assignments" },
-          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content" }
+          { id: 1, icon: dashboardIcon, label: '대시보드', path: '/mentor/dashboard' },
+          { id: 2, icon: mentoringIcon, label: '멘토링', path: '/mentor/sessions' },
+          { id: 3, icon: assignmentIcon, label: '과제', path: '/mentor/assignments' },
+          { id: 4, icon: contentIcon, label: '콘텐츠', path: '/content' }
         ]
       }
 
-      return []
+      return base
     })
 
     /* submenu behaviors */
