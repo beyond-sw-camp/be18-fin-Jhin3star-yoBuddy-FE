@@ -12,6 +12,11 @@ const routes = [
     component: () => import('@/pages/common/Home.vue'),
     meta: { hideHeader: true, hideSidebar: true }
   },
+  {
+    path: '/content/announcement',
+    component: () => import('@/pages/common/announcement/AnnouncementListView.vue'),
+    meta: { requiresAuth: true }
+  },
 
   // --- 관리자 기능 ---
     {

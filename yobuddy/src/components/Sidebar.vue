@@ -205,7 +205,12 @@ export default {
           { id: 1, icon: dashboardIcon, label: "대시보드", path: "/mentor/dashboard" },
           { id: 2, icon: mentoringIcon, label: "멘토링", path: "/mentor/sessions" },
           { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/assignments" },
-          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content" }
+          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content", 
+            subItems: [
+              { id: "4-1", label: "공지사항", path: "/content/announcement" },
+              { id: "4-2", label: "위키", path: "/content/library" }
+            ] 
+          }
         ]
       }
 
