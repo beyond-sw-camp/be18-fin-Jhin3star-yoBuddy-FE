@@ -40,6 +40,16 @@ const routes = [
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/content/announcement/create',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementCreateView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/content/announcement/edit',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {

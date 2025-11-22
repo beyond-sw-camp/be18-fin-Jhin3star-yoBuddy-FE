@@ -193,7 +193,7 @@ export default {
             label: "콘텐츠",
             path: "/content",
             subItems: [
-              { id: "7-1", label: "공지사항", path: "/content/posts" },
+              { id: "7-1", label: "공지사항", path: "/content/announcement" },
               { id: "7-2", label: "위키", path: "/content/library" }
             ]
           }

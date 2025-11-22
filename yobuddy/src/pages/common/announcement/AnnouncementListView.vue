@@ -27,6 +27,14 @@
         />
         <img :src="search" alt="search" class="search-icon" />
       </div>
+
+      <button 
+        v-if="auth.isAdmin" 
+        class="add-btn"
+        @click="goToCreatePage"
+      >
+        공지사항 등록
+      </button>
     </div>
 
     <!-- 공지 리스트 -->
@@ -72,6 +80,7 @@
 <script>
 import announcementService from '@/services/announcementService';
 import search from '@/assets/search.svg';
+import { useAuthStore } from '@/store/authStore';
 
 export default {
   name: 'AnnouncementList',
@@ -91,6 +100,12 @@ export default {
 
       search,
     };
+  },
+
+  computed: {
+    auth() {
+      return useAuthStore();
+    },
   },
 
   watch: {
@@ -174,6 +189,9 @@ export default {
         this.fetchAnnouncements();
       }
     },
+    goToCreatePage() {
+      this.$router.push('/content/announcement/create');
+    }
   },
 };
 </script>
@@ -286,7 +304,7 @@ export default {
 }
 
 .search-box input {
-  width: 950px;
+  width: 800px;
   height: 42px;
   padding: 0 15px 0 38px;
   border: 1px solid #ddd;
@@ -301,6 +319,21 @@ export default {
   top: 11px;
   width: 18px;
   opacity: 0.5;
+}
+
+.add-btn {
+  background: #294594;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.add-btn:hover {
+  background: #1f4cc7;
 }
 
 /* 공지 리스트 */

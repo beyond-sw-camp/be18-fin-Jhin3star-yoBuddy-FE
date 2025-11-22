@@ -35,7 +35,7 @@
 
       <!-- 카드 본문 -->
         <section class="ad-body ad-single-body">
-          <div v-html="announcement?.content"></div>
+          <div v-html="convertedContent"></div>
         </section>
     </div>
   </div>
@@ -55,6 +55,12 @@ export default {
   },
   async created() {
     await this.fetchAnnouncementDetail();
+  },
+  computed: {
+    convertedContent() {
+      return this.announcement?.content
+        ?.replace(/\n/g, "<br>") || "";
+    }
   },
   methods: {
     goBack() {

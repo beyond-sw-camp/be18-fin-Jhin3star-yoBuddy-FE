@@ -28,6 +28,17 @@ const announcementService = {
       throw e;
     }
   },
+
+  async createAnnouncement(createdto) {
+    try {
+      const url = '/api/v1/admin/announcements';
+      const resp = await http.post(url, createdto);
+      return resp.data;
+    } catch (e) {
+      console.error("공지사항 생성 실패", e);
+      throw e;
+    }
+  },
 };
 
 export default announcementService;
