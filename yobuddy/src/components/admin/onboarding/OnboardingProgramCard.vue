@@ -1,5 +1,11 @@
 <template>
-  <div class="program-card">
+  <div
+    class="program-card"
+    role="button"
+    tabindex="0"
+    @click="$emit('open', program)"
+    @keydown.enter.prevent="$emit('open', program)"
+  >
     <div class="card-header">
       <span :class="['status-tag', getStatusClass(program.status)]">
         {{ getStatusText(program.status) }}
@@ -68,6 +74,7 @@ export default {
   transition: all 0.2s ease-in-out;
   border: 1px solid #eef2f7;
 }
+.program-card { cursor: pointer }
 .program-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(9, 30, 66, 0.1);

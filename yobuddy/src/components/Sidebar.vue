@@ -147,7 +147,8 @@ export default {
       user.value?.joinedAt ? user.value.joinedAt.split("T")[0] : ""
     )
 
-    /* Menu (role-based) */
+    
+
     const menuItems = computed(() => {
       const role = user.value?.role
 
@@ -160,7 +161,8 @@ export default {
             path: "/kpi",
             subItems: [
               { id: "1-1", label: "KPI 성과 지표", path: "/kpi/monthly" },
-              { id: "1-2", label: "신입 성과 조회", path: "/kpi/annual" }
+              { id: "1-2", label: "신입 성과 조회", path: "/kpi/annual" },
+              { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
             ]
           },
           {
@@ -209,7 +211,7 @@ export default {
             subItems: [
               { id: "4-1", label: "공지사항", path: "/content/announcement" },
               { id: "4-2", label: "위키", path: "/content/library" }
-            ] 
+            ]
           }
         ]
       }
