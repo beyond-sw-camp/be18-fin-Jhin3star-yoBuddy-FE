@@ -39,6 +39,28 @@ const announcementService = {
       throw e;
     }
   },
+
+  async updateAnnouncement(announcementId, updatedto) {
+    try {
+      const url = `/api/v1/admin/announcements/${announcementId}`;
+      const resp = await http.patch(url, updatedto);
+      return resp.data;
+    } catch (e) {
+      console.error("공지사항 수정 실패", e);
+      throw e;
+    }
+  },
+
+  async deleteAnnouncement(announcementId) {
+    try {
+      const url = `/api/v1/admin/announcements/${announcementId}`;
+      const resp = await http.delete(url);
+      return resp.data;
+    } catch (e) {
+      console.error("공지사항 삭제 실패", e);
+      throw e;
+    }
+  },
 };
 
 export default announcementService;

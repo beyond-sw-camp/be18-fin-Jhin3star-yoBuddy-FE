@@ -34,15 +34,24 @@
       <hr class="ad-divider" />
 
       <!-- 카드 본문 -->
-        <section class="ad-body ad-single-body">
-          <div v-html="convertedContent"></div>
-        </section>
+      <section class="ad-body ad-single-body">
+        <div v-html="convertedContent"></div>
+      </section>
+    </div>
+    <div v-if="auth.isAdmin" class="ad-action-row">
+        <button type="button" class="ad-btn ad-btn-outline" @click="goEdit">
+          수정
+        </button>
+        <button type="button" class="ad-btn ad-btn-danger" @click="confirmDelete">
+          삭제
+        </button>
     </div>
   </div>
 </template>
 
 <script>
 import announcementService from '@/services/announcementService';
+import { useAuthStore } from '@/store/authStore';
 
 export default {
   name: 'AnnouncementDetail',
@@ -60,15 +69,19 @@ export default {
     convertedContent() {
       return this.announcement?.content
         ?.replace(/\n/g, "<br>") || "";
-    }
+    },
+    auth() {
+      return useAuthStore();
+    },
   },
+  
   methods: {
     goBack() {
       // 라우터를 쓰고 있으면 이렇게:
       if (this.$router) {
-        this.$router.back();
+        this.$router.push('/content/announcement');
       } else {
-        window.history.back();
+        this.$router.push('/content/announcement');
       }
     },
     categoryLabel(type) {
@@ -99,6 +112,26 @@ export default {
         this.loading = false;
       }
     },
+
+    goEdit() {
+      const id = this.$route.params.id;
+      this.$router.push(`/content/announcement/edit/${id}`);
+    },
+
+    async confirmDelete() {
+      if (!confirm('정말 삭제하시겠습니까?')) return;
+
+      try {
+        const id = this.$route.params.id;
+        await announcementService.deleteAnnouncement(id);
+        alert('삭제되었습니다.');
+        this.$router.push('/content/announcement');
+      } catch (e) {
+        console.error('공지 삭제 실패', e);
+        alert('삭제 중 오류가 발생했습니다.');
+      }
+    },
+
   },
 };
 </script>
@@ -140,8 +173,8 @@ export default {
 
 /* 카드 레이아웃 */
 .ad-card {
-  max-width: 1100px;
-  max-height: 620px;
+  width: 1100px;
+  height: 620px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -257,6 +290,45 @@ export default {
   border-radius: 999px;
   background-color: #f97316; /* 포인트 컬러 (주황) */
   margin-right: 8px;
+}
+
+.ad-action-row {
+  max-width: 1100px;       /* .ad-card의 max-width와 동일 */
+  margin: 16px auto 0 auto; /* 가운데 정렬 */
+  padding: 0 8px;          /* 카드의 padding과 동일하게 */
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.ad-btn {
+  min-width: 90px;
+  height: 45px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ad-btn-outline {
+  background: #294594;
+  color: #ffffff;
+  border-color: #d0d5e5;
+}
+
+.ad-btn-outline:hover {
+  opacity: 0.9;
+}
+
+.ad-btn-danger {
+  background: #ff5b5b;
+  color: #ffffff;
+}
+
+.ad-btn-danger:hover {
+  opacity: 0.9;
 }
 
 /* 리스트 */

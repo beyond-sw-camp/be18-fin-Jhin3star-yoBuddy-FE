@@ -8,18 +8,23 @@
         </h1>
 
         <div class="category-select-wrap">
-          <label for="category" class="category-label">카테고리</label>
-          <select
-            id="type"
-            v-model="form.type"
-            class="category-select"
-          >
-            <option value="NORMAL">공지</option>
-            <option value="TRAINING">교육</option>
-            <option value="MENTORING">멘토링</option>
-            <option value="EVENT">이벤트</option>
-            <option value="TASK">과제</option>
-          </select>
+            <label for="type" class="category-label"></label>
+
+            <div class="category-dropdown" @click="toggleDropdown">
+                <span class="label-text">{{ categoryLabel(form.type) }}</span>
+                <span :class="['arrow', { open: dropdownOpen }]"></span>
+
+                <ul v-if="dropdownOpen" class="dropdown-menu">
+                <li
+                    v-for="(item, i) in categories"
+                    :key="i"
+                    class="dropdown-item"
+                    @click.stop="selectCategory(item)"
+                >
+                    <span class="item-text">{{ categoryLabel(item) }}</span>
+                </li>
+                </ul>
+            </div>
         </div>
       </header>
 
@@ -63,7 +68,6 @@
 export default {
   name: 'AdminAnnouncementComponent',
   props: {
-    // 수정 페이지에서도 재사용할 수 있게 해둠 (필요 없으면 지워도 됨)
     isEdit: {
       type: Boolean,
       default: false,
@@ -74,13 +78,28 @@ export default {
     },
   },
   data() {
+    const init = this.initialData || {};
+
     return {
       form: {
-        type: this.initialData.type || 'NORMAL',
-        title: this.initialData.title || '',
-        content: this.initialData.content || '',
+        type: init.type || 'NORMAL',
+        title: init.title || '',
+        content: init.content || '',
       },
+      dropdownOpen: false,
+      categories: ['NORMAL', 'TRAINING', 'MENTORING', 'EVENT', 'TASK'],
     };
+  },
+  watch: {
+    initialData: {
+      immediate: true,
+      handler(newVal) {
+        if (!newVal) return;
+        this.form.type = newVal.type || 'NORMAL';
+        this.form.title = newVal.title || '';
+        this.form.content = newVal.content || '';
+      },
+    },
   },
   methods: {
     onCancel() {
@@ -89,6 +108,29 @@ export default {
     },
     onSubmit() {
       this.$emit('submit', { ...this.form });
+    },
+    toggleDropdown() {
+      this.dropdownOpen = !this.dropdownOpen;
+    },
+    selectCategory(item) {
+      this.form.type = item;
+      this.dropdownOpen = false;
+    },
+    categoryLabel(type) {
+      switch (type) {
+        case 'TRAINING':
+          return '교육';
+        case 'MENTORING':
+          return '멘토링';
+        case 'EVENT':
+          return '이벤트';
+        case 'TASK':
+          return '과제';
+        case 'NORMAL':
+          return '공지';
+        default:
+          return type;
+      }
     },
   },
 };
@@ -130,19 +172,75 @@ export default {
   gap: 8px;
 }
 
-.category-label {
-  font-size: 14px;
-  color: #555;
-}
-
-.category-select {
-  min-width: 140px;
+.category-dropdown {
+  position: relative;
+  min-width: 120px;          
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 10px;
   border: 1px solid #c8d2e9;
   background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;    
+  gap: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.label-text {
   font-size: 14px;
-  outline: none;
+  color: #000000;
+  text-align: center;
+  flex-grow: 1;
+  transform: translateX(-10px);
+}
+
+/* 화살표 아이콘 */
+.arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #000000;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+/* 드롭다운 리스트 */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);  /* 박스 바로 아래 */
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+  padding: 4px 0;
+  z-index: 20;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.item-text {
+  display: inline-block;
 }
 
 /* 카드 영역 */
@@ -183,12 +281,13 @@ export default {
 }
 
 .textarea {
-  min-height: 260px;
+  height: 600px;
+  width: 895px;
   padding: 12px 14px;
   border-radius: 8px;
   border: 1px solid #d0d5e5;
   font-size: 14px;
-  resize: vertical;
+  resize: none;
   outline: none;
 }
 
