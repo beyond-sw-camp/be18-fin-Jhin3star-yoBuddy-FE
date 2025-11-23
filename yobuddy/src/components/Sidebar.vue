@@ -117,6 +117,7 @@ import MyInfoModal from './popupcard/MyInfoModal.vue'
 
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
+import eduIcon from '@/assets/logo_edu.svg'
 // removed unused imports: onboadingIcon, eduIcon
 import contentIcon from '@/assets/logo_content.svg'
 import assignmentIcon from '@/assets/icon_assigment.svg'
@@ -171,6 +172,12 @@ export default {
             { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
             { id: '2-2', label: '부서 관리', path: '/organization/department' }
           ]
+        },
+        {
+          id: 3,
+          icon: eduIcon,
+          label: '교육 관리',
+          path: '/admin/trainings'
         }
       ]
 

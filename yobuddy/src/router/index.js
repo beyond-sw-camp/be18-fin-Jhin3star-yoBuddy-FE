@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/authStore'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
@@ -49,6 +49,27 @@ const routes = [
   {
     path: '/admin/onboarding/programs',
     component: () => import('@/pages/admin/onboarding/OnboardingProgramList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  // --- 교육 관리 ---
+  {
+    path: '/admin/trainings',
+    component: () => import('@/pages/admin/training/TrainingList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/trainings/create',
+    component: () => import('@/pages/admin/training/TrainingCreate.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/trainings/:id',
+    component: () => import('@/pages/admin/training/TrainingDetail.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/trainings/:id/edit',
+    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
 
