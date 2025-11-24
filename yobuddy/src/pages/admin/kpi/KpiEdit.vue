@@ -240,19 +240,43 @@ export default {
             }
         }
         ,
-        async onSavedGoal() {
+        async onSavedGoal(savedGoal) {
+            // Immediately update local goals array so UI reflects change without waiting
             try {
-                await this.loadGoals()
+                if (savedGoal && (savedGoal.id || savedGoal.kpiGoalId || savedGoal._id || savedGoal.goalId)) {
+                    const normId = savedGoal.id || savedGoal.kpiGoalId || savedGoal._id || savedGoal.goalId
+                    // normalize returned object id property
+                    const item = { ...savedGoal, id: normId }
+                    const idx = (this.goals || []).findIndex(g => String(g.id) === String(normId))
+                    if (idx >= 0) {
+                        // replace existing
+                        this.$set(this.goals, idx, item)
+                    } else {
+                        // add newly created
+                        this.goals = [item].concat(this.goals || [])
+                    }
+                } else {
+                    // if we didn't get a payload, fallback to reloading
+                    await this.loadGoals()
+                }
             } catch (e) {
-                console.error('failed reloading goals after save', e)
+                console.error('failed updating local goals after save', e)
             }
+            // refresh in background to ensure server-authoritative state
+            this.loadGoals().catch(e => console.error('background reload failed', e))
         },
-        async onDeletedGoal() {
+        async onDeletedGoal(deletedId) {
             try {
-                await this.loadGoals()
+                if (deletedId) {
+                    this.goals = (this.goals || []).filter(g => String(g.id) !== String(deletedId) && String(g.kpiGoalId || g._id || '') !== String(deletedId))
+                } else {
+                    await this.loadGoals()
+                }
             } catch (e) {
-                console.error('failed reloading goals after delete', e)
+                console.error('failed updating local goals after delete', e)
             }
+            // ensure server-state sync in background
+            this.loadGoals().catch(e => console.error('background reload failed', e))
         }
         ,
         selectDepartment(dept) {
