@@ -17,6 +17,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(email, password) {
       await http.post('/api/v1/auth/login', { email, password })
+      await new Promise(resolve => setTimeout(resolve, 50))
       await this.fetchMe()
 
       // 로그인 직후 SSE 시작
