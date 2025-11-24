@@ -110,18 +110,18 @@
 </template>
 
 <script>
-import { useRoute, useRouter } from 'vue-router'
-import { ref, computed } from 'vue'
 import { useAuthStore } from "@/store/authStore"
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MyInfoModal from './popupcard/MyInfoModal.vue'
 
+import eduIcon from '@/assets/logo_edu.svg'
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
-import eduIcon from '@/assets/logo_edu.svg'
 // removed unused imports: onboadingIcon, eduIcon
-import contentIcon from '@/assets/logo_content.svg'
 import assignmentIcon from '@/assets/icon_assigment.svg'
 import dashboardIcon from '@/assets/icon_dashboard.svg'
+import contentIcon from '@/assets/logo_content.svg'
 import mentoringIcon from '@/assets/logo_mentoring.svg'
 
 export default {
@@ -188,6 +188,19 @@ export default {
           { id: 2, icon: mentoringIcon, label: '멘토링', path: '/mentor/sessions' },
           { id: 3, icon: assignmentIcon, label: '과제', path: '/mentor/assignments' },
           { id: 4, icon: contentIcon, label: '콘텐츠', path: '/content' }
+        ]
+      }
+
+      // regular user menu
+      if (userRole.value === 'USER') {
+        return [
+          { id: 'u-1', icon: dashboardIcon, label: '대시보드', path: '/user/dashboard' },
+          { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/assignments' },
+          { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings', subItems: [
+            { id: 'u-3-1', label: '교육 목록', path: '/user/trainings' },
+            { id: 'u-3-2', label: '수강 결과', path: '/user/trainings/results' }
+          ] },
+          { id: 'u-4', icon: contentIcon, label: '콘텐츠', path: '/content' }
         ]
       }
 

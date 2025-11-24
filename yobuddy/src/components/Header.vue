@@ -173,8 +173,8 @@ export default {
 
       if (segments[0] === 'admin' && segments[1] === 'trainings') {
         links.push('/admin/trainings')
-        if (segments.length === 3) {
-          links.push('/admin/trainings/' + segments[2])
+        if (segments[2]) {
+          links.push(`/admin/trainings/${segments[2]}`)
         }
         return links
       }

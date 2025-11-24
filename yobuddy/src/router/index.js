@@ -67,6 +67,18 @@ const routes = [
     component: () => import('@/pages/admin/training/TrainingDetail.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+
+    // user training routes
+    {
+      path: '/user/trainings',
+      name: 'UserTrainings',
+      component: () => import('@/pages/user/training/TrainingList.vue')
+    },
+    {
+      path: '/user/trainings/:id',
+      name: 'UserTrainingDetail',
+      component: () => import('@/pages/user/training/TrainingDetail.vue')
+    },
   {
     path: '/admin/trainings/:id/edit',
     component: () => import('@/pages/admin/training/TrainingEdit.vue'),

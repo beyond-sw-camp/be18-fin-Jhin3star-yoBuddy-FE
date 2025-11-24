@@ -94,7 +94,7 @@ export default {
       if (this.form.type === 'ONLINE' && this.form.onlineUrl) payload.onlineUrl = this.form.onlineUrl
       try {
         await trainingService.create(payload)
-        this.$router.push('/admin/trainings')
+        this.$router.push({ path: '/admin/trainings', query: { toast: 'created' } })
       } catch (e) {
         console.error('create failed', e)
         this.error = (e && e.response && e.response.data && (e.response.data.message || JSON.stringify(e.response.data))) || (e && e.message) || '등록에 실패했습니다.'

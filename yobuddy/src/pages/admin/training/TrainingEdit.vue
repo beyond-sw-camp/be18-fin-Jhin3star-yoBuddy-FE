@@ -7,36 +7,51 @@
           <div class="modal-title">교육 수정</div>
         </header>
 
-        <section class="center-area section">
-          <div class="avatar-large"><span class="avatar-fallback-large">📘</span></div>
-          <div class="center-name">교육 정보 수정</div>
+        <section class="content section">
+          <div class="row">
+            <div class="label">제목</div>
+            <div class="val"><input v-model="form.title" type="text" /></div>
+          </div>
+
+          <div class="row">
+            <div class="label">설명</div>
+            <div class="val"><textarea v-model="form.description" class="desc-input small"></textarea></div>
+          </div>
+
+          <div class="row">
+            <div class="label">유형</div>
+            <div class="val">
+              <select v-model="form.type">
+                <option value="ONLINE">온라인</option>
+                <option value="OFFLINE">오프라인</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="label">부서</div>
+            <div class="val">
+              <select v-model="form.departmentId">
+                <option value="">전체 부서</option>
+                <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.departmentName || d.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="label">첨부파일</div>
+            <div class="val"><input type="file" @change="onFileChange" /></div>
+          </div>
+
+          <div class="row" v-if="form.type === 'ONLINE'">
+            <div class="label">온라인 URL</div>
+            <div class="val"><input v-model="form.onlineUrl" type="text" /></div>
+          </div>
         </section>
 
-        <section class="form-grid section">
-          <div class="form-row">
-            <label class="label">제목</label>
-            <input v-model="form.title" type="text" />
-          </div>
-          <div class="form-row">
-            <label class="label">유형</label>
-            <select v-model="form.type">
-              <option value="ONLINE">온라인</option>
-              <option value="OFFLINE">오프라인</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label class="label">부서</label>
-            <input v-model="form.departmentName" type="text" />
-          </div>
-          <div class="form-row">
-            <label class="label">할당된 프로그램들 (쉼표로 구분)</label>
-            <input v-model="form.assignedProgramsText" type="text" />
-          </div>
-        </section>
-
-        <footer class="modal-actions section">
-          <div class="left-actions"><button class="btn-outline" @click="close">취소</button></div>
-          <div class="right-actions"><button class="btn-primary" @click="onSubmit">저장</button></div>
+        <footer class="modal-actions">
+          <button class="btn-outline" @click="close">취소</button>
+          <button class="btn-primary" @click="onSubmit">저장</button>
         </footer>
       </div>
     </div>
@@ -48,10 +63,11 @@ import trainingService from '@/services/trainingService';
 
 export default {
     name: 'TrainingEdit',
-    data() { return { form: { title: '', type: 'ONLINE', departmentName: '', assignedProgramsText: '' }, loading: false } },
+    data() { return { form: { title: '', description: '', type: 'ONLINE', departmentId: '', onlineUrl: '' }, loading: false, departments: [], file: null } },
     computed: { id() { return this.$route.params.id } },
-    mounted() { this.fetch() },
+    mounted() { this.fetch(); this.loadDepartments() },
     methods: {
+      async loadDepartments(){ try{ const r = await (await import('@/services/departmentService')).getDepartments(); const data = r && r.data ? r.data : []; this.departments = Array.isArray(data) ? data : (data.content||[]) }catch(e){ console.error(e) } },
       close() { this.$router.back ? this.$router.back() : this.$router.push(`/admin/trainings/${this.id}`) },
       async fetch() {
         this.loading = true
@@ -60,25 +76,22 @@ export default {
           const t = resp && resp.data ? resp.data : null
           if (t) {
             this.form.title = t.title || ''
+            this.form.description = t.description || t.summary || ''
             this.form.type = t.type || 'ONLINE'
-            this.form.departmentName = t.departmentName || t.department || ((t.assignedPrograms && t.assignedPrograms[0] && (t.assignedPrograms[0].departmentName || t.assignedPrograms[0].department)) ? (t.assignedPrograms[0].departmentName || t.assignedPrograms[0].department) : '')
-            this.form.assignedProgramsText = (t.assignedPrograms || []).map(p => p.programName || p.name || '').join(', ')
-            this.form.onlineUrl = t.onlineUrl || ''
+            this.form.departmentId = t.departmentId || ''
+            this.form.onlineUrl = t.onlineUrl || t.link || ''
           }
         } catch (e) { console.error('fetch detail failed', e) }
         finally { this.loading = false }
       },
+      onFileChange(e){ this.file = e.target.files && e.target.files[0] },
       async onSubmit() {
-        const payload = {
-          title: this.form.title,
-          type: this.form.type,
-          departmentName: this.form.departmentName,
-          assignedPrograms: this.form.assignedProgramsText ? this.form.assignedProgramsText.split(',').map(s => ({ programName: s.trim() })) : [],
-          onlineUrl: this.form.type === 'ONLINE' ? (this.form.onlineUrl || '') : undefined
-        }
+        const payload = { title: this.form.title, description: this.form.description, type: this.form.type }
+        if(this.form.departmentId) payload.departmentId = this.form.departmentId
+        if(this.form.type === 'ONLINE') payload.onlineUrl = this.form.onlineUrl || ''
         try {
           await trainingService.update(this.id, payload)
-          this.$router.push(`/admin/trainings/${this.id}`)
+          this.$router.push(`/admin/trainings/${this.id}?toast=updated`)
         } catch (e) {
           console.error('update failed', e)
           alert('수정에 실패했습니다.')
@@ -90,20 +103,24 @@ export default {
 
 <style scoped>
 /* reuse modal styles from UserCreatePopup */
-.detail-modal { --main-color: #294594; background:#fff; border-radius:12px; padding:20px 22px; width:720px; max-width:calc(100% - 48px); }
+.detail-modal { --main-color: #294594; background:#fff; border-radius:12px; padding:20px 22px; width:720px; max-width:calc(100% - 48px); margin:0 auto; }
 .modal-top{ position:relative; height:52px; display:flex; align-items:center; justify-content:center }
 .back-btn{ position:absolute; left:12px; top:8px; border:none; background:transparent; font-size:18px; cursor:pointer }
 .modal-title{ font-weight:700; color:var(--main-color) }
-.center-area{ text-align:center; padding:10px 0 18px }
-.avatar-fallback-large{ display:inline-block; width:100px; height:100px; line-height:100px; border-radius:50%; background: linear-gradient(180deg,#f7f9fc,#eef4ff); color:var(--main-color); font-size:36px }
-.center-name{ font-weight:700; margin-top:10px }
-.form-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:16px; padding-top:12px }
-.form-row{ display:flex; flex-direction:column }
-.form-row .label{ font-size:12px; color:#64748b; font-weight:600; margin-bottom:8px }
-input, select{ padding:8px 10px; height:38px; border:1px solid #eef3fb; border-radius:10px }
-.modal-actions{ display:flex; justify-content:space-between; padding-top:18px }
-.btn-outline{ background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px }
-.btn-primary{ background:linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px }
+.center-area{ display:none }
+.form-grid{ display:block }
+.content.section{ display:flex; flex-direction:column; gap:12px; align-items:center }
+.row{ display:flex; gap:12px; align-items:center; margin-bottom:10px; width:100%; max-width:640px; margin-left:auto; margin-right:auto }
+.label{ width:120px; color:#64748b; font-weight:700; text-align:left }
+.val{ flex:1; width:380px; max-width:100% }
+.val input, .val select, .val textarea{ width:100%; padding:8px; border-radius:6px; border:1px solid #e6eef8 }
+.desc-row{ grid-column:1 / -1 }
+.desc-box{ background:#f8fbff; border:1px solid #eef3fb; padding:12px; border-radius:8px; max-height:140px; overflow:auto; color:#10243b }
+.desc-input{ width:100%; height:120px; border:none; resize:none; background:transparent }
+.desc-input.small{ height:64px }
+.modal-actions{ display:flex; justify-content:flex-end; gap:10px }
+.btn-outline{ background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 12px; border-radius:8px }
+.btn-primary{ background:#294594; color:#fff; padding:8px 12px; border-radius:8px; border:none }
 
 /* Overlay */
 .detail-overlay{ position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(3, 10, 18, 0.48); z-index: 1400; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); padding: 20px; }

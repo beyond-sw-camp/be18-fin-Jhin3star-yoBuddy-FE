@@ -10,50 +10,51 @@
         <section class="content-top section">
           <div class="title-large">{{ training ? training.title : '교육 상세' }}</div>
 
-          <div class="desc-text">{{ training && (training.description || training.summary) ? (training.description || training.summary) : '—' }}</div>
+          <div class="desc-text">{{ training && (training.description || training.summary) ? (training.description || training.summary) : '-' }}</div>
 
-              <div class="meta-left">
-                <div class="meta-item"><span class="label">유형</span><span class="val">{{ training ? training.typeLabel : '—' }}</span></div>
-                <div class="meta-item"><span class="label">부서</span><span class="val">{{ training ? (training.departmentName || '—') : '—' }}</span></div>
-                <div class="meta-item"><span class="label">생성일</span><span class="val">{{ formatDate(training && (training.createdAt || training.createdDate || training.createDate)) }}</span></div>
-                <div class="meta-item"><span class="label">수정일</span><span class="val">{{ formatDate(training && (training.updatedAt || training.modifiedAt || training.updateDate)) }}</span></div>
-              </div>
+          <div class="meta-left">
+            <div class="meta-item"><span class="label">유형</span><span class="val">{{ training ? training.typeLabel : '-' }}</span></div>
+            <div class="meta-item"><span class="label">부서</span><span class="val">{{ training ? (training.departmentName || '-') : '-' }}</span></div>
+            <div class="meta-item"><span class="label">작성일</span><span class="val">{{ formatDate(training && (training.createdAt || training.createdDate || training.createDate)) }}</span></div>
+            <div class="meta-item"><span class="label">수정일</span><span class="val">{{ formatDate(training && (training.updatedAt || training.modifiedAt || training.updateDate)) }}</span></div>
+          </div>
 
-              <div class="meta-right">
-                <div class="prog-header">등록된 프로그램:</div>
-                <div v-if="training && training.assignedPrograms && training.assignedPrograms.length">
-                  <ul class="prog-list">
-                    <li v-for="p in training.assignedPrograms" :key="p.programId" class="prog-item">
-                      <span class="prog-name">{{ p.programName || p.name }}</span>
-                      <span :class="['prog-status', statusClass(p && p.status)]">{{ statusLabel(p && p.status) }}</span>
-                    </li>
-                  </ul>
-                </div>
-                <div v-else class="prog-empty">—</div>
-              </div>
+          <div class="meta-right">
+            <div class="prog-header">등록된 프로그램:</div>
+            <div v-if="training && training.assignedPrograms && training.assignedPrograms.length">
+              <ul class="prog-list">
+                <li v-for="p in training.assignedPrograms" :key="p.programId" class="prog-item">
+                  <span class="prog-name">{{ p.programName || p.name }}</span>
+                  <span :class="['prog-status', statusClass(p && p.status)]">{{ statusLabel(p && p.status) }}</span>
+                </li>
+              </ul>
+            </div>
+            <div v-else class="prog-empty">     - </div>
+          </div>
 
-              <div class="attach-col">
-                <div class="label">첨부파일</div>
-                <div class="file-box-inline">
-                  <div v-if="training && training.attachments && training.attachments.length" class="file-box-inline-inner">
-                    <span class="file-name">{{ training.attachments[0].name || training.attachments[0].fileName }}</span>
-                    <a :href="training.attachments[0].url || '#'" class="btn-primary small" target="_blank">다운로드</a>
-                  </div>
-                  <div v-else class="file-empty">첨부파일 없음</div>
-                </div>
+          <div class="attach-col">
+            <div class="label">첨부 파일</div>
+            <div class="file-box-inline">
+              <div v-if="training && training.attachments && training.attachments.length" class="file-box-inline-inner">
+                <span class="file-name">{{ training.attachments[0].name || training.attachments[0].fileName }}</span>
+                <a :href="training.attachments[0].url || '#'" class="btn-primary small" target="_blank">다운로드</a>
               </div>
-              <div class="url-col">
-                <div class="label">온라인 URL</div>
-                <div class="val link-val"><a v-if="training && (training.onlineUrl || training.link)" :href="training.onlineUrl || training.link" target="_blank">{{ training.onlineUrl || training.link }}</a><span v-else>—</span></div>
-              </div>
+              <div v-else class="file-empty">첨부 파일 없음</div>
+            </div>
+          </div>
+          <div class="url-col">
+            <div class="label">온라인 URL</div>
+            <div class="val link-val"><a v-if="training && (training.onlineUrl || training.link)" :href="training.onlineUrl || training.link" target="_blank">{{ training.onlineUrl || training.link }}</a><span v-else>정보 없음</span></div>
+          </div>
         </section>
-        
 
         <footer class="modal-actions section">
           <button class="btn-outline" @click="goEdit">수정</button>
           <button class="btn-primary danger" @click="onDelete">삭제</button>
         </footer>
       </div>
+
+      <div v-if="showToast" class="toast">{{ toastMessage }}</div>
     </div>
   </transition>
 </template>
@@ -63,20 +64,37 @@ import trainingService from '@/services/trainingService';
 
 export default {
   name: 'TrainingDetail',
-  data() { return { training: null, loading: false } },
+  data() {
+    return {
+      training: null,
+      loading: false,
+      toastMessage: '',
+      showToast: false,
+      toastTimer: null
+    }
+  },
   computed: { id() { return this.$route.params.id } },
-  mounted() { this.fetch() },
+  mounted() { this.fetch(); this.handleToastQuery(); },
   methods: {
-    close() { this.$router.back ? this.$router.back() : this.$router.push('/admin/trainings') },
+    close() { this.$router.push('/admin/trainings') },
+    handleToastQuery() {
+      const toast = this.$route.query && this.$route.query.toast
+      if (toast === 'updated') this.triggerToast('수정이 완료되었습니다.')
+      this.$router.replace({ query: { ...this.$route.query, toast: undefined } }).catch(() => {})
+    },
+    triggerToast(msg) {
+      this.toastMessage = msg
+      this.showToast = true
+      clearTimeout(this.toastTimer)
+      this.toastTimer = setTimeout(() => { this.showToast = false }, 2000)
+    },
     async fetch() {
       this.loading = true
       try {
         const resp = await trainingService.detail(this.id)
         const data = resp && resp.data ? resp.data : null
-        // normalize fields
         if (data) {
           data.typeLabel = data.type === 'ONLINE' ? '온라인' : data.type === 'OFFLINE' ? '오프라인' : (data.type || '')
-          // department and status may be nested inside assignedPrograms
           data.assignedPrograms = data.assignedPrograms || []
           data.departmentName = data.departmentName || data.department || (data.assignedPrograms && data.assignedPrograms[0] && (data.assignedPrograms[0].departmentName || data.assignedPrograms[0].department)) || ''
           data.status = data.status || (data.assignedPrograms && data.assignedPrograms[0] && data.assignedPrograms[0].status) || ''
@@ -89,20 +107,20 @@ export default {
     },
     goEdit() { this.$router.push(`/admin/trainings/${this.id}/edit`) },
     async onDelete() {
-      if (!confirm('이 교육을 삭제하시겠습니까?')) return
+      if (!confirm('해당 교육을 삭제하시겠습니까?')) return
       try {
         await this.$nextTick()
         await (await import('@/services/trainingService')).default.delete(this.id)
-        this.$router.push('/admin/trainings')
+        this.$router.push({ path: '/admin/trainings', query: { toast: 'deleted' } })
       } catch (e) {
         console.error('delete failed', e)
         alert('삭제에 실패했습니다.')
       }
     },
     statusLabel(s) {
-      if (!s) return '할당 전'
+      if (!s) return '상태 없음'
       const up = String(s).toUpperCase()
-      if (up === 'UPCOMING') return '예정됨'
+      if (up === 'UPCOMING') return '예정'
       if (up === 'ACTIVE') return '진행 중'
       if (up === 'COMPLETED') return '완료'
       if (up === 'PUBLISHED') return '공개'
@@ -115,10 +133,9 @@ export default {
       if (up === 'PUBLISHED' || up === 'ACTIVE') return 'tag-admin'
       if (up === 'DRAFT') return 'tag-newbie'
       return 'tag-mentor'
-    }
-    ,
+    },
     formatDate(dt) {
-      if (!dt) return '—'
+      if (!dt) return '-'
       try {
         const d = new Date(dt)
         if (isNaN(d.getTime())) return String(dt).slice(0,10)
@@ -152,11 +169,11 @@ export default {
 .assigned-programs ul { margin:0; padding:0; list-style:none }
 .assigned-programs li { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .modal-actions { display:flex; justify-content:flex-end; gap:12px; padding-top:18px }
- .content-top { padding: 12px 6% 6px 6%; display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start }
+.content-top { padding: 12px 6% 6px 6%; display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start }
 .title-large { font-size:20px; font-weight:800; color:#10243b; margin-bottom:6px }
- .desc-intro { color:#94a3b8; font-size:13px; margin-bottom:4px }
- .desc-text { color:#4b5563; line-height:1.6; margin-bottom:10px; grid-column: 1 / -1 }
- .title-large { grid-column: 1 / -1 }
+.desc-intro { color:#94a3b8; font-size:13px; margin-bottom:4px }
+.desc-text { color:#4b5563; line-height:1.6; margin-bottom:10px; grid-column: 1 / -1 }
+.title-large { grid-column: 1 / -1 }
 .desc-label { color:#294594; font-size:13px; margin-bottom:6px; font-weight:700 }
 .meta-grid { display:none }
 .desc-row { display:flex; gap:32px }
@@ -166,10 +183,16 @@ export default {
 .meta-item { display:flex; gap:12px; align-items:center; padding:6px 0 }
 .meta-item .label { width:110px; color:#64748b; text-align:left }
 .meta-item .val { color:#10243b; font-weight:550 }
- .meta-right { grid-column:2; padding-top:0 }
+.meta-right { grid-column:2; padding-top:0 }
 .prog-header { color:#64748b; font-size:13px; font-weight:700; margin-bottom:8px; margin-top:12px; position:relative; top:10px }
 .prog-list { list-style:none; padding:0; margin:0 }
-.prog-item { display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px dashed #f0f4fb }
+.prog-item { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px dashed #f0f4fb }
+.prog-list { max-height:220px; overflow:auto }
+.prog-list::-webkit-scrollbar { width:6px }
+.prog-list::-webkit-scrollbar-thumb { background: transparent; border-radius:6px }
+.prog-list:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12) }
+.prog-list { scrollbar-color: transparent transparent }
+.prog-list:hover { scrollbar-color: rgba(0,0,0,0.12) transparent }
 .prog-name { color:#4b5563; font-weight:550; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .prog-status { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:450 }
 .file-box-inline { display:flex; gap:12px; align-items:center; margin-top:22px }
@@ -180,6 +203,7 @@ export default {
 .url-col { width:360px }
 .btn-outline { background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px; color:var(--main-color); font-weight:600 }
 .btn-primary { background: linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px; border:none; box-shadow: 0 12px 30px rgba(41,69,148,0.14); font-weight:800; letter-spacing:0.2px }
+.btn-primary.danger { background: #294594 }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag-admin { background:#ffe9e9; color:#c94242 }
 .tag-mentor { background:#f6f8d1; color:#b0b900 }
@@ -189,6 +213,30 @@ export default {
 .file-name { color:#10243b; font-weight:600 }
 .btn-primary.small { padding:6px 10px; font-size:13px }
 .btn-primary.danger { background: #294594 }
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: #fff;
+  color: #294594;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+  font-weight: 700;
+  z-index: 2000;
+  border: 1px solid rgba(41,69,148,0.16);
+  min-width: 240px;
+}
+.toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-radius: 12px 0 0 12px;
+  background: linear-gradient(180deg, #294594, #1f306d);
+}
 
 @media (max-width: 640px) {
   .detail-modal { width: 100%; padding: 14px }
