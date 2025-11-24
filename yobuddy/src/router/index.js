@@ -13,6 +13,13 @@ const routes = [
     meta: { hideHeader: true, hideSidebar: true }
   },
 
+  // Wiki 페이지
+  {
+    path: '/wiki',
+    name: 'Wiki',
+    component: () => import('@/pages/common/wiki.vue')
+  },
+
   // --- 관리자 기능 ---
     {
     path: '/kpi',
