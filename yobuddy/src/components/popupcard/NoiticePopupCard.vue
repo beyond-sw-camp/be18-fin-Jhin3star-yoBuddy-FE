@@ -2,88 +2,116 @@
   <div class="notice-popup-card">
     <div class="notice-header">
       <div class="notice-header-left">
-        <img v-if="icon" :src="icon" class="notice-avatar" alt="icon" />
+        <img v-if="props.icon" :src="props.icon" class="notice-avatar" alt="icon" />
         <div>
           <div class="notice-title">알림</div>
         </div>
       </div>
       <button class="notice-close" @click="$emit('close')">×</button>
     </div>
+
     <div class="notice-content">
       <div class="notice-section-title">전체 알림</div>
+
       <ul class="notice-list">
-        <template v-for="(item, idx) in noticesToShow" :key="idx">
-          <transition name="expand-card">
+        <template v-if="noticesToShow.length > 0">
+          <transition-group name="notice-list-transition" tag="div">
             <li
-              :class="['notice-item', item.read ? 'read' : 'unread', selectedNotice.includes(idx) ? 'expanded' : '']"
-              @click="toggleNotice(idx)"
+              v-for="item in noticesToShow"
+              :key="item.id"
+              :class="[
+                'notice-item',
+                item.read ? 'read' : 'unread',
+                selectedNotice.includes(item.id) ? 'expanded' : ''
+              ]"
+              @click="toggleNotice(item.id)"
             >
               <div class="notice-main-row">
-                <span class="notice-message">{{ item.message }}</span>
-                <span v-if="item.time" class="notice-time">{{ item.time }}</span>
+                <span class="notice-message">{{ item.title }}</span>
+                <span class="notice-time">{{ formatTime(item.createdAt) }}</span>
               </div>
-              <div v-if="selectedNotice.includes(idx)" class="notice-detail-row">
-                <div class="detail-title">상세 알림</div>
+
+              <div
+                v-if="selectedNotice.includes(item.id)"
+                class="notice-detail-row"
+              >
+                <div class="detail-title">{{ item.title }}</div>
                 <div class="detail-message">{{ item.message }}</div>
-                <div v-if="item.time" class="detail-time">{{ item.time }}</div>
-                <button class="detail-close" @click.stop="toggleNotice(idx)">닫기</button>
+                <div class="detail-time">{{ formatTime(item.createdAt) }}</div>
+                <div class="detail-actions">
+                  <button class="detail-delete" @click.stop="deleteNotification(item.id)">삭제</button>
+                  <button class="detail-close" @click.stop="toggleNotice(item.id)">닫기</button>
+                </div>
               </div>
             </li>
-          </transition>
+          </transition-group>
+        </template>
+        <template v-else>
+          <li class="no-notices">새로운 알림이 없습니다.</li>
         </template>
       </ul>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'NoiticePopupCard',
-  props: {
-    notices: {
-      type: Array,
-      default: () => []
-    },
-    icon: String
-  },
-  data() {
-    return {
-      selectedNotice: []
+<script setup>
+import { ref, computed } from 'vue'
+import { useNotificationStore } from '@/store/notificationStore'
+
+// eslint-disable-next-line no-undef
+const props = defineProps({ icon: String })
+
+const notificationStore = useNotificationStore()
+const selectedNotice = ref([])
+
+const noticesToShow = computed(() => notificationStore.notifications)
+
+const toggleNotice = (notificationId) => {
+  const i = selectedNotice.value.indexOf(notificationId)
+  if (i === -1) {
+    selectedNotice.value.push(notificationId)
+    const notification = notificationStore.notifications.find(n => n.id === notificationId);
+    if (notification && !notification.read) {
+      notificationStore.markNotificationAsRead(notificationId);
     }
-  },
-  computed: {
-    noticesToShow() {
-      // props로 전달된 notices가 있으면 사용, 없으면 더미데이터 사용
-      if (this.notices && this.notices.length > 0) {
-        return this.notices;
-      }
-      return [
-        { message: '새로운 공지사항이 있습니다.', time: '10:32', read: false },
-        { message: '팀 미팅이 곧 시작됩니다.', time: '09:50', read: true },
-        { message: '점심시간 안내', time: '08:30', read: false },
-        { message: '사내 이벤트가 있습니다.', time: '어제', read: true },
-        { message: '연차 신청이 승인되었습니다.', time: '2일 전', read: false },
-        { message: '보안 업데이트 안내', time: '3일 전', read: true }
-      ];
-    }
-  },
-  methods: {
-    toggleNotice(idx) {
-      const i = this.selectedNotice.indexOf(idx);
-      if (i === -1) {
-        this.selectedNotice.push(idx);
-        // 읽음 이벤트 emit
-        this.$emit('read', idx);
-      } else {
-        this.selectedNotice.splice(i, 1);
-      }
-    }
+  } else {
+    selectedNotice.value.splice(i, 1)
   }
 }
+
+const deleteNotification = async (notificationId) => {
+  await notificationStore.deleteNotification(notificationId);
+  const i = selectedNotice.value.indexOf(notificationId);
+  if (i !== -1) {
+    selectedNotice.value.splice(i, 1);
+  }
+};
+
+const formatTime = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffSeconds = Math.floor((now - date) / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) return `${diffSeconds}초 전`;
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  if (diffDays < 7) return `${diffDays}일 전`;
+  
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 </script>
 
 <style scoped>
-/* 알림 리스트 스크롤 처리 */
 /* 알림 리스트 스크롤 처리 */
 .notice-list {
   max-height: 320px;
@@ -104,37 +132,19 @@ export default {
 }
 /* 상세 알림 카드 스타일 */
 /* 확장 애니메이션 */
-.expand-card-enter-active, .expand-card-leave-active {
+.notice-list-transition-enter-active,
+.notice-list-transition-leave-active {
   transition: all 0.32s cubic-bezier(.4,0,.2,1);
 }
-.expand-card-enter-from, .expand-card-leave-to {
-  max-height: 56px;
-  background: #f5f7fa;
-  box-shadow: none;
-  border-radius: 8px;
+.notice-list-transition-enter-from,
+.notice-list-transition-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
-.expand-card-enter-to, .expand-card-leave-from {
-  max-height: 220px;
+.notice-list-transition-move {
+  transition: transform 0.32s cubic-bezier(.4,0,.2,1);
 }
-/* 알림 아이템 크기 및 스타일 조정 */
-/* 알림 아이템 크기 및 확장 스타일 개선 */
-/* 알림 아이템 슬림하게 */
-.notice-item {
-  flex-shrink: 0;
-  position: relative;
-  transition: all 0.32s cubic-bezier(.4,0,.2,1);
-  overflow: hidden;
-  min-height: 28px;
-  font-size: 0.97em;
-  background: #fcfdff;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 2px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 0;
-}
+
 .notice-item.expanded {
   background: #fff;
   box-shadow: 0 4px 16px rgba(41,69,148,0.13);
@@ -160,12 +170,19 @@ export default {
   width: 100%;
   min-width: 0;
 }
+.notice-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  width: 100%;
+}
 .notice-message {
   color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60%;
+  max-width: 70%; /* Adjusted to give more space for time */
 }
 .notice-time {
   color: #888;
@@ -209,7 +226,13 @@ export default {
   color: #888;
   margin-bottom: 4px;
 }
-.detail-close {
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.detail-close, .detail-delete {
   background: #294594;
   color: #fff;
   border: none;
@@ -217,13 +240,18 @@ export default {
   padding: 5px 14px;
   font-size: 0.97em;
   cursor: pointer;
-  margin-top: 4px;
-  align-self: flex-end;
   box-shadow: 0 2px 8px rgba(41,69,148,0.08);
 }
-.detail-close:hover {
+.detail-close:hover, .detail-delete:hover {
   background: #3a5ad9;
 }
+.detail-delete {
+  background: #dc3545; /* Red color for delete */
+}
+.detail-delete:hover {
+  background: #c82333;
+}
+
 /* fade 트랜지션 */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.25s;
@@ -232,9 +260,9 @@ export default {
   opacity: 0;
 }
 .notice-popup-card {
-  min-width: 300px;
-  max-width: 340px;
-  max-height: 500px;
+  min-width: 280px;
+  max-width: 300px;
+  max-height: 400px; /* Keep max-height for overall card size */
   background: #fff;
   color: #23263a;
   border-radius: 18px;
@@ -245,7 +273,7 @@ export default {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible; /* Allow content to overflow, scroll handled by .notice-list */
   margin-right: 0.5%;
   margin-top: 2%;
 }
@@ -319,7 +347,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  max-height: 450px;
+  max-height: 300px;
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -337,15 +365,16 @@ export default {
 .notice-item {
   background: #f5f7fa;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 0; /* Removed padding here, moved to notice-main-row */
   color: #23263a;
   font-size: 1em;
   cursor: pointer;
   border: 1px solid #e0e0e0;
   transition: background 0.15s;
   display: flex;
+  flex-direction: column; /* Changed to column for expanded view */
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Align items to start */
   min-height: 48px;
 }
 .notice-item.unread {
@@ -360,12 +389,9 @@ export default {
   border-left: 4px solid #ced8ff;
   color: #888;
 }
-.notice-message {
-  color: inherit;
-}
-.notice-time {
+.no-notices {
+  text-align: center;
   color: #888;
-  font-size: 0.95em;
-  margin-left: 12px;
+  padding: 20px;
 }
 </style>

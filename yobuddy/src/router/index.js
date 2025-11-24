@@ -1,5 +1,5 @@
-import { useAuthStore } from '@/store/authStore'
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/store/authStore'
 
 const routes = [
   {
@@ -31,7 +31,14 @@ const routes = [
     component: () => import('@/pages/common/wiki.vue')
   },
 
-  // --- 관리자 기능 ---
+  // --- 사용자 ---
+  {
+    path: '/dashboard',
+    component: () => import('@/pages/user/UserDashboard.vue'),
+    meta: { requiresAuth: true, userOnly: true }
+  },
+
+  // --- 관리자 ---
   {
     path: '/kpi',
     component: () => import('@/pages/admin/kpi/KPI.vue'),
@@ -120,20 +127,21 @@ const routes = [
     meta: { requiresAuth: true, mentorOnly: true }
   },
   {
-  path: '/mentor/sessions/create',
-  name: 'MentoringSessionCreate',
-  component: () => import('@/pages/mentor/MentoringSessionCreatePage.vue')
+    path: '/mentor/sessions/create',
+    name: 'MentoringSessionCreate',
+    component: () => import('@/pages/mentor/MentoringSessionCreatePage.vue'),
+    meta: { requiresAuth: true, mentorOnly: true }
   },
-  {
+    {
     path: '/mentor/sessions',
     component: () => import('@/pages/mentor/MentoringSessionListPage.vue'),
     meta: { requiresAuth: true, mentorOnly: true }
   },
   {
-  path: "/mentor/sessions/:sessionId",
-  name: "MentorSessionDetail",
-  component: () =>
-    import("@/pages/mentor/MentorSessionDetailPage.vue")
+    path: '/mentor/sessions/:sessionId',
+    name: 'MentorSessionDetail',
+    component: () => import('@/pages/mentor/MentorSessionDetailPage.vue'),
+    meta: { requiresAuth: true, mentorOnly: true }
   },
 ]
 
@@ -145,16 +153,25 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  if (!auth.user && auth.accessToken) {
+  // 1) 새로고침 후 user가 없으면 loadUser()로 복구
+  if (!auth.user) {
     await auth.loadUser()
+
+    // 2) user 복구 성공하면 SSE & 알림 불러오기
+    if (auth.user) {
+      auth.initSSEAndNotifications()
+    }
   }
 
+  // 3) 인증 필요한 라우트 접근
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return '/login'
   }
 
+  // 4) 권한별 접근 체크
   if (to.meta.adminOnly && !auth.isAdmin) return '/login'
   if (to.meta.mentorOnly && !auth.isMentor) return '/login'
+  if (to.meta.userOnly && !auth.isUser) return '/login'
 })
 
 export default router
