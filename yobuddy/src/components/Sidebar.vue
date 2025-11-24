@@ -119,6 +119,7 @@ import eduIcon from '@/assets/logo_edu.svg'
 import kpiIcon from '@/assets/logo_kpi.svg'
 import orgIcon from '@/assets/logo_org.svg'
 // removed unused imports: onboadingIcon, eduIcon
+import onboadingIcon from '@/assets/logo_onboading.svg'
 import assignmentIcon from '@/assets/icon_assigment.svg'
 import dashboardIcon from '@/assets/icon_dashboard.svg'
 import contentIcon from '@/assets/logo_content.svg'
@@ -229,7 +230,7 @@ export default {
         ]
       }
 
-      return base
+      return []
     })
 
     /* submenu behaviors */

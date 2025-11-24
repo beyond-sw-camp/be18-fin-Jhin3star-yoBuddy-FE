@@ -249,9 +249,8 @@ export default {
 .category-dropdown .label-text {
   position: absolute;
 
-  /* 💡 여기만 조절하면 어디든 보낼 수 있음 */
-  left: 40%;       /* ← 수평 위치 */
-  top: 50%;        /* ← 수직 위치 */
+  left: 40%;       
+  top: 50%;       
   transform: translate(-50%, -50%);
 }
 
@@ -304,7 +303,7 @@ export default {
 }
 
 .search-box input {
-  width: 800px;
+  width: 100%;
   height: 42px;
   padding: 0 15px 0 38px;
   border: 1px solid #ddd;
@@ -322,10 +321,11 @@ export default {
 }
 
 .add-btn {
+  flex-shrink: 0;
   background: #294594;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 16px;
   cursor: pointer;
   font-size: 14px;
