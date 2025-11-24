@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="logo-section">
         <div class="logo">
-            <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
+          <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
         </div>
       </div>
       <div class="breadcrumb">
@@ -16,9 +16,9 @@
             <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
           </span>
           <router-link
-            :to="breadcrumbLinks[idx]"
-            class="page-name"
-            style="cursor:pointer; text-decoration:none; color:inherit;"
+              :to="breadcrumbLinks[idx]"
+              class="page-name"
+              style="cursor:pointer; text-decoration:none; color:inherit;"
           >
             {{ crumb }}
           </router-link>
@@ -34,9 +34,9 @@
           <span v-if="notificationCount > 0" class="badge">{{ notificationCount }}</span>
         </button>
         <NoiticePopupCard
-          v-if="showNotificationCard"
-          :notices="notificationStore.notifications"
-          @close="showNotificationCard = false"
+            v-if="showNotificationCard"
+            :notices="notificationStore.notifications"
+            @close="showNotificationCard = false"
         />
       </div>
       <div class="dropdown-wrapper">
@@ -46,11 +46,11 @@
           </span>
         </button>
         <ChatbotPopupCard
-          v-if="showChatbotCard"
-          title="YoBuddy 챗봇"
-          subtitle="무엇을 도와드릴까요?"
-          icon="/default-profile.png"
-          @close="showChatbotCard = false"
+            v-if="showChatbotCard"
+            title="YoBuddy 챗봇"
+            subtitle="무엇을 도와드릴까요?"
+            icon="/default-profile.png"
+            @close="showChatbotCard = false"
         >
           <template #default>
             <div style="margin-bottom:10px;">챗봇 기능은 여기에 구현됩니다.</div>
@@ -81,7 +81,7 @@ export default {
 
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-    
+
     const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
@@ -103,12 +103,12 @@ export default {
       const segments = route.path.split('/').filter(Boolean)
       const crumbs = []
       if (segments.length === 0) {
-      crumbs.push(pageTitleMap['/'])
+        crumbs.push(pageTitleMap['/'])
       } else {
-      for (let i = 0; i < segments.length; i++) {
-        const path = '/' + segments.slice(0, i + 1).join('/')
-        crumbs.push(pageTitleMap[path] || segments[i])
-      }
+        for (let i = 0; i < segments.length; i++) {
+          const path = '/' + segments.slice(0, i + 1).join('/')
+          crumbs.push(pageTitleMap[path] || segments[i])
+        }
       }
       return crumbs
     })

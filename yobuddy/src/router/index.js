@@ -12,6 +12,24 @@ const routes = [
     component: () => import('@/pages/common/Home.vue'),
     meta: { hideHeader: true, hideSidebar: true }
   },
+  {
+    path: '/content/announcement',
+    component: () => import('@/pages/common/announcement/AnnouncementListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/content/announcement/:id',
+    component: () => import('@/pages/common/announcement/AnnouncementDetailView.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
+
+  // Wiki 페이지
+  {
+    path: '/wiki',
+    name: 'Wiki',
+    component: () => import('@/pages/common/wiki.vue')
+  },
 
   // --- 사용자 ---
   {
@@ -26,6 +44,11 @@ const routes = [
     component: () => import('@/pages/admin/kpi/KPI.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+    {
+      path: '/kpi/kpisetting',
+      component: () => import('@/pages/admin/kpi/KpiEdit.vue'),
+      meta: { requiresAuth: true, adminOnly: true }
+    },
   {
     path: '/organization/usermanagement',
     component: () => import('@/pages/admin/organization/User/UserManagement.vue'),
@@ -36,6 +59,18 @@ const routes = [
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/content/announcement/create',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementCreateView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/content/announcement/edit/:id',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+
+  // --- 멘토 기능 ---
   {
     path: '/admin/mentoring/sessions',
     component: () => import('@/pages/admin/mentoring/AdminMentoringSessionList.vue'),
@@ -51,8 +86,41 @@ const routes = [
     component: () => import('@/pages/admin/onboarding/OnboardingProgramList.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  // --- 교육 관리 ---
+  {
+    path: '/admin/trainings',
+    component: () => import('@/pages/admin/training/TrainingList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/trainings/create',
+    component: () => import('@/pages/admin/training/TrainingCreate.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/trainings/:id',
+    component: () => import('@/pages/admin/training/TrainingDetail.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
-  // --- 멘토 ---
+    // user training routes
+    // {
+    //   path: '/user/trainings',
+    //   name: 'UserTrainings',
+    //   component: () => import('@/pages/user/training/TrainingList.vue')
+    // },
+    // {
+    //   path: '/user/trainings/:id',
+    //   name: 'UserTrainingDetail',
+    //   component: () => import('@/pages/user/training/TrainingDetail.vue')
+    // },
+  {
+    path: '/admin/trainings/:id/edit',
+    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+
+  // --- 멘토 기능 ---
   {
     path: '/mentor/dashboard',
     component: () => import('@/pages/mentor/MentorDashboard.vue'),
@@ -64,7 +132,7 @@ const routes = [
     component: () => import('@/pages/mentor/MentoringSessionCreatePage.vue'),
     meta: { requiresAuth: true, mentorOnly: true }
   },
-  {
+    {
     path: '/mentor/sessions',
     component: () => import('@/pages/mentor/MentoringSessionListPage.vue'),
     meta: { requiresAuth: true, mentorOnly: true }

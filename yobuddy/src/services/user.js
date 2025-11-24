@@ -5,14 +5,21 @@ import http from '@/services/http'
  * - 중앙에서 사용자 관련 HTTP 호출을 관리합니다.
  * - 컴포넌트에서 직접 axios 호출을 하지 않고 이 모듈을 사용하세요.
  */
+const extractArray = resp => {
+	// Normalize various backend shapes safely to an array
+	// resp may be undefined/null or a full axios response
+	if (!resp) return []
+	const payload = resp && resp.data ? resp.data : resp
+	if (Array.isArray(payload)) return payload
+	if (payload && Array.isArray(payload.data)) return payload.data
+	if (payload && Array.isArray(payload.content)) return payload.content
+	return []
+}
+
 const userService = {
 	async getDepartments() {
 		const r = await http.get('/api/v1/admin/departments')
-		const payload = r && r.data ? r.data : r
-		if (Array.isArray(payload)) return payload
-		if (payload && Array.isArray(payload.data)) return payload.data
-		if (payload && Array.isArray(payload.content)) return payload.content
-		return []
+		return extractArray(r)
 	},
 
 	async createUsers(users) {
@@ -48,6 +55,8 @@ const userService = {
 
 	async searchUsers(params) {
 		const resp = await http.get('/api/v1/admin/users', { params })
+		// Many endpoints return paginated shapes; normalize to either array or full payload
+		// If caller expects an array, they can use extractArray(resp).
 		return resp && resp.data ? resp.data : resp
 	},
 
