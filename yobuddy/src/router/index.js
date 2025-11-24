@@ -12,9 +12,20 @@ const routes = [
     component: () => import('@/pages/common/Home.vue'),
     meta: { hideHeader: true, hideSidebar: true }
   },
+  {
+    path: '/content/announcement',
+    component: () => import('@/pages/common/announcement/AnnouncementListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/content/announcement/:id',
+    component: () => import('@/pages/common/announcement/AnnouncementDetailView.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
 
   // --- 관리자 기능 ---
-    {
+  {
     path: '/kpi',
     component: () => import('@/pages/admin/kpi/KPI.vue'),
     meta: { requiresAuth: true, adminOnly: true }
@@ -32,6 +43,16 @@ const routes = [
   {
     path: '/organization/department',
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/content/announcement/create',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementCreateView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/content/announcement/edit/:id',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
 
@@ -63,7 +84,7 @@ const routes = [
   name: 'MentoringSessionCreate',
   component: () => import('@/pages/mentor/MentoringSessionCreatePage.vue')
   },
-    {
+  {
     path: '/mentor/sessions',
     component: () => import('@/pages/mentor/MentoringSessionListPage.vue'),
     meta: { requiresAuth: true, mentorOnly: true }
