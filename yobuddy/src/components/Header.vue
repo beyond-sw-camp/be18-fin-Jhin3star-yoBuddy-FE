@@ -35,9 +35,8 @@
         </button>
         <NoiticePopupCard
           v-if="showNotificationCard"
-          :notices="notices"
+          :notices="notificationStore.notifications"
           @close="showNotificationCard = false"
-          @read="markNoticeRead"
         />
       </div>
       <div class="dropdown-wrapper">
@@ -68,6 +67,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
+import { useNotificationStore } from '@/store/notificationStore'
 
 export default {
   name: 'HeaderBar',
@@ -76,24 +76,13 @@ export default {
     ChatbotPopupCard
   },
   setup(props, { emit }) {
-    // ...existing code...
-    function markNoticeRead(idx) {
-      if (notices.value[idx]) {
-        notices.value[idx].read = true;
-      }
-    }
     const route = useRoute()
+    const notificationStore = useNotificationStore()
+
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-    const notices = ref([
-      { message: '새로운 공지사항이 있습니다.', time: '10:32', read: false },
-      { message: '팀 미팅이 곧 시작됩니다.', time: '09:50', read: true },
-      { message: '점심시간 안내', time: '08:30', read: false },
-      { message: '사내 이벤트가 있습니다.', time: '어제', read: true },
-      { message: '연차 신청이 승인되었습니다.', time: '2일 전', read: false },
-      { message: '보안 업데이트 안내', time: '3일 전', read: true }
-    ])
-    const notificationCount = computed(() => notices.value.filter(notice => !notice.read).length)
+    
+    const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
       '/kpi': 'KPI',
@@ -164,16 +153,15 @@ export default {
     })
 
     return {
-  pageTitle,
-  notificationCount,
-  toggleMenu,
-  toggleNotifications,
-  breadcrumbs,
-  breadcrumbLinks,
-  showNotificationCard,
-  showChatbotCard,
-  notices,
-  markNoticeRead
+      pageTitle,
+      notificationCount,
+      toggleMenu,
+      toggleNotifications,
+      breadcrumbs,
+      breadcrumbLinks,
+      showNotificationCard,
+      showChatbotCard,
+      notificationStore // Expose notificationStore to template for notices
     }
   }
 }
