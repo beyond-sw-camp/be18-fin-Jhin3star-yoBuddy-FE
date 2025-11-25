@@ -24,14 +24,17 @@ export const useAuthStore = defineStore('auth', {
     //-------------------------------------------
     async login(email, password) {
       const resp = await http.post('/api/v1/auth/login', { email, password })
-      const headers = resp.headers
+      const headers = resp.headers || {}
+      const data = resp.data || {}
 
-      let access = headers['authorization']
+      let access = headers['authorization'] || data.accessToken || data.token
       if (access?.startsWith('Bearer ')) access = access.substring(7)
-      const refresh = headers['refresh-token']
+
+      const refresh = headers['refresh-token'] || data.refreshToken
+
+      if (!access) throw new Error('No access token in response')
 
       this.setTokens(access, refresh)
-
       await this.fetchMe()
     },
 
@@ -54,7 +57,9 @@ export const useAuthStore = defineStore('auth', {
         const resp = await http.get('/api/v1/account/me')
         this.user = resp.data
       } catch (e) {
-        this.logout()
+        // 백엔드 오류나 일시적 실패일 때 즉시 로그아웃하지 않고 사용자만 비웁니다.
+        console.error('fetchMe failed', e?.response || e)
+        this.user = null
       }
     },
 

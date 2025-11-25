@@ -68,22 +68,22 @@ const routes = [
     meta: { requiresAuth: true, adminOnly: true }
   },
 
-    // user training routes
+    // --- 사용자(뉴비) 기능 ---
     {
       path: '/user/trainings',
-      name: 'UserTrainings',
-      component: () => import('@/pages/user/training/TrainingList.vue')
+      component: () => import('@/pages/user/training/UserTrainingList.vue'),
+      meta: { requiresAuth: true, userOnly: true }
     },
     {
       path: '/user/trainings/:id',
-      name: 'UserTrainingDetail',
-      component: () => import('@/pages/user/training/TrainingDetail.vue')
+      component: () => import('@/pages/user/training/UserTrainingDetail.vue'),
+      meta: { requiresAuth: true, userOnly: true }
     },
-  {
-    path: '/admin/trainings/:id/edit',
-    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
-    meta: { requiresAuth: true, adminOnly: true }
-  },
+    {
+      path: '/admin/trainings/:id/edit',
+      component: () => import('@/pages/admin/training/TrainingEdit.vue'),
+      meta: { requiresAuth: true, userOnly: true }
+    },
 
   // --- 멘토 기능 ---
   {
@@ -119,6 +119,19 @@ router.beforeEach(async (to) => {
 
   if (!auth.user && auth.accessToken) {
     await auth.loadUser()
+  }
+
+  const redirectForRole = () => {
+    if (auth.isAdmin) return '/admin/trainings'
+    if (auth.isMentor) return '/mentor/dashboard'
+    if (auth.isUser) return '/user/trainings'
+    return null
+  }
+
+  // if already logged in and user info is available, keep them off public home/login and send to role home
+  if ((to.path === '/' || to.path === '/login') && auth.isAuthenticated && auth.user) {
+    const dest = redirectForRole()
+    if (dest && dest !== to.path) return dest
   }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {

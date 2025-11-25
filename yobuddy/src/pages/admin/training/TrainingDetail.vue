@@ -8,31 +8,49 @@
         </header>
 
         <section class="content-top section">
+          <!-- 제목 -->
           <div class="title-large">{{ training ? training.title : '교육 상세' }}</div>
 
-          <div class="desc-text">{{ training && (training.description || training.summary) ? (training.description || training.summary) : '-' }}</div>
-
-          <div class="meta-left">
-            <div class="meta-item"><span class="label">유형</span><span class="val">{{ training ? training.typeLabel : '-' }}</span></div>
-            <div class="meta-item"><span class="label">부서</span><span class="val">{{ training ? (training.departmentName || '-') : '-' }}</span></div>
-            <div class="meta-item"><span class="label">작성일</span><span class="val">{{ formatDate(training && (training.createdAt || training.createdDate || training.createDate)) }}</span></div>
-            <div class="meta-item"><span class="label">수정일</span><span class="val">{{ formatDate(training && (training.updatedAt || training.modifiedAt || training.updateDate)) }}</span></div>
+          <!-- URL (온라인만 표시) -->
+          <div v-if="training && training.type === 'ONLINE'" class="url-section">
+            <div class="val link-val">
+              <a v-if="training && (training.onlineUrl || training.link)" :href="training.onlineUrl || training.link" target="_blank">{{ training.onlineUrl || training.link }}</a>
+              <span v-else>정보 없음</span>
+            </div>
           </div>
 
-          <div class="meta-right">
+          <!-- 설명 -->
+          <div class="desc-text">{{ training && (training.description || training.summary) ? (training.description || training.summary) : '-' }}</div>
+
+          <!-- 작성/수정일 -->
+          <div class="dates-section">
+            <div class="meta-item">
+              <span class="label">생성일</span>
+              <span class="val">{{ formatDate(training && (training.createdAt || training.createdDate || training.createDate)) }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="label">수정일</span>
+              <span class="val">{{ formatDate(training && (training.updatedAt || training.modifiedAt || training.updateDate)) }}</span>
+            </div>
+          </div>
+
+          <!-- 등록된 프로그램 (5개 스크롤) -->
+          <div class="programs-section">
             <div class="prog-header">등록된 프로그램:</div>
             <div v-if="training && training.assignedPrograms && training.assignedPrograms.length">
               <ul class="prog-list">
                 <li v-for="p in training.assignedPrograms" :key="p.programId" class="prog-item">
+                  <span class="prog-department">{{ p.department || p.departmentName }}</span>
                   <span class="prog-name">{{ p.programName || p.name }}</span>
                   <span :class="['prog-status', statusClass(p && p.status)]">{{ statusLabel(p && p.status) }}</span>
                 </li>
               </ul>
             </div>
-            <div v-else class="prog-empty">     - </div>
+            <div v-else class="prog-empty">-</div>
           </div>
 
-          <div class="attach-col">
+          <!-- 첨부 파일 (고정위치) -->
+          <div class="attachments-section">
             <div class="label">첨부 파일</div>
             <div class="file-box-inline">
               <div v-if="training && training.attachments && training.attachments.length" class="file-box-inline-inner">
@@ -41,10 +59,6 @@
               </div>
               <div v-else class="file-empty">첨부 파일 없음</div>
             </div>
-          </div>
-          <div class="url-col">
-            <div class="label">온라인 URL</div>
-            <div class="val link-val"><a v-if="training && (training.onlineUrl || training.link)" :href="training.onlineUrl || training.link" target="_blank">{{ training.onlineUrl || training.link }}</a><span v-else>정보 없음</span></div>
           </div>
         </section>
 
@@ -169,50 +183,51 @@ export default {
 .assigned-programs ul { margin:0; padding:0; list-style:none }
 .assigned-programs li { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .modal-actions { display:flex; justify-content:flex-end; gap:12px; padding-top:18px }
-.content-top { padding: 12px 6% 6px 6%; display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start }
-.title-large { font-size:20px; font-weight:800; color:#10243b; margin-bottom:6px }
-.desc-intro { color:#94a3b8; font-size:13px; margin-bottom:4px }
-.desc-text { color:#4b5563; line-height:1.6; margin-bottom:10px; grid-column: 1 / -1 }
-.title-large { grid-column: 1 / -1 }
-.desc-label { color:#294594; font-size:13px; margin-bottom:6px; font-weight:700 }
-.meta-grid { display:none }
-.desc-row { display:flex; gap:32px }
-.desc-left { flex:1 }
-.desc-right { width:360px }
-.meta-row { display:grid; grid-template-columns: 1fr 360px; gap:18px; padding-top:6px; align-items:start }
-.meta-item { display:flex; gap:12px; align-items:center; padding:6px 0 }
-.meta-item .label { width:110px; color:#64748b; text-align:left }
-.meta-item .val { color:#10243b; font-weight:550 }
-.meta-right { grid-column:2; padding-top:0 }
-.prog-header { color:#64748b; font-size:13px; font-weight:700; margin-bottom:8px; margin-top:12px; position:relative; top:10px }
-.prog-list { list-style:none; padding:0; margin:0 }
-.prog-item { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px dashed #f0f4fb }
-.prog-list { max-height:220px; overflow:auto }
+
+/* 리디자인 레이아웃 */
+.content-top { padding: 16px 16px; display:flex; flex-direction:column; gap:12px; align-items:stretch }
+.link-val { margin-top: 0; }
+.desc-text { margin-top: 0; }
+
+.title-large { font-size:20px; font-weight:800; color:#10243b; margin-bottom:0px }
+.desc-text { color:#4b5563; line-height:1.6; margin:0px 0 }
+.url-section { margin-top: 2px }
+.url-section .label { display: block; margin-bottom: 0 }
+.dates-section { display:flex; gap:180px; margin-top: 12px }
+.meta-item { display:flex; gap:0; align-items:flex-start; flex-direction:column }
+.meta-item .label { width:auto; color:#64748b; text-align:left }
+.meta-item .val { color:#10243b; font-weight:550; margin-top: 0px }
+.programs-section { margin-top: 12px; flex:1; display:flex; flex-direction:column }
+.prog-header { color:#64748b; font-size:13px; font-weight:700; margin-bottom:8px }
+.prog-list { list-style:none; padding:0; margin:0; max-height:calc(5 * 36px); overflow-y:auto; border:1px solid #f0f4fb; border-radius:4px }
 .prog-list::-webkit-scrollbar { width:6px }
-.prog-list::-webkit-scrollbar-thumb { background: transparent; border-radius:6px }
-.prog-list:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12) }
-.prog-list { scrollbar-color: transparent transparent }
-.prog-list:hover { scrollbar-color: rgba(0,0,0,0.12) transparent }
-.prog-name { color:#4b5563; font-weight:550; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.prog-status { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:450 }
-.file-box-inline { display:flex; gap:12px; align-items:center; margin-top:22px }
-.attach-col, .url-col { display:flex; flex-direction:column; justify-content:center }
-.link-val a { color:#2b57a0 }
-.attachments-row { display:flex; gap:18px; align-items:center; margin-top:12px }
-.attach-col { flex:1 }
-.url-col { width:360px }
+.prog-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius:6px }
+.prog-list::-webkit-scrollbar-track { background: transparent }
+.prog-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px dashed #f0f4fb; min-height:36px }
+.prog-item:last-child { border-bottom: none }
+.prog-department { color:#4b5563; font-size:13px; margin-right:12px; flex:0 0 140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prog-name { color:#4b5563; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 }
+.prog-status { padding:4px 8px; border-radius:10px; font-size:12px; font-weight:500; white-space:nowrap; margin-left: 4px }
+.prog-empty { color:#94a3b8; font-size:14px; padding: 8px }
+.attachments-section { margin-top: 12px; padding-top: 12px; border-top:1px solid #eef3fb }
+.attachments-section .label { display: block; margin-bottom: 8px }
+.file-box-inline { display:flex; gap:12px; align-items:center }
+.file-box-inline-inner { display:flex; gap:8px; align-items:center }
+.file-name { color:#10243b; font-weight:500; font-size:14px }
+.file-empty { color:#94a3b8; font-size:13px }
+.link-val a { color:#2b57a0; text-decoration:none; word-break:break-all }
+.link-val a:hover { text-decoration:underline }
+
 .btn-outline { background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px; color:var(--main-color); font-weight:600 }
 .btn-primary { background: linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px; border:none; box-shadow: 0 12px 30px rgba(41,69,148,0.14); font-weight:800; letter-spacing:0.2px }
 .btn-primary.danger { background: #294594 }
+.btn-primary.small { padding:6px 10px; font-size:13px }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag-admin { background:#ffe9e9; color:#c94242 }
 .tag-mentor { background:#f6f8d1; color:#b0b900 }
 .tag-newbie { background:#f0fff6; color:#0a9a52 }
 
 .file-box { display:flex; align-items:center; justify-content:space-between; border:1px solid #eef3fb; padding:12px; border-radius:8px; background:#fff }
-.file-name { color:#10243b; font-weight:600 }
-.btn-primary.small { padding:6px 10px; font-size:13px }
-.btn-primary.danger { background: #294594 }
 .toast {
   position: fixed;
   right: 16px;
@@ -240,7 +255,7 @@ export default {
 
 @media (max-width: 640px) {
   .detail-modal { width: 100%; padding: 14px }
-  .two-cols { flex-direction:column }
-  .info-grid { grid-template-columns: 1fr }
+  .content-top { padding: 12px }
+  .dates-section { flex-direction: column; gap: 8px }
 }
 </style>

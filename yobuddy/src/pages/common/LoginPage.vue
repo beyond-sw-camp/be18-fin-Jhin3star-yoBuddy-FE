@@ -43,9 +43,9 @@
 </template>
 
 <script setup>
+import { useAuthStore } from '@/store/authStore'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/authStore'
 
 const email = ref('')
 const password = ref('')
@@ -64,6 +64,7 @@ async function onSubmit() {
 
     if (auth.isMentor) router.push('/mentor/dashboard')
     else if (auth.isAdmin) router.push('/kpi')
+    else if (auth.isUser) router.push('/user/trainings')
     else router.push('/')
 
   } catch {

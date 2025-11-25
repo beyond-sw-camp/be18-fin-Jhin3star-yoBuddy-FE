@@ -29,21 +29,11 @@
           </div>
 
           <div class="row">
-            <div class="label">부서</div>
-            <div class="val">
-              <select v-model="form.departmentId">
-                <option value="">전체 부서</option>
-                <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.departmentName || d.name }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row">
             <div class="label">첨부파일</div>
             <div class="val"><input type="file" @change="onFileChange" /></div>
           </div>
 
-          <div class="row" v-if="form.type === 'ONLINE'">
+          <div class="row" :style="{ opacity: form.type === 'OFFLINE' ? 0.66 : 1, pointerEvents: form.type === 'OFFLINE' ? 'none' : 'auto' }">
             <div class="label">온라인 URL</div>
             <div class="val"><input v-model="form.onlineUrl" type="text" /></div>
           </div>
@@ -63,11 +53,10 @@ import trainingService from '@/services/trainingService';
 
 export default {
     name: 'TrainingEdit',
-    data() { return { form: { title: '', description: '', type: 'ONLINE', departmentId: '', onlineUrl: '' }, loading: false, departments: [], file: null } },
+    data() { return { form: { title: '', description: '', type: 'ONLINE', onlineUrl: '' }, loading: false, file: null } },
     computed: { id() { return this.$route.params.id } },
-    mounted() { this.fetch(); this.loadDepartments() },
+    mounted() { this.fetch() },
     methods: {
-      async loadDepartments(){ try{ const r = await (await import('@/services/departmentService')).getDepartments(); const data = r && r.data ? r.data : []; this.departments = Array.isArray(data) ? data : (data.content||[]) }catch(e){ console.error(e) } },
       close() { this.$router.back ? this.$router.back() : this.$router.push(`/admin/trainings/${this.id}`) },
       async fetch() {
         this.loading = true
@@ -78,7 +67,6 @@ export default {
             this.form.title = t.title || ''
             this.form.description = t.description || t.summary || ''
             this.form.type = t.type || 'ONLINE'
-            this.form.departmentId = t.departmentId || ''
             this.form.onlineUrl = t.onlineUrl || t.link || ''
           }
         } catch (e) { console.error('fetch detail failed', e) }
@@ -87,7 +75,6 @@ export default {
       onFileChange(e){ this.file = e.target.files && e.target.files[0] },
       async onSubmit() {
         const payload = { title: this.form.title, description: this.form.description, type: this.form.type }
-        if(this.form.departmentId) payload.departmentId = this.form.departmentId
         if(this.form.type === 'ONLINE') payload.onlineUrl = this.form.onlineUrl || ''
         try {
           await trainingService.update(this.id, payload)
