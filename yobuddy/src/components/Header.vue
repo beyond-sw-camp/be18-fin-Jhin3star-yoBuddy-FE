@@ -111,15 +111,25 @@ export default {
 
     // breadcrumb depth 표현
     const breadcrumbs = computed(() => {
+      // special-case certain routes to show a single friendly label
+      const singleLabelRoutes = {
+        '/admin/tasks': '과제',
+        '/admin/tasks/': '과제'
+      }
+
+      if (singleLabelRoutes[route.path]) {
+        return [singleLabelRoutes[route.path]]
+      }
+
       const segments = route.path.split('/').filter(Boolean)
       const crumbs = []
       if (segments.length === 0) {
-      crumbs.push(pageTitleMap['/'])
+        crumbs.push(pageTitleMap['/'])
       } else {
-      for (let i = 0; i < segments.length; i++) {
-        const path = '/' + segments.slice(0, i + 1).join('/')
-        crumbs.push(pageTitleMap[path] || segments[i])
-      }
+        for (let i = 0; i < segments.length; i++) {
+          const path = '/' + segments.slice(0, i + 1).join('/')
+          crumbs.push(pageTitleMap[path] || segments[i])
+        }
       }
       return crumbs
     })

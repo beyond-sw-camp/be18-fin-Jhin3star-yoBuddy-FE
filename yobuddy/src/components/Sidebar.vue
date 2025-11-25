@@ -171,6 +171,12 @@ export default {
             { id: '2-1', label: '유저 관리', path: '/organization/usermanagement' },
             { id: '2-2', label: '부서 관리', path: '/organization/department' }
           ]
+        },
+        {
+          id: 3,
+      icon: assignmentIcon,
+      label: '과제',
+      path: '/admin/tasks'     
         }
       ]
 

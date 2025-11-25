@@ -34,6 +34,11 @@ const routes = [
     component: () => import('@/pages/admin/organization/department/DepartmentView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/tasks',
+    component: () => import('@/pages/admin/tasks/TaskList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
