@@ -63,10 +63,10 @@
 </template>
 
 <script>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import { useNotificationStore } from '@/store/notificationStore'
 
 export default {
@@ -98,35 +98,17 @@ export default {
       return pageTitleMap[route.path] || 'YoBuddy'
     })
 
-    // breadcrumb depth 표현 (special-case training routes to show '교육 관리' and dynamic titles)
+    // breadcrumb depth 표현
     const breadcrumbs = computed(() => {
       const segments = route.path.split('/').filter(Boolean)
       const crumbs = []
-      if (!segments.length) {
-        crumbs.push(pageTitleMap['/'] || 'Home')
-        return crumbs
-      }
-
-      // special handling for /admin/trainings/*
-      if (segments[0] === 'admin' && segments[1] === 'trainings') {
-        crumbs.push('교육 관리')
-        // /admin/trainings
-        if (segments.length === 2) return crumbs
-        // /admin/trainings/create
-        if (segments.length === 3 && segments[2] === 'create') {
-          crumbs.push('교육 등록')
-          return crumbs
+      if (segments.length === 0) {
+        crumbs.push(pageTitleMap['/'])
+      } else {
+        for (let i = 0; i < segments.length; i++) {
+          const path = '/' + segments.slice(0, i + 1).join('/')
+          crumbs.push(pageTitleMap[path] || segments[i])
         }
-        // /admin/trainings/:id or deeper - show training title from query if available
-        const last = route.query && route.query.title ? decodeURIComponent(String(route.query.title)) : segments[2]
-        crumbs.push(last)
-        return crumbs
-      }
-
-      // default behavior
-      for (let i = 0; i < segments.length; i++) {
-        const path = '/' + segments.slice(0, i + 1).join('/')
-        crumbs.push(pageTitleMap[path] || segments[i])
       }
       return crumbs
     })
@@ -158,20 +140,14 @@ export default {
     const breadcrumbLinks = computed(() => {
       const segments = route.path.split('/').filter(Boolean)
       const links = []
-      if (!segments.length) { links.push('/'); return links }
-
-      if (segments[0] === 'admin' && segments[1] === 'trainings') {
-        links.push('/admin/trainings')
-        if (segments[2]) {
-          links.push(`/admin/trainings/${segments[2]}`)
+      if (segments.length === 0) {
+        links.push('/')
+      } else {
+        let path = ''
+        for (let i = 0; i < segments.length; i++) {
+          path += '/' + segments[i]
+          links.push(path)
         }
-        return links
-      }
-
-      let path = ''
-      for (let i = 0; i < segments.length; i++) {
-        path += '/' + segments[i]
-        links.push(path)
       }
       return links
     })

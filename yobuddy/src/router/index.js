@@ -69,6 +69,11 @@ const routes = [
     component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/trainings/:id/edit',
+    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
@@ -112,11 +117,6 @@ const routes = [
     {
       path: '/user/trainings/:id',
       component: () => import('@/pages/user/training/UserTrainingDetail.vue'),
-      meta: { requiresAuth: true, userOnly: true }
-    },
-    {
-      path: '/admin/trainings/:id/edit',
-      component: () => import('@/pages/admin/training/TrainingEdit.vue'),
       meta: { requiresAuth: true, userOnly: true }
     },
 
