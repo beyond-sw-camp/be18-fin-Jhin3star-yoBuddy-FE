@@ -1,85 +1,75 @@
 import { defineStore } from 'pinia'
 import http from '@/services/http'
-
-const TOKEN_KEY = 'yb_auth_token'
-const REFRESH_KEY = 'yb_refresh_token'
+import { useNotificationStore } from '@/store/notificationStore'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    accessToken: sessionStorage.getItem(TOKEN_KEY) || null,
-    refreshToken: sessionStorage.getItem(REFRESH_KEY) || null,
-    user: null,
+    user: null
   }),
 
   getters: {
-    isAuthenticated: s => !!s.accessToken,
-    isMentor: s => s.user?.role === 'MENTOR',
-    isAdmin: s => s.user?.role === 'ADMIN',
-    isUser: s => s.user?.role === 'USER',
+    isAuthenticated: (state) => !!state.user,
+    isAdmin: (state) => state.user?.role?.trim().toUpperCase() === 'ADMIN',
+    isMentor: (state) => state.user?.role?.trim().toUpperCase() === 'MENTOR',
+    isUser: (state) => state.user?.role?.trim().toUpperCase() === 'USER'
   },
 
   actions: {
-    //-------------------------------------------
-    // 로그인
-    //-------------------------------------------
     async login(email, password) {
-      const resp = await http.post('/api/v1/auth/login', { email, password })
-      const headers = resp.headers || {}
-      const data = resp.data || {}
-
-      let access = headers['authorization'] || data.accessToken || data.token
-      if (access?.startsWith('Bearer ')) access = access.substring(7)
-
-      const refresh = headers['refresh-token'] || data.refreshToken
-
-      if (!access) throw new Error('No access token in response')
-
-      this.setTokens(access, refresh)
+      await http.post('/api/v1/auth/login', { email, password })
+      await new Promise(resolve => setTimeout(resolve, 50))
       await this.fetchMe()
+
+      // 로그인 직후 SSE 시작
+      this.initSSEAndNotifications()
     },
 
-    //-------------------------------------------
-    // 토큰 설정 (refresh 로직 포함)
-    //-------------------------------------------
-    setTokens(access, refresh) {
-      this.accessToken = access
-      this.refreshToken = refresh
-
-      sessionStorage.setItem(TOKEN_KEY, access)
-      if (refresh) sessionStorage.setItem(REFRESH_KEY, refresh)
-    },
-
-    //-------------------------------------------
-    // /account/me 조회
-    //-------------------------------------------
     async fetchMe() {
       try {
         const resp = await http.get('/api/v1/account/me')
         this.user = resp.data
       } catch (e) {
-        // 백엔드 오류나 일시적 실패일 때 즉시 로그아웃하지 않고 사용자만 비웁니다.
-        console.error('fetchMe failed', e?.response || e)
+        console.error('fetchMe failed:', e)
         this.user = null
       }
     },
 
-    //-------------------------------------------
-    // 새로고침 시 자동 로그인 유지
-    //-------------------------------------------
     async loadUser() {
-      if (this.accessToken && !this.user) {
+      if (!this.user) {
         await this.fetchMe()
       }
     },
 
-    //-------------------------------------------
-    logout() {
-      this.accessToken = null
-      this.refreshToken = null
+    async logout() {
+      try {
+        await http.post('/api/v1/auth/logout')
+      } catch (e) {
+        console.error('Logout failed', e)
+      }
+
       this.user = null
 
-      sessionStorage.removeItem(TOKEN_KEY)
-      sessionStorage.removeItem(REFRESH_KEY)
+      // SSE & 알림 정리
+      this.closeSSEAndNotifications()
+
+      window.location.href = '/login'
     },
+
+    /** 알림 초기 로드 + SSE 연결 */
+    initSSEAndNotifications() {
+      if (!this.user) return
+
+      const notificationStore = useNotificationStore()
+
+      notificationStore.fetchNotifications()
+      notificationStore.connectSSE()
+    },
+
+    /** SSE 닫고 store 비움 */
+    closeSSEAndNotifications() {
+      const notificationStore = useNotificationStore()
+      notificationStore.disconnectSSE()
+      notificationStore.$reset() // 더 깔끔한 초기화
+    }
   }
 })

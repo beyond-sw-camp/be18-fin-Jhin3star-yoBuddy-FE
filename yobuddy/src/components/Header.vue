@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="logo-section">
         <div class="logo">
-            <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
+          <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
         </div>
       </div>
       <div class="breadcrumb">
@@ -16,9 +16,9 @@
             <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
           </span>
           <router-link
-            :to="breadcrumbLinks[idx]"
-            class="page-name"
-            style="cursor:pointer; text-decoration:none; color:inherit;"
+              :to="breadcrumbLinks[idx]"
+              class="page-name"
+              style="cursor:pointer; text-decoration:none; color:inherit;"
           >
             {{ crumb }}
           </router-link>
@@ -34,10 +34,9 @@
           <span v-if="notificationCount > 0" class="badge">{{ notificationCount }}</span>
         </button>
         <NoiticePopupCard
-          v-if="showNotificationCard"
-          :notices="notices"
-          @close="showNotificationCard = false"
-          @read="markNoticeRead"
+            v-if="showNotificationCard"
+            :notices="notificationStore.notifications"
+            @close="showNotificationCard = false"
         />
       </div>
       <div class="dropdown-wrapper">
@@ -47,11 +46,11 @@
           </span>
         </button>
         <ChatbotPopupCard
-          v-if="showChatbotCard"
-          title="YoBuddy 챗봇"
-          subtitle="무엇을 도와드릴까요?"
-          icon="/default-profile.png"
-          @close="showChatbotCard = false"
+            v-if="showChatbotCard"
+            title="YoBuddy 챗봇"
+            subtitle="무엇을 도와드릴까요?"
+            icon="/default-profile.png"
+            @close="showChatbotCard = false"
         >
           <template #default>
             <div style="margin-bottom:10px;">챗봇 기능은 여기에 구현됩니다.</div>
@@ -68,6 +67,7 @@ import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useNotificationStore } from '@/store/notificationStore'
 
 export default {
   name: 'HeaderBar',
@@ -76,24 +76,13 @@ export default {
     ChatbotPopupCard
   },
   setup(props, { emit }) {
-    // ...existing code...
-    function markNoticeRead(idx) {
-      if (notices.value[idx]) {
-        notices.value[idx].read = true;
-      }
-    }
     const route = useRoute()
+    const notificationStore = useNotificationStore()
+
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-    const notices = ref([
-      { message: '새로운 공지사항이 있습니다.', time: '10:32', read: false },
-      { message: '팀 미팅이 곧 시작됩니다.', time: '09:50', read: true },
-      { message: '점심시간 안내', time: '08:30', read: false },
-      { message: '사내 이벤트가 있습니다.', time: '어제', read: true },
-      { message: '연차 신청이 승인되었습니다.', time: '2일 전', read: false },
-      { message: '보안 업데이트 안내', time: '3일 전', read: true }
-    ])
-    const notificationCount = computed(() => notices.value.filter(notice => !notice.read).length)
+
+    const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
       '/kpi': 'KPI',
@@ -188,16 +177,15 @@ export default {
     })
 
     return {
-  pageTitle,
-  notificationCount,
-  toggleMenu,
-  toggleNotifications,
-  breadcrumbs,
-  breadcrumbLinks,
-  showNotificationCard,
-  showChatbotCard,
-  notices,
-  markNoticeRead
+      pageTitle,
+      notificationCount,
+      toggleMenu,
+      toggleNotifications,
+      breadcrumbs,
+      breadcrumbLinks,
+      showNotificationCard,
+      showChatbotCard,
+      notificationStore // Expose notificationStore to template for notices
     }
   }
 }
