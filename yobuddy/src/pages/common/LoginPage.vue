@@ -43,9 +43,9 @@
 </template>
 
 <script setup>
+import { useAuthStore } from '@/store/authStore'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/authStore'
 
 const email = ref('')
 const password = ref('')
@@ -64,15 +64,9 @@ async function onSubmit() {
   try {
     await auth.login(email.value, password.value)
 
-    // 로그인 후 user가 정상적으로 세팅되어 있는지 확인
-    if (!auth.user) {
-      throw new Error('사용자 정보가 없습니다')
-    }
-
-    const role = auth.user.role?.trim()
-    if (role === 'MENTOR') router.push('/mentor/dashboard')
-    else if (role === 'ADMIN') router.push('/kpi')
-    else if (role === 'USER') router.push('/dashboard')
+    if (auth.isMentor) router.push('/mentor/dashboard')
+    else if (auth.isAdmin) router.push('/kpi')
+    else if (auth.isUser) router.push('/user/trainings')
     else router.push('/')
 
   } catch (e) {

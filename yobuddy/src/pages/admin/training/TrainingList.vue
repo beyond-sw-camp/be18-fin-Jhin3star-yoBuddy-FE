@@ -85,7 +85,7 @@ export default {
       query: '',
       typeFilter: '',
       page: 0,
-      size: 20,
+      size: 10,
       trainings: [],
       loading: false,
       searchTimer: null,

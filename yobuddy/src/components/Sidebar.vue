@@ -115,15 +115,14 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MyInfoModal from './popupcard/MyInfoModal.vue'
 
-import eduIcon from '@/assets/logo_edu.svg'
-import kpiIcon from '@/assets/logo_kpi.svg'
-import orgIcon from '@/assets/logo_org.svg'
-// removed unused imports: onboadingIcon, eduIcon
-import onboadingIcon from '@/assets/logo_onboading.svg'
 import assignmentIcon from '@/assets/icon_assigment.svg'
 import dashboardIcon from '@/assets/icon_dashboard.svg'
 import contentIcon from '@/assets/logo_content.svg'
+import eduIcon from '@/assets/logo_edu.svg'
+import kpiIcon from '@/assets/logo_kpi.svg'
 import mentoringIcon from '@/assets/logo_mentoring.svg'
+import onboadingIcon from '@/assets/logo_onboading.svg'
+import orgIcon from '@/assets/logo_org.svg'
 
 export default {
   name: "SidebarMenu",

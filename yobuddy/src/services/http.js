@@ -11,17 +11,17 @@ const http = axios.create({
 })
 
 http.interceptors.response.use(
-  res => res,
-  async (error) => {
-    const { response } = error
-    const auth = useAuthStore()
+    res => res,
+    async (error) => {
+      const { response } = error
+      const auth = useAuthStore()
 
-    if (response && [401, 403].includes(response.status)) {
-      if (auth.isAuthenticated) auth.logout()
+      if (response && [401, 403].includes(response.status)) {
+        if (auth.isAuthenticated) auth.logout()
+      }
+
+      return Promise.reject(error)
     }
-
-    return Promise.reject(error)
-  }
 )
 
 export default http

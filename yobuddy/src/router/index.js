@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/authStore'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
@@ -69,6 +69,11 @@ const routes = [
     component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/trainings/:id/edit',
+    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
@@ -103,22 +108,17 @@ const routes = [
     meta: { requiresAuth: true, adminOnly: true }
   },
 
-    // user training routes
-    // {
-    //   path: '/user/trainings',
-    //   name: 'UserTrainings',
-    //   component: () => import('@/pages/user/training/TrainingList.vue')
-    // },
-    // {
-    //   path: '/user/trainings/:id',
-    //   name: 'UserTrainingDetail',
-    //   component: () => import('@/pages/user/training/TrainingDetail.vue')
-    // },
-  {
-    path: '/admin/trainings/:id/edit',
-    component: () => import('@/pages/admin/training/TrainingEdit.vue'),
-    meta: { requiresAuth: true, adminOnly: true }
-  },
+    // --- 사용자(뉴비) 기능 ---
+    {
+      path: '/user/trainings',
+      component: () => import('@/pages/user/training/UserTrainingList.vue'),
+      meta: { requiresAuth: true, userOnly: true }
+    },
+    {
+      path: '/user/trainings/:id',
+      component: () => import('@/pages/user/training/UserTrainingDetail.vue'),
+      meta: { requiresAuth: true, userOnly: true }
+    },
 
   // --- 멘토 기능 ---
   {
@@ -163,7 +163,19 @@ router.beforeEach(async (to) => {
     }
   }
 
-  // 3) 인증 필요한 라우트 접근
+  const redirectForRole = () => {
+    if (auth.isAdmin) return '/admin/trainings'
+    if (auth.isMentor) return '/mentor/dashboard'
+    if (auth.isUser) return '/user/trainings'
+    return null
+  }
+
+  // if already logged in and user info is available, keep them off public home/login and send to role home
+  if ((to.path === '/' || to.path === '/login') && auth.isAuthenticated && auth.user) {
+    const dest = redirectForRole()
+    if (dest && dest !== to.path) return dest
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return '/login'
   }

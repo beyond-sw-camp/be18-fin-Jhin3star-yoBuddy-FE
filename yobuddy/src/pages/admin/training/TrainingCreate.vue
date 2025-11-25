@@ -31,14 +31,11 @@
           </div>
 
           <div class="form-row">
-            <label class="label">부서</label>
-            <select v-model="form.departmentName">
-              <option value="">전체 부서</option>
-              <option v-for="d in departments" :key="d.id || d.departmentId" :value="d.name || d.departmentName || d.department">{{ d.name || d.departmentName || d.department }}</option>
-            </select>
+            <label class="label">첨부파일</label>
+            <input type="file" @change="onFileChange" />
           </div>
 
-          <div class="form-row" v-if="form.type === 'ONLINE'">
+          <div class="form-row" :style="{ opacity: form.type === 'OFFLINE' ? 0.66 : 1, pointerEvents: form.type === 'OFFLINE' ? 'none' : 'auto' }">
             <label class="label">온라인 URL</label>
             <input v-model="form.onlineUrl" type="text" placeholder="https://..." />
           </div>
@@ -60,26 +57,16 @@ export default {
   name: 'TrainingCreate',
   data() {
     return {
-      form: { title: '', type: 'ONLINE', description: '', departmentName: '', onlineUrl: '' },
+      form: { title: '', type: 'ONLINE', description: '', onlineUrl: '' },
       submitting: false,
       error: null,
-      departments: []
+      file: null
     }
   },
-  mounted() {
-    this.fetchDepartments()
-  },
+  mounted() { },
   methods: {
     close() { this.$router.back ? this.$router.back() : this.$router.push('/admin/trainings') },
-    async fetchDepartments() {
-      try {
-        const userService = await import('@/services/user')
-        const list = await userService.default.getDepartments()
-        this.departments = Array.isArray(list) ? list : []
-      } catch (e) {
-        this.departments = []
-      }
-    },
+    onFileChange(e){ this.file = e.target.files && e.target.files[0] },
     async onSubmit() {
       // client-side validation
       this.error = null
@@ -88,8 +75,7 @@ export default {
       const payload = {
         title: this.form.title,
         type: this.form.type,
-        description: this.form.description,
-        departmentName: this.form.departmentName
+        description: this.form.description
       }
       if (this.form.type === 'ONLINE' && this.form.onlineUrl) payload.onlineUrl = this.form.onlineUrl
       try {
