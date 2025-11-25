@@ -51,6 +51,88 @@
           ></textarea>
         </div>
 
+        <div class="form-row attach-file-row">
+          <label class="field-label">첨부파일</label>
+            <div class="attachments-header">
+              <button
+                type="button"
+                class="file-button"
+                @click="$refs.fileInput.click()"
+              >
+                파일 선택
+              </button>
+
+              <input
+                ref="fileInput"
+                type="file"
+                class="file-hidden"
+                multiple
+                @change="onFileChange"
+              />
+            </div>
+
+          <div class="file-box">
+            <!-- 파일 선택 버튼 + 숨겨진 input -->
+
+            <!-- (수정 모드일 때) 기존 첨부파일 리스트 -->
+            <div
+              v-if="isEdit && existingFiles && existingFiles.length"
+              class="existing-file-section"
+            >
+              <div class="file-section-title"></div>
+              <ul class="file-list">
+                <li
+                  v-for="file in existingFiles"
+                  :key="file.fileId || file.id"
+                  class="file-item"
+                >
+                  <span class="file-name">
+                    {{ file.filename || file.originalName || file.originalFilename || ('파일 #' + (file.fileId || file.id)) }}
+                  </span>
+
+                  <!-- 삭제 체크박스 -->
+                  <button
+                    type="button"
+                    class="file-remove-btn"
+                    @click.stop="removeExistingFile(file, index)"
+                  >
+                    ✕
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- 새로 선택된 파일 리스트 -->
+            <div v-if="attachments && attachments.length" class="new-file-section">
+              <div class="file-section-title"></div>
+              <ul class="file-list">
+                <li
+                  v-for="(file, index) in attachments"
+                  :key="file.name + '-' + index"
+                  class="file-item"
+                >
+                  <span class="file-name">{{ file.name }}</span>
+                  <button
+                    type="button"
+                    class="file-remove-btn"
+                    @click.stop="removeAttachment(index)"
+                  >
+                    ✕
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- 아무 파일도 없을 때 안내 문구 -->
+            <div
+              v-if="!(isEdit && existingFiles && existingFiles.length) && !attachments.length"
+              class="file-empty-text"
+            >
+              첨부된 파일이 없습니다.
+            </div>
+          </div>
+        </div>
+
         <div class="button-row">
           <button type="button" class="btn-cancel" @click="onCancel">
             취소
@@ -86,6 +168,9 @@ export default {
         title: init.title || '',
         content: init.content || '',
       },
+      attachments: [],
+      existingFiles: init.files || [],
+      removeFileIds: [],
       dropdownOpen: false,
       categories: ['NORMAL', 'TRAINING', 'MENTORING', 'EVENT', 'TASK'],
     };
@@ -98,16 +183,45 @@ export default {
         this.form.type = newVal.type || 'NORMAL';
         this.form.title = newVal.title || '';
         this.form.content = newVal.content || '';
+        this.existingFiles = newVal.files || [];
+        this.removeFileIds = [];
       },
     },
   },
   methods: {
     onCancel() {
-      // 부모 컴포넌트나 라우터에서 처리하도록 이벤트만 쏴줌
-      this.$emit('cancel');
+      this.$emit('form-cancel');
     },
-    onSubmit() {
-      this.$emit('submit', { ...this.form });
+
+    onFileChange(event) {
+      const files = Array.from(event.target.files || []);
+      this.attachments.push(...files);
+      event.target.value = '';
+    },
+
+    removeExistingFile(file, index) {
+      const id = file.fileId || file.id;
+      if (id) {
+        // 중복 방지
+        if (!this.removeFileIds.includes(id)) {
+          this.removeFileIds.push(id);
+        }
+      }
+      // 화면에서 제거 (UI 상으로만)
+      this.existingFiles.splice(index, 1);
+    },
+    // ✅ X 버튼 클릭 시 해당 파일 제거
+    removeAttachment(index) {
+      this.attachments.splice(index, 1);
+    },
+    async onSubmit() {
+      this.$emit('submit', {
+        ...this.form,          // { type, title, content }
+        attachments: this.attachments,  // File 객체 배열
+        removeFileIds: this.removeFileIds,
+        isEdit: this.isEdit,
+        announcementId: this.initialData?.announcementId || null
+      });
     },
     toggleDropdown() {
       this.dropdownOpen = !this.dropdownOpen;
@@ -260,7 +374,7 @@ export default {
 
 .field-label {
   font-size: 14px;
-  color: #333;
+  color: #000000;
   margin-bottom: 8px;
 }
 
@@ -289,6 +403,113 @@ export default {
   font-size: 14px;
   resize: none;
   outline: none;
+}
+
+.form-row.attach-file-row {
+  display: flex;
+  flex-direction: row;       /* 라벨 + 버튼 한 라인 */
+  align-items: bottom;       /* 수직 정렬 */
+  justify-content: space-between;
+  flex-wrap: wrap;           /* 다음 줄로 file-box 내려가게 */
+}
+
+/* 라벨은 왼쪽 */
+.form-row.attach-file-row .field-label {
+  margin-bottom: 0;
+  margin-top: 16px;
+}
+
+/* 버튼은 오른쪽 */
+.form-row.attach-file-row .attachments-header {
+  margin-bottom: 0;
+}
+
+/* file-box는 다음 줄에서 전체 영역 차지 */
+.form-row.attach-file-row .file-box {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.file-box {
+  border: 1px solid #d0d5e5;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #fff;
+}
+
+.file-hidden {
+  display: none; /* 진짜 input 숨김 */
+}
+
+.attachments-header {
+  display: flex;
+  justify-content: flex-end; /* 오른쪽 정렬 */
+  margin-bottom: 8px;
+}
+
+/* 커스텀 버튼 */
+.file-button {
+  display: inline-block;
+  background: #294594;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.file-button:hover {
+  background: #234fcf;
+}
+
+/* 파일 선택 영역 */
+.file-list {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #444;
+}
+
+
+/* 파일 리스트 스타일 */
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 파일 한 줄 스타일 */
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+/* 파일 이름 */
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px; /* 필요에 맞게 조정 */
+}
+
+/* X 버튼 스타일 */
+.file-remove-btn {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.file-remove-btn:hover {
+  font-weight: bold;
 }
 
 /* 버튼 영역 */

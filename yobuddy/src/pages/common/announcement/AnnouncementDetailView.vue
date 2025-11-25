@@ -38,6 +38,34 @@
         <div v-html="convertedContent"></div>
       </section>
     </div>
+
+    <section
+        v-if="announcement && announcement.files && announcement.files.length > 0"
+        class="ad-attachments"
+      >
+        <div class="ad-attachments-title">첨부파일</div>
+        <ul class="ad-attachments-list">
+          <li
+            v-for="file in announcement.files"
+            :key="file.fileId || file.id"
+            class="ad-attachments-item"
+          >
+            <span class="file-name">
+              {{ file.filename || file.originalName || '첨부파일' }}
+            </span>
+            <button
+              type="button"
+              class="ad-btn ad-btn-download"
+              @click="downloadFiles(
+                file.fileId || file.id,
+                file.filename || file.originalName || '첨부파일')"
+            >
+              다운로드
+            </button>
+          </li>
+        </ul>
+      </section>
+
     <div v-if="auth.isAdmin" class="ad-action-row">
         <button type="button" class="ad-btn ad-btn-outline" @click="goEdit">
           수정
@@ -52,6 +80,7 @@
 <script>
 import announcementService from '@/services/announcementService';
 import { useAuthStore } from '@/store/authStore';
+import fileService from '@/services/fileService';
 
 export default {
   name: 'AnnouncementDetail',
@@ -110,6 +139,16 @@ export default {
         console.error("공지사항 상세 조회 실패", e);
         this.error = true;
         this.loading = false;
+        alert('공지사항 조회를 실패했습니다.');
+      }
+    },
+
+    async downloadFiles(fileId, fileNameFromList) {
+      try {
+        await fileService.downloadFiles(fileId, fileNameFromList);
+      } catch (e) {
+        console.error('첨부파일 다운로드 실패', e);
+        alert('첨부파일 다운로드 중 오류가 발생했습니다.');
       }
     },
 
@@ -265,6 +304,53 @@ export default {
 
 .ad-intro {
   margin: 0 0 18px 0;
+}
+
+.ad-attachments {
+  margin-top: 16px;
+  border: 1px solid #ffffff; /* 검은 선 */
+  border-radius: 10px;
+  padding: 12px 16px;
+  background-color: #fafafa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ad-attachments-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.ad-attachments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ad-attachments-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.ad-attachments-item:first-child {
+  border-top: none;
+}
+
+.file-name {
+  font-size: 14px;
+  color: #000000;
+  margin-right: 12px;
+}
+
+/* 다운로드 버튼은 기존 버튼 스타일 재활용 + 살짝만 변경하고 싶으면 */
+.ad-btn-download {
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: #294594;
+  color: #ffffff;
 }
 
 /* 섹션 공통 */
