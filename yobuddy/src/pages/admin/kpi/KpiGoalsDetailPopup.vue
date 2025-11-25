@@ -337,6 +337,14 @@ export default {
       this.error = null
       try {
         const payload = Object.assign({}, this.form)
+        // normalize category key names so backend receives expected field
+        // backend may expect kpiCategoryId or kpi_category_id; include both to be safe
+        if (payload.categoryId !== undefined && payload.categoryId !== null && payload.categoryId !== '') {
+          payload.kpiCategoryId = payload.categoryId
+          payload.kpi_category_id = payload.categoryId
+          // some backends expect 'category' as object/id as well
+          payload.category = payload.category || payload.categoryId
+        }
         // VALIDATION: ensure sum of weights for the department is <= 1 (allow small epsilon for float errors)
         const targetDeptId = payload.departmentId || this.form.departmentId || this.detail.departmentId || (this.detail.department && (this.detail.department.departmentId || this.detail.department.id)) || (this.goal && (this.goal.departmentId || (this.goal.department && (this.goal.department.departmentId || this.goal.department.id))))
         const weightVal = Number(payload.weight ?? this.form.weight ?? this.detail.weight ?? 0)
@@ -351,7 +359,9 @@ export default {
             return
           }
         }
-        const id = this.detail && (this.detail.id || this.detail.kpiGoalId || this.detail._id || this.detail.goalId)
+        let id = this.detail && (this.detail.id || this.detail.kpiGoalId || this.detail._id || this.detail.goalId)
+        // guard against string 'undefined' being present from parent props
+        if (id === 'undefined') id = undefined
         if (this.isNew || !id) {
           // create new goal
           try {
@@ -387,6 +397,11 @@ export default {
         }
 
         // update existing goal
+        if (!id) {
+          this.error = '업데이트할 id가 유효하지 않습니다.'
+          this.loading = false
+          return
+        }
         const resp = await kpiService.updateGoal(id, payload)
         if (resp && resp.data) {
           this.detail = resp.data && resp.data.data ? resp.data.data : resp.data

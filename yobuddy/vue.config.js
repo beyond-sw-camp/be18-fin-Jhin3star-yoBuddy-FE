@@ -1,18 +1,14 @@
-// Development proxy to forward /api requests to backend and avoid CORS in dev
-const target = process.env.VUE_APP_API_BASE || 'http://localhost:8080'
-
-const { defineConfig } = require('@vue/cli-service')
-
-module.exports = defineConfig({
-  transpileDependencies: true,
+// vue.config.js
+module.exports = {
   devServer: {
+    port: 8081, // 프론트 개발 서버 포트
     proxy: {
-      '^/api': {
-        target,
+      '/api': {
+        target: 'http://localhost:8080', // 백엔드 포트
         changeOrigin: true,
         secure: false,
-        logLevel: 'debug'
+        ws: true, // WebSocket / SSE 지원
       }
     }
   }
-})
+}

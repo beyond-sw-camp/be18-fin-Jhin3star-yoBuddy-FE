@@ -5,7 +5,7 @@
       <div class="right"></div>
     </div>
 
-    <router-link class="home-link" to="/">← Home</router-link> 
+    <router-link class="home-link" to="/">← Home</router-link>
 
     <div class="login-card">
       <div class="logo-wrap">
@@ -16,7 +16,7 @@
 
       <form class="login-form" @submit.prevent="onSubmit">
         <label class="field">
-          <span class="label-text">아이디 (이메일) </span>
+          <span class="label-text">아이디 (이메일)</span>
           <input type="email" v-model.trim="email" required placeholder="example@company.com" />
         </label>
 
@@ -43,30 +43,34 @@
 </template>
 
 <script setup>
+import { useAuthStore } from '@/store/authStore'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/authStore'
 
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
+const remember = ref(false)
+const showPassword = ref(false)
 
 const router = useRouter()
 const auth = useAuthStore()
 
 async function onSubmit() {
-  try {
-    loading.value = true
-    errorMsg.value = ''
+  loading.value = true
+  errorMsg.value = ''
 
+  try {
     await auth.login(email.value, password.value)
 
     if (auth.isMentor) router.push('/mentor/dashboard')
     else if (auth.isAdmin) router.push('/kpi')
+    else if (auth.isUser) router.push('/user/trainings')
     else router.push('/')
 
-  } catch {
+  } catch (e) {
+    console.error(e)
     errorMsg.value = '로그인 실패'
   } finally {
     loading.value = false
@@ -241,7 +245,7 @@ async function onSubmit() {
 
 .btn-submit { margin-top:8px; width:100%; height:46px; border-radius:24px; border:none; color:#fff; background: #294594; background-image: linear-gradient(90deg,#294594,#294594); font-weight:800; cursor:pointer; box-shadow: 0 12px 30px rgba(31,63,166,0.18); font-size:1rem }
 .btn-submit:active{ transform:translateY(1px) }
-.btn-submit[disabled]{ opacity:0.7; cursor:not-allowed }
+.btn-submit[disabled]{ opacity:0.7; cursor:not-allowed; }
 
 .error-msg { color: #b00020; font-weight:700; margin-top:8px; text-align:center }
 
@@ -357,3 +361,4 @@ async function onSubmit() {
 .field input:focus { outline: 2px solid rgba(41,69,148,0.12); box-shadow: 0 4px 14px rgba(41,69,148,0.06) }
 
 </style>
+

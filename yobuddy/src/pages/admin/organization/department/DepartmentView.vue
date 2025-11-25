@@ -1,4 +1,3 @@
-<!-- DepartmentManagementView.vue -->
 <template>
   <div class="department-page">
     <div class="department-content">
@@ -432,6 +431,7 @@ const onUserDelete = async (user) => {
   margin-bottom: 8px;
   font-size: 16px;
   color: #4b5674;
+  cursor: pointer;
 }
 
 .org-tree-item--active {
@@ -484,7 +484,7 @@ const onUserDelete = async (user) => {
 .header-select {
   min-width: 80px;
   padding: 6px 24px 6px 10px;
-  border-radius: 999px;
+  border-radius: 10px;
   border: 1px solid #d0d4e0;
   background-color: #f8f9ff;
   font-size: 14px;
@@ -527,6 +527,7 @@ const onUserDelete = async (user) => {
   font-size: 14px;
   padding: 6px 0;
   border-bottom: 1px solid #f3f3f3;
+  cursor: pointer;
 }
 
 .member-empty {
@@ -536,6 +537,12 @@ const onUserDelete = async (user) => {
   height: 150px;   /* 원하는 높이로 조절 가능 */
   font-size: 15px;
   color: #888;
+}
+
+.org-tree-item:hover,
+.member-row:hover {
+  cursor: pointer;
+  background-color: #f5f5f5; /* 선택사항: 살짝 배경 강조 */
 }
 
 .col-name {
