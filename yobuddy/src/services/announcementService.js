@@ -53,10 +53,40 @@ const announcementService = {
     }
   },
 
-  async updateAnnouncement(announcementId, updatedto) {
+  async updateAnnouncement(announcementId, updateDto) {
     try {
       const url = `/api/v1/admin/announcements/${announcementId}`;
-      const resp = await http.patch(url, updatedto);
+
+      const formData = new FormData();
+
+      // --- 텍스트 필드 ---
+      if (updateDto.title !== undefined) {
+        formData.append("title", updateDto.title);
+      }
+      if (updateDto.type !== undefined) {
+        formData.append("type", updateDto.type);
+      }
+      if (updateDto.content !== undefined) {
+        formData.append("content", updateDto.content);
+      }
+
+      if (updateDto.removeFileIds && updateDto.removeFileIds.length > 0) {
+        updateDto.removeFileIds.forEach(id => {
+          formData.append("removeFileIds", id);
+        });
+      }
+
+      // --- 새로 업로드할 파일 ---
+      if (updateDto.files && updateDto.files.length > 0) {
+        updateDto.files.forEach(file => {
+          formData.append("files", file);
+        });
+      }
+
+      const resp = await http.patch(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
       return resp.data;
     } catch (e) {
       console.error("공지사항 수정 실패", e);

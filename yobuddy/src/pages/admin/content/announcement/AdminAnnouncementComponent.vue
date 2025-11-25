@@ -53,51 +53,83 @@
 
         <div class="form-row attach-file-row">
           <label class="field-label">첨부파일</label>
-          <div class="attachments-header">
-            <!-- 버튼 클릭 시 ref로 파일 인풋 강제 클릭 -->
-            <button
-              type="button"
-              class="file-button"
-              @click="$refs.fileInput.click()"
-            >
-              파일 선택
-            </button>
+            <div class="attachments-header">
+              <button
+                type="button"
+                class="file-button"
+                @click="$refs.fileInput.click()"
+              >
+                파일 선택
+              </button>
 
-            <!-- 실제 파일 인풋 (숨김) -->
-            <input
-              ref="fileInput"
-              type="file"
-              class="file-hidden"
-              multiple
-              @change="onFileChange"
-            />
-          </div>
-
-          <div class="file-box">
-            <!-- 파일 선택 인풋 -->
-            <div class="file-upload-box">
-              <div v-if="attachments.length > 0" class="file-list">
-                {{ attachments.length }}개 파일 선택됨
-              </div>
+              <input
+                ref="fileInput"
+                type="file"
+                class="file-hidden"
+                multiple
+                @change="onFileChange"
+              />
             </div>
 
-            <!-- 선택된 파일 리스트 -->
-            <ul v-if="attachments && attachments.length" class="file-list">
-              <li
-                v-for="(file, index) in attachments"
-                :key="file.name + '-' + index"
-                class="file-item"
-              >
-                <span class="file-name">{{ file.name }}</span>
-                <button
-                  type="button"
-                  class="file-remove-btn"
-                  @click.stop="removeAttachment(index)"
+          <div class="file-box">
+            <!-- 파일 선택 버튼 + 숨겨진 input -->
+
+            <!-- (수정 모드일 때) 기존 첨부파일 리스트 -->
+            <div
+              v-if="isEdit && existingFiles && existingFiles.length"
+              class="existing-file-section"
+            >
+              <div class="file-section-title"></div>
+              <ul class="file-list">
+                <li
+                  v-for="file in existingFiles"
+                  :key="file.fileId || file.id"
+                  class="file-item"
                 >
-                  ✕
-                </button>
-              </li>
-            </ul>
+                  <span class="file-name">
+                    {{ file.filename || file.originalName || file.originalFilename || ('파일 #' + (file.fileId || file.id)) }}
+                  </span>
+
+                  <!-- 삭제 체크박스 -->
+                  <button
+                    type="button"
+                    class="file-remove-btn"
+                    @click.stop="removeExistingFile(file, index)"
+                  >
+                    ✕
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- 새로 선택된 파일 리스트 -->
+            <div v-if="attachments && attachments.length" class="new-file-section">
+              <div class="file-section-title"></div>
+              <ul class="file-list">
+                <li
+                  v-for="(file, index) in attachments"
+                  :key="file.name + '-' + index"
+                  class="file-item"
+                >
+                  <span class="file-name">{{ file.name }}</span>
+                  <button
+                    type="button"
+                    class="file-remove-btn"
+                    @click.stop="removeAttachment(index)"
+                  >
+                    ✕
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- 아무 파일도 없을 때 안내 문구 -->
+            <div
+              v-if="!(isEdit && existingFiles && existingFiles.length) && !attachments.length"
+              class="file-empty-text"
+            >
+              첨부된 파일이 없습니다.
+            </div>
           </div>
         </div>
 
@@ -137,6 +169,8 @@ export default {
         content: init.content || '',
       },
       attachments: [],
+      existingFiles: init.files || [],
+      removeFileIds: [],
       dropdownOpen: false,
       categories: ['NORMAL', 'TRAINING', 'MENTORING', 'EVENT', 'TASK'],
     };
@@ -149,6 +183,8 @@ export default {
         this.form.type = newVal.type || 'NORMAL';
         this.form.title = newVal.title || '';
         this.form.content = newVal.content || '';
+        this.existingFiles = newVal.files || [];
+        this.removeFileIds = [];
       },
     },
   },
@@ -162,6 +198,18 @@ export default {
       this.attachments.push(...files);
       event.target.value = '';
     },
+
+    removeExistingFile(file, index) {
+      const id = file.fileId || file.id;
+      if (id) {
+        // 중복 방지
+        if (!this.removeFileIds.includes(id)) {
+          this.removeFileIds.push(id);
+        }
+      }
+      // 화면에서 제거 (UI 상으로만)
+      this.existingFiles.splice(index, 1);
+    },
     // ✅ X 버튼 클릭 시 해당 파일 제거
     removeAttachment(index) {
       this.attachments.splice(index, 1);
@@ -170,6 +218,7 @@ export default {
       this.$emit('submit', {
         ...this.form,          // { type, title, content }
         attachments: this.attachments,  // File 객체 배열
+        removeFileIds: this.removeFileIds,
         isEdit: this.isEdit,
         announcementId: this.initialData?.announcementId || null
       });
