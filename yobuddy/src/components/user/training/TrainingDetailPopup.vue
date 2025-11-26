@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <transition name="fade">
     <div class="detail-overlay" v-if="visible">
       <div class="detail-modal layout-vertical">
@@ -13,15 +13,14 @@
             <h2 class="training-title">{{ training?.title || '교육 상세' }}</h2>
             <span :class="['status-badge', statusClass(training?.status)]">{{ statusLabel(training?.status) }}</span>
           </div>
-
-          <!-- 온라인 교육 -->
-          <template v-if="training?.type === 'ONLINE'">
-            
-
+          
           <!-- 설명 -->
           <div class="desc-section">
             <div class="desc-box">{{ training?.description || training?.summary || training?.subtitle || training?.content || '—' }}</div>
           </div>
+
+          <!-- 온라인 교육 -->
+          <template v-if="training?.type === 'ONLINE'">
 
           <!-- URL 링크 -->
             <div class="url-row">
@@ -31,7 +30,7 @@
             </div>
 
             <!-- 이수증 섹션 (상태 기반) -->
-            <div v-if="isOnlineCompleted" class="certificate-section certificate-flat">
+            <div v-if="isOnlineCompleted && hasSubmittedCertificate" class="certificate-section certificate-flat">
               <label class="file-input-label">
               <div class="file-label">이수증 제출 완료</div>
               </label>
@@ -52,11 +51,11 @@
                 <input type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
                 <span class="file-button"> 제출하기</span>
               </label>
-              <span v-if="!isOnlineCompleted" class="cert-warning">{{ certWarning }}</span>
+              <span v-if="certWarning" class="cert-warning">{{ certWarning }}</span>
             </div>
           </template>
 
-          <!-- 오프라인 교육 -->
+            <!-- 오프라인 교육 -->
           <template v-if="training?.type === 'OFFLINE'">
             <!-- 교육 일시 -->
               <div class="label-text">교육 일시</div>
@@ -64,29 +63,44 @@
        
 
             <!-- 퀴즈 응시 섹션 (상태 기반) -->
-            <div v-if="isOfflineCompleted" class="quiz-completed-section">
-              <span class="date">📝 </span>
-                <span class="quiz-label">퀴즈 응시 완료: </span>
-                <span class="quiz-date">{{ formatDateTime(training?.completedAt) }}</span>
+            <div v-if="isOfflineCompleted && isQuizSubmitted" class="quiz-completed-section">
+              <div class="quiz-left">
+                <span class="quiz-label">퀴즈 응시 완료:</span>
+                <span class="quiz-date">{{ formatDateTime(training?.submittedAt) }}</span>
+              </div>
+              <div class="quiz-right">
                 <span class="score-label">{{ training?.score }}점</span>
                 <span :class="['passing-status', isPassingScore ? 'pass' : 'fail']">
                   {{ isPassingScore ? 'PASS' : 'FAIL' }}
                 </span>
-                <span v-if="!isPassingScore" class="passing-score-info">
-                  (통과 점수: {{ training?.passingScore }}점)
-                </span>
+              </div>
+              <span v-if="isOfflineCompleted && !isPassingScore" class="passing-score-info">
+                (통과 점수: {{ training?.passingScore }}점)
+              </span>
             </div>
             <div v-else class="quiz-button-section">
-              <span class="date">📝 </span>
-              <button @click="handleQuizClick" class="quiz-button">퀴즈 응시하기</button>
+              <label class="quiz-input-label">
+                <div>
+                  <div class="quiz-label">퀴즈 응시 전</div>
+                  <span v-if="shouldShowQuizSubLabel" class="quiz-sub-label">(이메일과 알림을 확인해 주세요)</span>
+                </div>
+              </label>
             </div>
           </template>
         </section>
 
         <!-- 하단 고정 첨부파일 -->
         <div class="attachments-fixed">
-          <div class="attachment-label">첨부파일.zip</div>
-          <a href="#" class="download-btn">⬇</a>
+          <div class="attachment-label">{{ attachmentFileName }}</div>
+          <a
+            :href="attachmentFilePath || '#'"
+            class="download-btn"
+            :class="{ disabled: !attachmentFilePath }"
+            :tabindex="attachmentFilePath ? 0 : -1"
+            :aria-disabled="!attachmentFilePath"
+            target="_blank"
+            rel="noopener"
+          >⬇️</a>
         </div>
 
         <footer class="modal-actions">
@@ -127,12 +141,36 @@ export default {
     isPassingScore() {
       return this.training?.score >= this.training?.passingScore
     },
+    isQuizSubmitted() {
+      return Boolean(this.training?.submittedAt)
+    },
+    shouldShowQuizSubLabel() {
+      return this.isOfflineCompleted && !this.isQuizSubmitted
+    },
+    hasSubmittedCertificate() {
+      return Boolean(
+        this.training?.certificateFileName
+        || this.training?.certificateName
+        || this.training?.fileName
+        || this.training?.filename
+        || this.training?.certificateUrl
+      )
+    },
     submittedFileName() {
       return this.training?.certificateFileName
         || this.training?.certificateName
         || this.training?.fileName
         || this.training?.filename
         || '제출된 파일 없음'
+    },
+    attachmentFile() {
+      return (this.training?.attachedFiles && this.training.attachedFiles[0]) || null
+    },
+    attachmentFileName() {
+      return this.attachmentFile?.filename || '첨부파일.zip'
+    },
+    attachmentFilePath() {
+      return this.attachmentFile?.filepath || ''
     }
   },
   methods: {
@@ -155,16 +193,16 @@ export default {
     statusLabel(s) {
       if (!s) return '할당 전'
       const up = String(s).toUpperCase()
-      if (up === 'ACTIVE' || up === 'IN_PROGRESS') return '진행 중'
+      if (up === 'IN_PROGRESS') return '진행 중'
       if (up === 'COMPLETED') return '완료'
-      if (up === 'UPCOMING') return '예정'
+      if (up === 'PENDING') return '예정'
       return s
     },
     statusClass(s) {
       const up = String(s || '').toUpperCase()
       if (up === 'COMPLETED') return 'completed'
-      if (up === 'ACTIVE' || up === 'ONGOING') return 'active'
-      if (up === 'UPCOMING') return 'upcoming'
+      if (up === 'IN_PROGRESS') return 'in_progress'
+      if (up === 'PENDING') return 'pending'
       return 'pending'
     },
     onFileChange(e) {
@@ -314,19 +352,14 @@ export default {
   color: #0a9a52;
 }
 
-.status-badge.active {
+.status-badge.in_progress {
   background: #e9f0ff;
-  color: #294594;
-}
-
-.status-badge.upcoming {
-  background: #f6f8d1;
   color: #294594;
 }
 
 .status-badge.pending {
-  background: #e9f0ff;
-  color: #294594;
+  background: #f6f8d1;
+  color: #b0b900;
 }
 
 /* 설명 섹션 */
@@ -525,6 +558,13 @@ export default {
 
 
 /* 오프라인 교육 - 퀴즈 섹션 */
+.quiz-input-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .quiz-button-section {
   display: flex;
   margin: 16px 0;
@@ -548,18 +588,26 @@ export default {
 
 /* 퀴즈 완료 */
 .quiz-completed-section {
-  background: #f0f9ff;
-  border: 1px solid #294594;
-  border-radius: 8px;
-  padding: 12px;
-  margin: 12px 0;
-}
-
-.quiz-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 4px;
+  margin: 12px 0 4px;
+}
+
+.quiz-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.quiz-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  background: center / contain no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%239aa0af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M6 2h8l4 4v16H6z'/><path d='M14 2v6h6'/></svg>");
 }
 
 .quiz-label {
@@ -568,46 +616,63 @@ export default {
   font-size: 14px;
 }
 
+.quiz-label::before {
+  content: '📝 ';
+  font-size: 16px;
+  line-height: 1;
+}
+
+.quiz-sub-label {
+  font-weight: 500;
+  color: #294594;
+  font-size: 11px;
+}
+
 .quiz-date {
   color: #10243b;
   font-size: 13px;
 }
 
-.quiz-result {
+.quiz-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-top: 8px;
+  gap: 14px;
+  flex: 0 0 auto;
 }
 
 .score-label {
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: 600;
+  font-size: 16px;
   color: #10243b;
 }
 
 .passing-status {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .passing-status.pass {
-  background: #d4edda;
-  color: #155724;
+  background: #e5f4e7;
+  color: #2c5933;
 }
 
 .passing-status.fail {
-  background: #f8d7da;
-  color: #721c24;
+  background: #fdebec;
+  color: #9a1f2e;
 }
 
 .passing-score-info {
   font-size: 12px;
   color: #721c24;
   font-weight: 500;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+  width: 100%;
 }
 
 /* 하단 첨부파일 */
@@ -644,6 +709,12 @@ export default {
 .download-btn:hover {
   background: rgba(41, 69, 148, 0.1);
   border-radius: 4px;
+}
+
+.download-btn.disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* 버튼 영역 */

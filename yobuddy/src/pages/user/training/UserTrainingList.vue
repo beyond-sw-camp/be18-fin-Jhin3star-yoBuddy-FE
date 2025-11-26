@@ -21,7 +21,7 @@
       <section class="cards" v-if="trainings.length">
       <TrainingCard v-for="t in trainings" :key="t.id || t.title" :training="t" @open="openDetail" />
       </section>
-      <div v-else class="empty-state">표시할 교육이 없습니다.</div>
+      <div v-else class="empty-state">할당된 교육이 없습니다.</div>
     </div>
 
     <TrainingDetailPopup
