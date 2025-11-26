@@ -7,13 +7,30 @@
       </div>
 
       <div class="profile-preview">
-        <img :src="previewImage || currentProfileImage" alt="프로필" />
+        <img
+          v-if="previewImage || currentProfileImage"
+          :src="previewImage || currentProfileImage"
+          alt="프로필"
+        />
+
+        <div v-else class="default-avatar">
+          👤
+        </div>
+
         <label class="upload-btn">
           이미지 변경
           <input type="file" @change="onFileSelect" accept="image/*" hidden />
         </label>
-      </div>
 
+        <button 
+          v-if="currentProfileImage && !previewImage"
+          class="delete-btn"
+          @click="deleteProfileImage"
+        >
+          프로필 삭제
+        </button>
+      </div>
+      
       <form @submit.prevent="updateProfile">
         <div class="form-group">
           <label for="email">이메일</label>
@@ -116,6 +133,23 @@ setup(props, { emit }) {
     }
   };
 
+  const deleteProfileImage = async () => {
+    try {
+      await http.delete('/api/v1/account/me/profile-image');
+
+      alert("프로필이 삭제되었습니다.");
+
+      previewImage.value = null;
+
+      await authStore.fetchMe();
+
+    } catch (err) {
+      console.error(err);
+      alert("프로필 삭제에 실패했습니다.");
+    }
+  };
+
+
   return {
     form,
     userEmail,
@@ -123,6 +157,7 @@ setup(props, { emit }) {
     previewImage,
     onFileSelect,
     updateProfile,
+    deleteProfileImage,
   };
 }
 
@@ -248,4 +283,32 @@ setup(props, { emit }) {
   cursor: pointer;
   font-size: 0.9rem;
 }
+.default-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: #6b7280;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.delete-btn {
+  background: #e11d48;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 6px;
+  border: none;
+}
+.delete-btn:hover {
+  background: #be123c;
+}
+
 </style>
