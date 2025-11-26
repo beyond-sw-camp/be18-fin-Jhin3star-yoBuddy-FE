@@ -74,6 +74,11 @@ const routes = [
     component: () => import('@/pages/admin/training/TrainingEdit.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/trainings/results',
+    component: () => import('@/pages/admin/training/trainingresult/TrainingResultList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
