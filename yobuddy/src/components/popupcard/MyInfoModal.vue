@@ -5,23 +5,36 @@
         <h2>내 정보 수정</h2>
         <button class="close-btn" @click="$emit('close')">×</button>
       </div>
+
+      <div class="profile-preview">
+        <img :src="previewImage || currentProfileImage" alt="프로필" />
+        <label class="upload-btn">
+          이미지 변경
+          <input type="file" @change="onFileSelect" accept="image/*" hidden />
+        </label>
+      </div>
+
       <form @submit.prevent="updateProfile">
         <div class="form-group">
           <label for="email">이메일</label>
           <input type="email" id="email" :value="userEmail" disabled />
         </div>
+
         <div class="form-group">
           <label for="phoneNumber">전화번호</label>
           <input type="text" id="phoneNumber" v-model="form.phoneNumber" />
         </div>
+
         <div class="form-group">
           <label for="currentPassword">현재 비밀번호</label>
           <input type="password" id="currentPassword" v-model="form.currentPassword" placeholder="변경 시에만 입력" />
         </div>
+
         <div class="form-group">
           <label for="newPassword">새 비밀번호</label>
           <input type="password" id="newPassword" v-model="form.newPassword" placeholder="변경 시에만 입력" />
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-cancel" @click="$emit('close')">취소</button>
           <button type="submit" class="btn-save">저장</button>
@@ -32,52 +45,88 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import { useAuthStore } from '@/store/authStore'
-import userService from '@/services/user'
+import { ref, computed } from "vue";
+import { useAuthStore } from "@/store/authStore";
+import userService from "@/services/user";
+import http from "@/services/http"
 
 export default {
-  name: 'MyInfoModal',
-  emits: ['close'],
-  setup(props, { emit }) {
-    const authStore = useAuthStore()
-    const user = authStore.user
+  name: "MyInfoModal",
+  emits: ["close"],
+setup(props, { emit }) {
+  const authStore = useAuthStore();
+  const user = computed(() => authStore.user);
 
-    const form = ref({
-      phoneNumber: user ? user.phoneNumber : '',
-      currentPassword: '',
-      newPassword: '',
-    })
+  const currentProfileImage = computed(() => {
+    if (user.value?.profileImageUrl) {
+      const base = http.defaults.baseURL.replace(/\/$/, '')
+      const path = user.value.profileImageUrl.replace(/^\//, '')
+      return `${base}/${path}`
+    }
+    return null
+  })
 
-    const userEmail = computed(() => (user ? user.email : ''))
+  const form = ref({
+    phoneNumber: user.value ? user.value.phoneNumber : "",
+    currentPassword: "",
+    newPassword: "",
+  });
 
-    const updateProfile = async () => {
-      try {
-        const payload = {
-          phoneNumber: form.value.phoneNumber,
-        }
-        if (form.value.currentPassword && form.value.newPassword) {
-            payload.currentPassword = form.value.currentPassword;
-            payload.newPassword = form.value.newPassword;
-        }
+  const profileImage = ref(null);
+  const previewImage = ref(null);
 
-        await userService.updateMyInfo(payload)
-        alert('정보가 성공적으로 수정되었습니다.')
-        await authStore.fetchMe()
-        emit('close');
-      } catch (error) {
-        console.error('Failed to update profile:', error)
-        alert('정보 수정에 실패했습니다.')
+  const userEmail = computed(() => user.value?.email || "");
+
+  const onFileSelect = (e) => {
+    const file = e.target.files[0];
+    profileImage.value = file;
+
+    if (file) {
+      previewImage.value = URL.createObjectURL(file);
+    }
+  };
+
+  const updateProfile = async () => {
+    try {
+      const formData = new FormData();
+
+      const json = {
+        phoneNumber: form.value.phoneNumber,
+        currentPassword: form.value.currentPassword || null,
+        newPassword: form.value.newPassword || null,
+      };
+
+      formData.append("data",
+        new Blob([JSON.stringify(json)], { type: "application/json" })
+      );
+
+      if (profileImage.value) {
+        formData.append("profileImage", profileImage.value);
       }
-    }
 
-    return {
-      form,
-      userEmail,
-      updateProfile,
+      await userService.updateMyInfo(formData);
+
+      alert("정보가 성공적으로 수정되었습니다.");
+      await authStore.fetchMe();
+      emit("close");
+
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      alert("정보 수정에 실패했습니다.");
     }
-  },
+  };
+
+  return {
+    form,
+    userEmail,
+    currentProfileImage,
+    previewImage,
+    onFileSelect,
+    updateProfile,
+  };
 }
+
+};
 </script>
 
 <style scoped>
@@ -174,5 +223,29 @@ export default {
 .btn-save {
   background-color: #294594;
   color: white;
+}
+.profile-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.profile-preview img {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  margin-bottom: 10px;
+}
+
+.upload-btn {
+  background: #294594;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
 }
 </style>
