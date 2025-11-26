@@ -74,6 +74,17 @@ const routes = [
     component: () => import('@/pages/admin/training/TrainingEdit.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
+    path: '/admin/onboarding/programs',
+    component: () => import('@/pages/admin/onboarding/OnboardingProgramList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/onboarding/programs/:programId',
+    name: 'OnboardingProgramDetail',
+    component: () => import('@/pages/admin/onboarding/OnboardingProgramDetailPage.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
 
   // --- 멘토 기능 ---
   {
