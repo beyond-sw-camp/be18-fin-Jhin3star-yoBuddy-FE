@@ -11,7 +11,7 @@
           <!-- 제목 -->
           <div class="title-section">
             <h2 class="training-title">{{ training?.title || '교육 상세' }}</h2>
-            <span :class="['status-badge', statusClass(training?.status)]">{{ statusLabel(training?.status) }}</span>
+            <span :class="['status-badge', statusClass(displayStatus)]">{{ statusLabel(displayStatus) }}</span>
           </div>
           
           <!-- 설명 -->
@@ -39,7 +39,7 @@
                   <span class="meta-val">{{ submittedFileName }}</span>
                 </div>
                 <div class="cert-meta cert-meta-date">
-                  <span class="meta-val">{{ formatDateTime(training?.completedAt) }}</span>
+                  <span class="meta-val">{{ formatDateTime(certificateUploadedAt) }}</span>
                 </div>
                 <input type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
                 <span class="file-button">다시 제출하기</span>
@@ -88,21 +88,15 @@
             </div>
           </template>
         </section>
-
         <!-- 하단 고정 첨부파일 -->
-        <div class="attachments-fixed">
-          <div class="attachment-label">{{ attachmentFileName }}</div>
-          <a
-            :href="attachmentFilePath || '#'"
-            class="download-btn"
-            :class="{ disabled: !attachmentFilePath }"
-            :tabindex="attachmentFilePath ? 0 : -1"
-            :aria-disabled="!attachmentFilePath"
-            target="_blank"
-            rel="noopener"
-          >⬇️</a>
+        <div v-if="attachments.length" class="attachments-fixed">
+          <ul class="attachment-list">
+            <li v-for="file in attachments" :key="file.fileId || file.id" class="attachment-item">
+              <span class="attachment-name">{{ file.filename || file.originalName || file.name || '첨부파일' }}</span>
+              <button type="button" class="download-btn" @click="downloadAttachment(file)">다운로드</button>
+            </li>
+          </ul>
         </div>
-
         <footer class="modal-actions">
           <button class="btn-confirm" @click="$emit('close')">확인</button>
         </footer>
@@ -112,6 +106,7 @@
 </template>
 
 <script>
+import fileService from '@/services/fileService';
 import userTrainingService from '@/services/userTrainingService';
 import { useAuthStore } from '@/store/authStore';
 
@@ -125,12 +120,32 @@ export default {
   data() {
     return { 
       certFile: null,
-      certWarning: ''
+      certWarning: '',
+      localCertificates: [],
+      localStatus: null
     }
   },
   computed: {
+    displayStatus() {
+      const baseStatus = this.currentStatus
+      if (this.training?.type === 'ONLINE') {
+        const endDate = this.training?.endDate ? new Date(this.training.endDate) : null
+        const now = new Date()
+        const pastEnd = endDate ? now > endDate : false
+        const hasCert = this.hasSubmittedCertificate
+
+        if (pastEnd && !hasCert) return 'LATE'
+        if (pastEnd && hasCert) return 'TARDY'
+        if (!pastEnd && hasCert) return 'COMPLETED'
+      }
+      return baseStatus || 'PENDING'
+    },
+    currentStatus() {
+      return String(this.localStatus || this.training?.status || '').toUpperCase()
+    },
     isOnlineCompleted() {
-      return String(this.training?.status || '').toUpperCase() === 'COMPLETED' && this.training?.type === 'ONLINE'
+      const status = this.currentStatus
+      return (status === 'COMPLETED' || status === 'TARDY') && this.training?.type === 'ONLINE'
     },
     isOfflineCompleted() {
       return String(this.training?.status || '').toUpperCase() === 'COMPLETED' && this.training?.type === 'OFFLINE'
@@ -149,7 +164,8 @@ export default {
     },
     hasSubmittedCertificate() {
       return Boolean(
-        this.training?.certificateFileName
+        this.certificateFiles[0]?.filename
+        || this.training?.certificateFileName
         || this.training?.certificateName
         || this.training?.fileName
         || this.training?.filename
@@ -157,20 +173,35 @@ export default {
       )
     },
     submittedFileName() {
-      return this.training?.certificateFileName
+      return this.certificateFiles[0]?.filename
+        || this.training?.certificateFileName
         || this.training?.certificateName
         || this.training?.fileName
         || this.training?.filename
         || '제출된 파일 없음'
     },
-    attachmentFile() {
-      return (this.training?.attachedFiles && this.training.attachedFiles[0]) || null
+    certificateUploadedAt() {
+      return this.certificateFiles[0]?.uploadedAt || this.training?.completedAt
     },
-    attachmentFileName() {
-      return this.attachmentFile?.filename || '첨부파일.zip'
+    attachments() {
+      if (Array.isArray(this.training?.trainingFiles)) return this.training.trainingFiles
+      if (Array.isArray(this.training?.attachedFiles)) return this.training.attachedFiles
+      return []
     },
-    attachmentFilePath() {
-      return this.attachmentFile?.filepath || ''
+    certificateFiles() {
+      if (this.localCertificates.length) return this.localCertificates
+      return Array.isArray(this.training?.certificateFiles)
+        ? this.training.certificateFiles
+        : []
+    }
+  },
+  watch: {
+    training: {
+      immediate: true,
+      handler(val) {
+        this.localCertificates = Array.isArray(val?.certificateFiles) ? [...val.certificateFiles] : []
+        this.localStatus = val?.status || null
+      }
     }
   },
   methods: {
@@ -193,39 +224,38 @@ export default {
     statusLabel(s) {
       if (!s) return '할당 전'
       const up = String(s).toUpperCase()
-      if (up === 'IN_PROGRESS') return '진행 중'
+      if (up === 'ACTIVE' || up === 'IN_PROGRESS') return '진행 중'
       if (up === 'COMPLETED') return '완료'
-      if (up === 'PENDING') return '예정'
+      if (up === 'UPCOMING' || up === 'PENDING') return '예정'
+      if (up === 'LATE') return '마감'
+      if (up === 'TARDY') return '지각'
       return s
     },
     statusClass(s) {
       const up = String(s || '').toUpperCase()
+      if (up === 'LATE' || up === 'TARDY') return 'late'
       if (up === 'COMPLETED') return 'completed'
-      if (up === 'IN_PROGRESS') return 'in_progress'
-      if (up === 'PENDING') return 'pending'
+      if (up === 'ACTIVE' || up === 'IN_PROGRESS') return 'in_progress'
+      if (up === 'UPCOMING' || up === 'PENDING') return 'pending'
       return 'pending'
     },
     onFileChange(e) {
       const f = e.target.files && e.target.files[0]
       if (!f) return
       
-      if (f.type === 'application/pdf') {
-        this.certFile = f
-        this.certWarning = ''
-        this.uploadCertificate()
-      } else {
-        this.certFile = null
-        this.certWarning = 'PDF 파일만 업로드 가능합니다.'
-      }
+      this.certFile = f
+      this.certWarning = ''
+      this.uploadCertificate()
     },
     async uploadCertificate() {
       if (!this.certFile) return
       try {
         const form = new FormData()
-        form.append('file', this.certFile)
+        form.append('files', this.certFile)
+        const uploadedName = this.certFile.name
         
-        const userId = this.authStore.user?.id
-        const trainingId = this.training?.id
+        const userId = this.training?.userId || this.authStore.user?.userId || this.authStore.user?.id
+        const trainingId = this.training?.trainingId || this.training?.id
         
         if (!userId || !trainingId) {
           alert('필수 정보가 없습니다.')
@@ -234,9 +264,29 @@ export default {
         
         // 이수증 업로드 API 호출
         await userTrainingService.submitCertificate(userId, trainingId, form)
-        this.certFile = null
         this.certWarning = '이수증이 제출되었습니다.'
-        this.$emit('certificateSubmitted', this.training)
+        const nextCertificates = Array.isArray(this.certificateFiles) ? [...this.certificateFiles] : []
+        nextCertificates.unshift({
+          filename: uploadedName,
+          uploadedAt: new Date().toISOString()
+        })
+        this.localCertificates = nextCertificates
+
+        let nextStatus = this.currentStatus
+        if (this.training?.type === 'ONLINE') {
+          const endDate = this.training?.endDate ? new Date(this.training.endDate) : null
+          const now = new Date()
+          const pastEnd = endDate ? now > endDate : false
+          nextStatus = pastEnd ? 'TARDY' : 'COMPLETED'
+          this.localStatus = nextStatus
+        }
+
+        this.certFile = null
+        this.$emit('certificateSubmitted', {
+          ...this.training,
+          certificateFiles: nextCertificates,
+          status: nextStatus
+        })
       } catch (e) {
         console.error('Certificate upload failed:', e)
         this.certWarning = '이수증 제출에 실패했습니다.'
@@ -251,6 +301,20 @@ export default {
       // 퀴즈 링크로 이동
       if (this.training?.quizLink) {
         window.open(this.training.quizLink, '_blank')
+      }
+    },
+    async downloadAttachment(file) {
+      const fileId = file?.fileId || file?.id
+      const fileName = file?.filename || file?.originalName || file?.name || '첨부파일'
+      if (!fileId) {
+        alert('파일 정보가 없습니다.')
+        return
+      }
+      try {
+        await fileService.downloadFiles(fileId, fileName)
+      } catch (e) {
+        console.error('첨부파일 다운로드 실패', e)
+        alert('첨부파일 다운로드 중 오류가 발생했습니다.')
       }
     }
   }
@@ -360,6 +424,11 @@ export default {
 .status-badge.pending {
   background: #f6f8d1;
   color: #b0b900;
+}
+
+.status-badge.late {
+  background: #F8E3E2;
+  color: #AE5E62;
 }
 
 /* 설명 섹션 */
@@ -677,44 +746,59 @@ export default {
 
 /* 하단 첨부파일 */
 .attachments-fixed {
-  bottom: 68px;
-  left: 24px;
-  right: 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 3%;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
   background: #f8f9fa;
-  border-top: 1px solid #eef3fb;
-  border-bottom: 1px solid #eef3fb;
-  border-radius: 4px;
+  border: 1px solid #eef3fb;
+  border-radius: 6px;
 }
 
-.attachment-label {
+.attachment-title {
   color: #10243b;
   font-weight: 500;
+  font-size: 15px;
+}
+
+.attachment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.attachment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid #eef3fb;
+}
+
+.attachment-item:first-child {
+  border-top: none;
+}
+
+.attachment-name {
   font-size: 14px;
+  color: #10243b;
+  margin-right: 12px;
+  word-break: break-all;
 }
 
 .download-btn {
-  background: transparent;
+  background: #294594;
   border: none;
-  font-size: 18px;
+  color: #fff;
+  font-size: 13px;
   cursor: pointer;
-  color: #2b57a0;
-  padding: 4px 8px;
-  padding-right: 3%;
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 .download-btn:hover {
-  background: rgba(41, 69, 148, 0.1);
-  border-radius: 4px;
-}
-
-.download-btn.disabled {
-  color: #94a3b8;
-  cursor: not-allowed;
-  pointer-events: none;
+  background: #1f3f73;
 }
 
 /* 버튼 영역 */
