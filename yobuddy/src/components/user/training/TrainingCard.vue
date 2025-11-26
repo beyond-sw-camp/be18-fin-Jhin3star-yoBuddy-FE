@@ -54,7 +54,7 @@ export default {
       if (url) { window.open(url, '_blank') }
       else { alert('이 교육의 온라인 URL이 없습니다.') }
     },
-    statusLabel(s){ if(!s) return '상태 없음'; const up=String(s).toUpperCase(); if(up==='UPCOMING') return '예정'; if(up==='ACTIVE' || up==='IN_PROGRESS') return '진행 중'; if(up==='COMPLETED') return '완료'; return s },
+    statusLabel(s){ if(!s) return '상태 없음'; const up=String(s).toUpperCase(); if(up==='PENDING') return '예정'; if(up==='ACTIVE' || up==='IN_PROGRESS') return '진행 중'; if(up==='COMPLETED') return '완료'; return s },
     statusClass(s){ const up=String(s||'').toUpperCase(); if(up==='COMPLETED') return 'pill-complete'; if(up==='ACTIVE' || up==='PUBLISHED' || up==='IN_PROGRESS') return 'pill-active'; return 'pill-default' },
     getDisplayDate(t){
       if(!t) return ''
@@ -75,7 +75,7 @@ export default {
 .training-card{ width:330px; border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 10px 24px rgba(16,36,59,0.10); cursor:pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; border:1px solid rgba(17,24,39,0.04); }
 .training-card:hover{ transform: translateY(-4px); box-shadow:0 18px 36px rgba(16,36,59,0.16); }
 .hero{ height:160px; position:relative; display:flex; align-items:flex-start; justify-content:flex-end; padding:10px; background:#dfe9f6; }
-.badge{ position:absolute; left:14px; top:14px; background:#0c0c0c; color:#fff; padding:6px 10px; border-radius:16px; font-weight:800; font-size:13px; line-height:1.2; text-align:center; }
+.badge{ position:absolute; left:130px; top:60px; background:#0c0c0c; color:#fff; padding:6px 10px; border-radius:16px; font-weight:800; font-size:13px; line-height:1.2; text-align:center; }
 .status-pill{ padding:6px 12px; border-radius:20px; font-weight:700; font-size:13px; background:#eef3ff; color:#294594; position:absolute; right:12px; bottom:12px; box-shadow:0 6px 16px rgba(0,0,0,0.08); }
 .pill-complete{ background:#e3f7e9; color:#0a9a52 }
 .pill-active{ background:#e9f0ff; color:#294594 }
