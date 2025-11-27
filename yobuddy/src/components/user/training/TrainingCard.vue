@@ -54,8 +54,8 @@ export default {
       if (url) { window.open(url, '_blank') }
       else { alert('이 교육의 온라인 URL이 없습니다.') }
     },
-    statusLabel(s){ if(!s) return '상태 없음'; const up=String(s).toUpperCase(); if(up==='PENDING') return '예정'; if(up==='ACTIVE' || up==='IN_PROGRESS') return '진행 중'; if(up==='COMPLETED') return '완료'; return s },
-    statusClass(s){ const up=String(s||'').toUpperCase(); if(up==='COMPLETED') return 'pill-complete'; if(up==='ACTIVE' || up==='PUBLISHED' || up==='IN_PROGRESS') return 'pill-active'; return 'pill-default' },
+    statusLabel(s){ if(!s) return '상태 없음'; const up=String(s).toUpperCase(); if(up==='PENDING') return '예정'; if(up==='IN_PROGRESS') return '진행 중'; if(up==='COMPLETED') return '완료'; if(up==='MISSED') return '미이수'; return s },
+    statusClass(s){ const up=String(s||'').toUpperCase(); if(up==='PENDING') return 'pill-pending'; if(up==='COMPLETED') return 'pill-complete'; if(up==='IN_PROGRESS') return 'pill-active'; if(up==='MISSED') return 'pill-missed'; return 'pill-default' },
     getDisplayDate(t){
       if(!t) return ''
       const st = String(t.status||'').toUpperCase()
@@ -79,7 +79,9 @@ export default {
 .status-pill{ padding:6px 12px; border-radius:20px; font-weight:700; font-size:13px; background:#eef3ff; color:#294594; position:absolute; right:12px; bottom:12px; box-shadow:0 6px 16px rgba(0,0,0,0.08); }
 .pill-complete{ background:#e3f7e9; color:#0a9a52 }
 .pill-active{ background:#e9f0ff; color:#294594 }
+.pill-pending{ background:#f6f8d1; color:#b0b900 }
 .pill-default{ background:#f6f8d1; color:#b0b900 }
+.pill-missed{ background:#F8E3E2; color:#AE5E62 }
 .card-body{ padding:16px 16px 14px 16px }
 .title{ font-weight:800; color:#10243b; font-size:15px; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical }
 .subtitle{ color:#6d859a; font-size:13px; margin:6px 0 10px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical }
