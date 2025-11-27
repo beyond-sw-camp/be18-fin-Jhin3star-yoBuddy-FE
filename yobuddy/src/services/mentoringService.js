@@ -16,11 +16,24 @@ const mentoringService = {
       return [];
     }
     try {
-      // 이 API는 제공된 목록에 없었지만, 이전 코드에 존재하던 것이므로 유지합니다.
       const resp = await http.get(`/api/v1/mentors/${mentorId}/mentees`);
-      return resp.data || [];
+      return resp.data.mentees || []; // Extract the 'mentees' array
     } catch (e) {
       console.error(`멘티 목록 조회 실패 (멘토 ID: ${mentorId})`, e);
+      throw e;
+    }
+  },
+
+  async getMentorSummary(mentorId) {
+    if (!mentorId) {
+      console.error('getMentorSummary: mentorId is required');
+      return {};
+    }
+    try {
+      const resp = await http.get(`/api/v1/mentors/${mentorId}/summary`);
+      return resp.data;
+    } catch (e) {
+      console.error(`멘토 요약 정보 조회 실패 (멘토 ID: ${mentorId})`, e);
       throw e;
     }
   },
@@ -126,6 +139,34 @@ const mentoringService = {
    */
   async getAdminSessionDetails(sessionId) {
     return http.get(`/api/v1/admin/mentoring/sessions/${sessionId}`);
+  },
+
+  async getMentorSchedule(mentorId, month) {
+    if (!mentorId || !month) {
+      console.error('getMentorSchedule: mentorId and month are required');
+      return { schedules: [] };
+    }
+    try {
+      const resp = await http.get(`/api/v1/mentors/${mentorId}/schedule`, {
+        params: { month },
+      });
+      return resp.data; // Expects { schedules: [...] }
+    } catch (e) {
+      console.error(`멘토 스케줄 조회 실패 (멘토 ID: ${mentorId}, 월: ${month})`, e);
+      throw e;
+    }
+  },
+    async getMenteeOnboardingPerformance(mentorId, menteeId, from, to) {
+    const resp = await http.get(
+      `/api/v1/mentors/${mentorId}/mentees/${menteeId}/onboarding-performance`,
+      {
+        params: {
+          from,
+          to,
+        },
+      }
+    )
+    return resp.data
   },
 };
 

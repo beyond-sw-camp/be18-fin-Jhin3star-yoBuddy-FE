@@ -48,6 +48,10 @@
                 <div class="meta">
                   <div class="name">{{ s.menteeName }}</div>
                   <div class="email">{{ s.menteeEmail }}</div>
+                  <div class="training-stats" v-if="s.menteeCompletedTrainings !== undefined || s.menteePendingTrainings !== undefined">
+                    <span class="stat-item completed">완료: {{ s.menteeCompletedTrainings || 0 }}</span>
+                    <span class="stat-item pending">예정: {{ s.menteePendingTrainings || 0 }}</span>
+                  </div>
                 </div>
               </td>
               <td>{{ s.description }}</td>
@@ -254,6 +258,25 @@ export default {
 .profile-image { width: 100%; height: 100%; object-fit: cover; }
 .meta .name { font-weight:700; color:#10243b }
 .meta .email { font-size:13px; color:#6d859a }
+.training-stats {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.stat-item {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.stat-item.completed {
+  background-color: #d1fae5; /* Light green */
+  color: #059669; /* Darker green */
+}
+.stat-item.pending {
+  background-color: #fef3c7; /* Light yellow */
+  color: #92400e; /* Darker yellow */
+}
 .pagination.numeric { display:flex; gap:10px; align-items:center }
 .page-nav { background:transparent; border:none; color:#4b5563; font-size:18px; padding:8px; cursor:pointer; transition: color 0.15s ease, opacity 0.15s ease }
 .page-nav:disabled { color: #c5c9d6; opacity: 0.7; cursor: default }

@@ -35,6 +35,16 @@
             <div class="label">입사일</div>
             <div class="val">{{ formattedJoinDate }}</div>
           </div>
+
+          <div class="info-item">
+            <div class="label">완료 교육</div>
+            <div class="val">{{ user?.completedTrainings || 0 }}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="label">예정 교육</div>
+            <div class="val">{{ user?.pendingTrainings || 0 }}</div>
+          </div>
         </section>
 
         <footer class="modal-actions">
@@ -195,6 +205,7 @@ export default {
 .info-grid {
   margin-top: 20px;
   display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Changed to 2 columns */
   gap: 16px;
 }
 
