@@ -17,18 +17,26 @@
           👤
         </div>
 
-        <label class="upload-btn">
-          이미지 변경
-          <input type="file" @change="onFileSelect" accept="image/*" hidden />
-        </label>
+        <div class="profile-actions">
+          <label class="btn-upload">
+            이미지 변경
+            <input type="file" @change="onFileSelect" accept="image/*" hidden />
+          </label>
 
-        <button 
-          v-if="currentProfileImage && !previewImage"
-          class="delete-btn"
-          @click="deleteProfileImage"
-        >
-          프로필 삭제
-        </button>
+          <button 
+            v-if="currentProfileImage && !previewImage"
+            class="btn-delete"
+            @click="deleteProfileImage"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            <span>삭제</span>
+          </button>
+        </div>
       </div>
       
       <form @submit.prevent="updateProfile">
@@ -272,17 +280,29 @@ setup(props, { emit }) {
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
-.upload-btn {
-  background: #294594;
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-upload {
+  background: #3b4aa0;
   color: white;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
 }
+.btn-upload:hover {
+  background: #294594;
+}
+
 .default-avatar {
   width: 110px;
   height: 110px;
@@ -293,22 +313,27 @@ setup(props, { emit }) {
   justify-content: center;
   font-size: 48px;
   color: #6b7280;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-.delete-btn {
-  background: #e11d48;
-  color: white;
-  padding: 6px 14px;
+.btn-delete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: #ef4444;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
-  margin-top: 6px;
-  border: none;
+  font-weight: 600;
+  border: 1px solid #ef4444;
+  transition: all 0.2s;
 }
-.delete-btn:hover {
-  background: #be123c;
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: #dc2626;
+  color: #dc2626;
 }
-
 </style>
