@@ -91,7 +91,8 @@ export default {
       '/mentoring': '멘토링',
       '/education': '교육',
       '/content': '콘텐츠',
-      '/organization/usermanagement': '유저 관리'
+      '/organization/usermanagement': '유저 관리',
+      '/tasks': '과제',
     }
 
     const pageTitle = computed(() => {

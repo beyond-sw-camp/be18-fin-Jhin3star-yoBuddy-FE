@@ -220,7 +220,7 @@ export default {
       if (userRole.value === 'USER') {
         return [
           { id: 'u-1', icon: dashboardIcon, label: '대시보드', path: '/user/dashboard' },
-          { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/assignments' },
+          { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/tasks' },
           { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings', subItems: [
             { id: 'u-3-1', label: '교육 목록', path: '/user/trainings' },
             { id: 'u-3-2', label: '수강 결과', path: '/user/trainings/results' }

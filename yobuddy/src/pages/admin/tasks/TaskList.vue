@@ -121,8 +121,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import tasksService from '@/services/tasksService'
-import CreateTaskModal from '@/components/popupcard/CreateTaskModal.vue'
-import TaskDetailModal from '@/components/popupcard/TaskDetailModal.vue'
+import CreateTaskModal from '@/pages/admin/tasks/CreateTaskModal.vue'
+import TaskDetailModal from '@/pages/admin/tasks/TaskDetailModal.vue'
 import { getDepartments } from '@/services/departmentService'
 import logoSearch from '@/assets/icon_search.svg'
 
