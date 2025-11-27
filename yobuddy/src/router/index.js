@@ -60,8 +60,8 @@ const routes = [
     meta: { requiresAuth: true, adminOnly: true }
   },
   {
-    path: '/content/announcement/create',
-    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementCreateView.vue'),
+    path: '/admin/tasks',
+    component: () => import('@/pages/admin/tasks/TaskList.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
   {
@@ -117,6 +117,11 @@ const routes = [
     {
       path: '/user/trainings/:id',
       component: () => import('@/pages/user/training/UserTrainingDetail.vue'),
+      meta: { requiresAuth: true, userOnly: true }
+    },
+    {
+      path: '/user/tasks',
+      component: () => import('@/pages/user/tasks/UserTaskList.vue'),
       meta: { requiresAuth: true, userOnly: true }
     },
 
