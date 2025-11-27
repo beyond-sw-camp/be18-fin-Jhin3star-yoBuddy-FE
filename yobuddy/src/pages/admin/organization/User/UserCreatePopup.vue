@@ -21,12 +21,12 @@
             <input v-model="form.name" type="text" />
           </div>
           <div class="form-row">
-            <label class="label">비밀번호</label>
-            <input v-model="form.password" type="password" />
-          </div>
-          <div class="form-row">
             <label class="label">전화 번호</label>
             <input v-model="form.phone" type="text" />
+          </div>
+          <div class="form-row">
+            <label class="label">비밀번호</label>
+            <input v-model="form.password" type="password" />
           </div>
           <div class="form-row">
             <label class="label">비밀번호 확인</label>

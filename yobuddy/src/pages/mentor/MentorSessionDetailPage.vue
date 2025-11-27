@@ -16,12 +16,18 @@
         <div class="info-grid">
           <div class="info-group">
             <h3 class="group-title">멘티 정보</h3>
-            <dl class="info-list">
-              <dt>이름</dt>
-              <dd>{{ session.menteeName }}</dd>
-              <dt>이메일</dt>
-              <dd>{{ session.menteeEmail }}</dd>
-            </dl>
+            <div class="mentee-info-display">
+              <div class="avatar">
+                <img v-if="session.menteeProfileImageUrl" :src="getFullImageUrl(session.menteeProfileImageUrl)" alt="Mentee Profile" class="profile-image" />
+                <span v-else>{{ initials(session.menteeName) }}</span>
+              </div>
+              <dl class="info-list">
+                <dt>이름</dt>
+                <dd>{{ session.menteeName }}</dd>
+                <dt>이메일</dt>
+                <dd>{{ session.menteeEmail }}</dd>
+              </dl>
+            </div>
           </div>
           <div class="info-group">
             <h3 class="group-title">세션 정보</h3>
@@ -81,6 +87,7 @@
 <script>
 import mentoringService from "@/services/mentoringService";
 import { useAuthStore } from "@/store/authStore";
+import http from '@/services/http';
 
 export default {
   name: "MentorSessionDetailPage",
@@ -149,6 +156,16 @@ export default {
         alert("피드백 저장에 실패했습니다.");
       }
     },
+    getFullImageUrl(relativePath) {
+      if (!relativePath) return null;
+      const base = http.defaults.baseURL.replace(/\/$/, '');
+      const path = relativePath.replace(/^\//, '');
+      return `${base}/${path}`;
+    },
+    initials(name) {
+      if (!name) return ''
+      return String(name).trim().charAt(0).toUpperCase();
+    },
     formatDisplayDateTime(dateTime) {
       if (!dateTime) return "N/A";
       return new Date(dateTime).toLocaleString('ko-KR', {
@@ -199,6 +216,30 @@ export default {
   color: #10243b;
   margin-bottom: 16px;
   font-weight: 700;
+}
+.mentee-info-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.avatar {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  background: #294594;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 24px;
+  overflow: hidden;
+}
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .info-list dt {
   color: #7d93ad;

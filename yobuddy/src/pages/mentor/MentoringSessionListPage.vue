@@ -41,7 +41,10 @@
           <tbody>
             <tr v-for="s in sessions" :key="s.id" @click="openDetail(s)" style="cursor:pointer">
               <td class="name-col">
-                <div class="avatar">{{ initials(s.menteeName) }}</div>
+                <div class="avatar">
+                  <img v-if="s.menteeProfileImageUrl" :src="getFullImageUrl(s.menteeProfileImageUrl)" alt="Mentee Profile" class="profile-image" />
+                  <span v-else>{{ initials(s.menteeName) }}</span>
+                </div>
                 <div class="meta">
                   <div class="name">{{ s.menteeName }}</div>
                   <div class="email">{{ s.menteeEmail }}</div>
@@ -78,6 +81,7 @@
 <script>
 import mentoringService from "@/services/mentoringService";
 import { useAuthStore } from "@/store/authStore";
+import http from '@/services/http';
 
 export default {
   name: "MentoringSessionListPage",
@@ -124,16 +128,16 @@ export default {
 
       try {
         const response = await mentoringService.getMentoringSessions(params);
-                                                                                            
-        let filteredSessions = response.content;                                                         
-        const searchQuery = this.query.trim().toLowerCase();                                             
-        if (searchQuery) {                                                                               
-        filteredSessions = response.content.filter(s =>                                                
-        (s.menteeName && s.menteeName.toLowerCase().includes(searchQuery))                           
-        );                                                                                             
-      }                                                                                                
-                                                                                                 
-this.sessions = filteredSessions;  
+        
+        let filteredSessions = response.content;
+        const searchQuery = this.query.trim().toLowerCase();
+        if (searchQuery) {
+          filteredSessions = response.content.filter(s => 
+            (s.menteeName && s.menteeName.toLowerCase().includes(searchQuery))
+          );
+        }
+
+        this.sessions = filteredSessions;
         this.totalPages = response.totalPages;
         this.totalElements = response.totalElements;
       } catch (error) {
@@ -144,6 +148,12 @@ this.sessions = filteredSessions;
       } finally {
         this.loading = false;
       }
+    },
+    getFullImageUrl(relativePath) {
+      if (!relativePath) return null;
+      const base = http.defaults.baseURL.replace(/\/$/, '');
+      const path = relativePath.replace(/^\//, '');
+      return `${base}/${path}`;
     },
     goToCreatePage() {
       this.$router.push('/mentor/sessions/create');
@@ -240,7 +250,8 @@ this.sessions = filteredSessions;
 .tag-default { background: #e5e7eb; color: #4b5563; }
 .user-table tbody td { padding:16px 10px; vertical-align:middle; color:#123 }
 .name-col { display:flex; gap:12px; align-items:center }
-.avatar { width:36px; height:36px; border-radius:50%; background:#294594; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700 }
+.avatar { width:36px; height:36px; border-radius:50%; background:#294594; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; overflow: hidden; }
+.profile-image { width: 100%; height: 100%; object-fit: cover; }
 .meta .name { font-weight:700; color:#10243b }
 .meta .email { font-size:13px; color:#6d859a }
 .pagination.numeric { display:flex; gap:10px; align-items:center }
