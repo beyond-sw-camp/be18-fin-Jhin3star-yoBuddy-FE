@@ -27,9 +27,12 @@ const mentoringService = {
 
   /**
    * 사용자의 역할에 따라 멘토링 세션 목록을 조회합니다.
-   * @returns {Promise<Array>} 멘토링 세션 목록
+   * @param {object} [options] - 페이징 옵션
+   * @param {number} [options.page=0] - 페이지 번호
+   * @param {number} [options.size=10] - 페이지 크기
+   * @returns {Promise<object>} 멘토링 세션 목록 (페이지네이션 포함)
    */
-  async getMentoringSessions() {
+  async getMentoringSessions(options = {}) {
     const auth = useAuthStore();
     const user = auth.user;
     if (!user || !user.userId || !user.role) {
@@ -39,24 +42,43 @@ const mentoringService = {
     const { role, userId } = user;
     let url = '';
 
+    const params = {
+      page: options.page || 0,
+      size: options.size || 10,
+    };
+
+    if (options.status) {
+      params.status = options.status;
+    }
+
     switch (role.toUpperCase()) {
       case 'ADMIN':
         url = '/api/v1/admin/mentoring/sessions';
+        if (options.query) {
+          params.query = options.query;
+        }
         break;
       case 'MENTOR':
         url = `/api/v1/mentors/${userId}/sessions`;
+        if (options.query) {
+          params.query = options.query;
+        }
         break;
       case 'NEWBIE':
       case 'USER':
         url = `/api/v1/users/${userId}/mentoring/sessions`;
+        // Assuming search by mentorName for users
+        if (options.mentorName) {
+          params.mentorName = options.mentorName;
+        }
         break;
       default:
         return Promise.reject(new Error(`Unsupported role for fetching sessions: ${role}`));
     }
 
     try {
-      const resp = await http.get(url);
-      return resp.data || [];
+      const resp = await http.get(url, { params });
+      return resp.data; // 페이지네이션 객체 전체 반환
     } catch (e) {
       console.error(`멘토링 세션 조회 실패 (역할: ${role}, ID: ${userId})`, e);
       throw e;
