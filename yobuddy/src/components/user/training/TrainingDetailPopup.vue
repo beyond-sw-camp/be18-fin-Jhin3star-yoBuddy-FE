@@ -128,17 +128,7 @@ export default {
   computed: {
     displayStatus() {
       const baseStatus = this.currentStatus
-      if (this.training?.type === 'ONLINE') {
-        const endDate = this.training?.endDate ? new Date(this.training.endDate) : null
-        const now = new Date()
-        const pastEnd = endDate ? now > endDate : false
-        const hasCert = this.hasSubmittedCertificate
-
-        if (pastEnd && !hasCert) return 'LATE'
-        if (pastEnd && hasCert) return 'TARDY'
-        if (!pastEnd && hasCert) return 'COMPLETED'
-      }
-      return baseStatus || 'PENDING'
+      return baseStatus || '값 없음'
     },
     currentStatus() {
       return String(this.localStatus || this.training?.status || '').toUpperCase()
@@ -227,13 +217,12 @@ export default {
       if (up === 'ACTIVE' || up === 'IN_PROGRESS') return '진행 중'
       if (up === 'COMPLETED') return '완료'
       if (up === 'UPCOMING' || up === 'PENDING') return '예정'
-      if (up === 'LATE') return '마감'
-      if (up === 'TARDY') return '지각'
+      if (up === 'MISSED') return '미이수'
       return s
     },
     statusClass(s) {
       const up = String(s || '').toUpperCase()
-      if (up === 'LATE' || up === 'TARDY') return 'late'
+      if (up === 'MISSED' || up === 'TARDY') return 'late'
       if (up === 'COMPLETED') return 'completed'
       if (up === 'ACTIVE' || up === 'IN_PROGRESS') return 'in_progress'
       if (up === 'UPCOMING' || up === 'PENDING') return 'pending'
