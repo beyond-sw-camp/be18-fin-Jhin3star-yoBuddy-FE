@@ -47,7 +47,7 @@
             </div>
             <div v-else class="certificate-upload-section">
               <label class="file-input-label">
-              <div class="file-label">이수증 제출하기</div>
+              <div class="file-label">이수증 제출 전</div>
                 <input type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
                 <span class="file-button"> 제출하기</span>
               </label>

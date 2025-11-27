@@ -52,7 +52,7 @@ export default {
       const t = this.training || {}
       const url = t.onlineUrl || t.link || (this.isUrl(t.subtitle) ? t.subtitle : (this.isUrl(t.description) ? t.description : null))
       if (url) { window.open(url, '_blank') }
-      else { alert('이 교육의 등록된 온라인 URL이 없습니다.') }
+      else { alert('이 교육의 온라인 URL이 없습니다.') }
     },
     statusLabel(s){ if(!s) return '상태 없음'; const up=String(s).toUpperCase(); if(up==='PENDING') return '예정'; if(up==='IN_PROGRESS') return '진행 중'; if(up==='COMPLETED') return '완료'; if(up==='MISSED') return '미이수'; return s },
     statusClass(s){ const up=String(s||'').toUpperCase(); if(up==='PENDING') return 'pill-pending'; if(up==='COMPLETED') return 'pill-complete'; if(up==='IN_PROGRESS') return 'pill-active'; if(up==='MISSED') return 'pill-missed'; return 'pill-default' },
