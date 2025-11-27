@@ -41,8 +41,8 @@
                 <div class="cert-meta cert-meta-date">
                   <span class="meta-val">{{ formatDateTime(certificateUploadedAt) }}</span>
                 </div>
-                <input type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
-                <span class="file-button">다시 제출하기</span>
+                <input ref="resubmitInput" type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
+                <span class="file-button" @click="openResubmitPicker">다시 제출하기</span>
               </div>
             </div>
             <div v-else class="certificate-upload-section">
@@ -246,6 +246,12 @@ export default {
       this.certFile = f
       this.certWarning = ''
       this.uploadCertificate()
+    },
+    openResubmitPicker() {
+      const input = this.$refs && this.$refs.resubmitInput
+      if (!input) return
+      input.value = ''
+      input.click()
     },
     async uploadCertificate() {
       if (!this.certFile) return
