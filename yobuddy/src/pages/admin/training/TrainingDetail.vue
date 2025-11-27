@@ -51,14 +51,13 @@
 
           <!-- 첨부 파일 (고정위치) -->
           <div class="attachments-section">
-            <div class="label">첨부 파일</div>
-            <div class="file-box-inline">
-              <div v-if="training && training.attachments && training.attachments.length" class="file-box-inline-inner">
-                <span class="file-name">{{ training.attachments[0].name || training.attachments[0].fileName }}</span>
-                <a :href="training.attachments[0].url || '#'" class="btn-primary small" target="_blank">다운로드</a>
+            <div v-if="attachments.length" class="attachment-scroll">
+              <div v-for="file in attachments" :key="file.fileId || file.id" class="attachment-row">
+                <span class="file-name">{{ file.filename || file.originalName || file.name }}</span>
+                <button type="button" class="btn-primary small" @click="downloadAttachment(file)">다운로드</button>
               </div>
-              <div v-else class="file-empty">첨부 파일 없음</div>
             </div>
+            <div v-else class="file-empty">등록된 첨부 파일이 없습니다.</div>
           </div>
         </section>
 
@@ -74,6 +73,7 @@
 </template>
 
 <script>
+import fileService from '@/services/fileService';
 import trainingService from '@/services/trainingService';
 
 export default {
@@ -87,7 +87,14 @@ export default {
       toastTimer: null
     }
   },
-  computed: { id() { return this.$route.params.id } },
+  computed: {
+    id() { return this.$route.params.id },
+    attachments() {
+      if (Array.isArray(this.training?.attachedFiles)) return this.training.attachedFiles
+      if (Array.isArray(this.training?.trainingFiles)) return this.training.trainingFiles
+      return []
+    }
+  },
   mounted() { this.fetch(); this.handleToastQuery(); },
   methods: {
     close() { this.$router.push('/admin/trainings') },
@@ -119,17 +126,13 @@ export default {
         this.training = null
       } finally { this.loading = false }
     },
-    goEdit() { this.$router.push(`/admin/trainings/${this.id}/edit`) },
-    async onDelete() {
-      if (!confirm('해당 교육을 삭제하시겠습니까?')) return
+    formatDate(dt) {
+      if (!dt) return '-'
       try {
-        await this.$nextTick()
-        await (await import('@/services/trainingService')).default.delete(this.id)
-        this.$router.push({ path: '/admin/trainings', query: { toast: 'deleted' } })
-      } catch (e) {
-        console.error('delete failed', e)
-        alert('삭제에 실패했습니다.')
-      }
+        const d = new Date(dt)
+        if (isNaN(d.getTime())) return String(dt).slice(0,10)
+        return d.toLocaleDateString('ko-KR')
+      } catch (e) { return String(dt).slice(0,10) }
     },
     statusLabel(s) {
       if (!s) return '상태 없음'
@@ -148,13 +151,47 @@ export default {
       if (up === 'DRAFT') return 'tag-newbie'
       return 'tag-mentor'
     },
-    formatDate(dt) {
-      if (!dt) return '-'
+    goEdit() { this.$router.push(`/admin/trainings/${this.id}/edit`) },
+    async onDelete() {
+      if (!confirm('해당 교육을 삭제하시겠습니까?')) return
       try {
-        const d = new Date(dt)
-        if (isNaN(d.getTime())) return String(dt).slice(0,10)
-        return d.toLocaleDateString('ko-KR')
-      } catch (e) { return String(dt).slice(0,10) }
+        await this.$nextTick()
+        await (await import('@/services/trainingService')).default.delete(this.id)
+        this.$router.push({ path: '/admin/trainings', query: { toast: 'deleted' } })
+      } catch (e) {
+        console.error('delete failed', e)
+        alert('삭제에 실패했습니다.')
+      }
+    },
+    async downloadAttachment(file) {
+      const target = file || (this.training && this.training.attachedFiles && this.training.attachedFiles[0])
+      if (!target) return
+
+      const fileId = target.fileId || target.id
+      const fileName = target.filename || target.originalName || target.name || 'file-download'
+      const filepath = target.filepath || target.url
+
+      try {
+        if (fileId) {
+          await fileService.downloadFiles(fileId, fileName)
+          return
+        }
+
+        if (filepath) {
+          const link = document.createElement('a')
+          link.href = filepath
+          link.target = '_blank'
+          link.rel = 'noopener'
+          link.download = fileName
+          link.click()
+          return
+        }
+
+        alert('????? ????? ???????.')
+      } catch (e) {
+        console.error('?????? ????? ????', e)
+        alert('???????? ????? ?? ?????? ?????????.')
+      }
     }
   }
 }
@@ -209,11 +246,13 @@ export default {
 .prog-name { color:#4b5563; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 }
 .prog-status { padding:4px 8px; border-radius:10px; font-size:12px; font-weight:500; white-space:nowrap; margin-left: 4px }
 .prog-empty { color:#94a3b8; font-size:14px; padding: 8px }
-.attachments-section { margin-top: 12px; padding-top: 12px; border-top:1px solid #eef3fb }
+.attachments-section { margin-top: 12px; padding-top: 12px; border-top:1px solid #D8D8D8 }
 .attachments-section .label { display: block; margin-bottom: 8px }
-.file-box-inline { display:flex; gap:12px; align-items:center }
-.file-box-inline-inner { display:flex; gap:8px; align-items:center }
-.file-name { color:#10243b; font-weight:500; font-size:14px }
+.attachment-scroll { display:flex; flex-direction:column; gap:8px; max-height:192px; overflow-y:auto; padding:4px 2px; }
+.attachment-row { display:flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #eef3fb; border-radius:8px; background:#f8fbff; }
+.attachment-row .file-name { flex:1; font-size: 12px; }
+.attachment-scroll::-webkit-scrollbar { width:6px }
+.attachment-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius:6px }
 .file-empty { color:#94a3b8; font-size:13px }
 .link-val a { color:#2b57a0; text-decoration:none; word-break:break-all }
 .link-val a:hover { text-decoration:underline }
@@ -221,7 +260,7 @@ export default {
 .btn-outline { background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px; color:var(--main-color); font-weight:600 }
 .btn-primary { background: linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px; border:none; box-shadow: 0 12px 30px rgba(41,69,148,0.14); font-weight:800; letter-spacing:0.2px }
 .btn-primary.danger { background: #294594 }
-.btn-primary.small { padding:6px 10px; font-size:13px }
+.btn-primary.small { padding:6px 10px; font-size:13px; border-radius:10px }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag-admin { background:#ffe9e9; color:#c94242 }
 .tag-mentor { background:#f6f8d1; color:#b0b900 }
