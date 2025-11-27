@@ -65,9 +65,13 @@ const userService = {
 		return resp && resp.data ? resp.data : resp
 	},
 
-	async updateMyInfo(payload) {
-		const resp = await http.patch('/api/v1/account/me', payload)
-		return resp && resp.data ? resp.data : resp
+	async updateMyInfo(formData) {
+	const resp = await http.patch('/api/v1/account/me', formData, {
+		headers: {
+		'Content-Type': 'multipart/form-data'
+		}
+	})
+	return resp && resp.data ? resp.data : resp
 	}
 }
 

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <transition name="fade">
     <div class="detail-overlay" v-if="visible">
       <div class="detail-modal layout-vertical">
