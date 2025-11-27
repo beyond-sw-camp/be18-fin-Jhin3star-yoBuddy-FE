@@ -1,7 +1,30 @@
 <template>
   <div class="org-page">
-    <div class="content-card">
 
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button 
+        :class="['tab-item', { active: activeTab === 'mentees' }]" 
+        @click="setActiveTab('mentees')"
+      >
+        담당 신입
+      </button>
+      <button 
+        :class="['tab-item', { active: activeTab === 'schedule' }]" 
+        @click="setActiveTab('schedule')"
+      >
+        스케줄
+      </button>
+      <button 
+        :class="['tab-item', { active: activeTab === 'performance' }]" 
+        @click="setActiveTab('performance')"
+      >
+      온보딩 성과
+    </button>
+    </div>
+
+    <!-- Tab Content: Assigned Mentees -->
+    <div v-if="activeTab === 'mentees'" class="content-card">
       <div class="card-header">
         <div class="title-wrap">
           <h2 class="card-title">담당 신입</h2>
@@ -16,7 +39,7 @@
         <div v-if="mentees.length" class="mentee-list">
           <MenteeSummaryCard 
             v-for="m in mentees" 
-            :key="m.userId" 
+            :key="m.menteeId" 
             :mentee="m"
             @select="openMenteeDetail"
           />
@@ -25,6 +48,19 @@
           배정된 신입사원이 없습니다.
         </div>
       </div>
+    </div>
+
+    <!-- Tab Content: Mentor Schedule -->
+    <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
+      <MentorSchedule />
+    </div>
+
+    <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
+          <MenteeOnboardingPerformance
+      v-if="mentees.length && mentorId"
+      :mentor-id="mentorId"
+      :mentees="mentees"
+    />
     </div>
   </div>
 
@@ -53,6 +89,8 @@ import mentoringService from "@/services/mentoringService"
 import MenteeSummaryCard from "@/components/mentor/MenteeSummaryCard.vue"
 import MenteeRegisterPopup from "@/pages/mentor/MenteeRegisterPopup.vue"
 import MenteeDetailPopup from "@/pages/mentor/MenteeDetailPopup.vue"
+import MentorSchedule from "@/components/mentor/MentorSchedule.vue";
+import MenteeOnboardingPerformance from "@/components/mentor/MenteeOnboardingPerformance.vue"
 import { useAuthStore } from "@/store/authStore"
 import { watch } from "vue"
 
@@ -61,18 +99,22 @@ export default {
   components: { 
     MenteeSummaryCard, 
     MenteeRegisterPopup, 
-    MenteeDetailPopup 
+    MenteeDetailPopup,
+    MentorSchedule,
+    MenteeOnboardingPerformance,
   },
 
   data() {
     return {
       mentees: [],
       mentorId: null,
+      mentorSummary: {},
 
       showMenteeDetail: false,
       selectedMentee: null,
 
-      showRegister: false
+      showRegister: false,
+      activeTab: 'mentees' // Default active tab
     }
   },
 
@@ -86,6 +128,7 @@ export default {
         if (newUser) {
           this.mentorId = newUser.userId
           this.fetchMentees()
+          this.fetchMentorSummary()
         }
       },
       { immediate: true }
@@ -103,13 +146,22 @@ export default {
       }
     },
 
+    async fetchMentorSummary() {
+      if (!this.mentorId) return;
+      try {
+        this.mentorSummary = await mentoringService.getMentorSummary(this.mentorId);
+      } catch (e) {
+        console.error("멘토 요약 정보 조회 실패", e);
+        this.mentorSummary = {};
+      }
+    },
+
     openRegisterPopup() {
       this.showRegister = true
     },
 
     async openMenteeDetail(mentee) {
       try {
-        // mentee.userId 대신 mentee.menteeId를 사용하도록 수정
         const resp = await http.get(
           `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
         )
@@ -129,17 +181,98 @@ export default {
       } catch (e) {
         console.error("멘티 배정 해제 실패", e)
       }
+    },
+    setActiveTab(tabName) {
+      this.activeTab = tabName;
+      // Optionally re-fetch mentees if switching back to mentees tab
+      if (tabName === 'mentees') {
+        this.fetchMentees();
+      }
+      // MentorSchedule component handles its own fetching when rendered
     }
   }
 }
 </script>
 
 <style scoped>
-/* 스타일은 그대로 유지 */
 .org-page {
-  padding: 28px 40px;
+  padding: 28px 24px;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 1440px; /* Page Safe Width */
+  margin: 0 auto; /* Center the entire dashboard content */
+}
+
+.mentor-summary-panel {
+  width: 1100px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(9,30,66,0.08);
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 90px; /* Height: 88–96px */
+}
+
+.summary-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #294594;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #7d93ad;
+  font-weight: 500;
+}
+
+/* Tab Navigation Styles */
+.tab-navigation {
+  width: 1100px; /* Match content card width */
+  display: flex;
+  border-bottom: 1px solid #eef2f7;
+  margin-bottom: 16px; /* Space between tabs and content */
+}
+
+.tab-item {
+  background: transparent;
+  border: none;
+  padding: 15px 25px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #7d93ad;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s, border-bottom-color 0.2s;
+  min-height: 52px; /* Height: 52px */
+}
+
+.tab-item.active {
+  color: #294594;
+  font-weight: 700;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; /* Overlap with the border-bottom of tab-navigation */
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: #294594;
+  transition: width 0.2s ease-in-out;
 }
 
 .content-card {
@@ -148,6 +281,10 @@ export default {
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(9,30,66,0.08);
   overflow: hidden;
+}
+
+.mentor-schedule-tab-content {
+  width: 1100px; /* Ensure schedule component also takes full width */
 }
 
 .card-header {
@@ -182,7 +319,8 @@ export default {
 .mentee-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
+  column-gap: 18px; /* Column gap */
+  row-gap: 24px; /* Row gap: 18–24px */
 }
 
 .empty-state {

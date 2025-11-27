@@ -9,7 +9,8 @@
 
         <section class="center-area">
           <div class="avatar-large">
-            <span class="avatar-fallback-large">{{ initials }}</span>
+            <img v-if="fullProfileImageUrl" :src="fullProfileImageUrl" alt="Profile" class="profile-image-large"/>
+            <span v-else class="avatar-fallback-large">{{ initials }}</span>
           </div>
           <div class="center-name">{{ user?.name }}</div>
         </section>
@@ -33,6 +34,16 @@
           <div class="info-item">
             <div class="label">입사일</div>
             <div class="val">{{ formattedJoinDate }}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="label">완료 교육</div>
+            <div class="val">{{ user?.completedTrainings || 0 }}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="label">예정 교육</div>
+            <div class="val">{{ user?.pendingTrainings || 0 }}</div>
           </div>
         </section>
 
@@ -61,6 +72,7 @@
 
 <script>
 import { useAuthStore } from "@/store/authStore";
+import http from '@/services/http';
 
 export default {
   name: "MenteeDetailPopup",
@@ -78,6 +90,14 @@ export default {
     formattedJoinDate() {
       if (!this.user?.joinedAt) return "—"
       return this.user.joinedAt.slice(0, 10)
+    },
+    fullProfileImageUrl() {
+      if (this.user?.profileImageUrl) {
+        const base = http.defaults.baseURL.replace(/\/$/, '');
+        const path = this.user.profileImageUrl.replace(/^\//, '');
+        return `${base}/${path}`;
+      }
+      return null;
     }
   },
 
@@ -151,17 +171,28 @@ export default {
 
 .avatar-large {
   text-align: center;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #eef4ff;
+}
+
+.profile-image-large {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-fallback-large {
   display: inline-flex;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: #eef4ff;
+  width: 100%;
+  height: 100%;
   font-size: 40px;
   align-items: center;
   justify-content: center;
+  color: #294594;
 }
 
 .center-name {
@@ -174,6 +205,7 @@ export default {
 .info-grid {
   margin-top: 20px;
   display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Changed to 2 columns */
   gap: 16px;
 }
 

@@ -140,7 +140,7 @@ export default {
     /* User Info */
     const userName = computed(() => user.value?.name || "")
     const userRole = computed(() => user.value?.role || "")
-    const avatarUrl = computed(() => user.value?.avatarUrl || null)
+    const avatarUrl = computed(() => user.value?.profileImageUrl || null)
     const userEmail = computed(() => user.value?.email || "")
     const userDept = computed(() => user.value?.departmentName || "")
     const joinDate = computed(() =>
