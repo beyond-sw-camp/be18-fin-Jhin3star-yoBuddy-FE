@@ -10,6 +10,10 @@
         <div class="name">{{ mentee.name }}</div>
         <div class="email">{{ mentee.email }}</div>
         <div class="dept">{{ mentee.department }}</div>
+        <div class="training-stats">
+          <span class="stat-item completed">완료: {{ mentee.completedTrainings }}</span>
+          <span class="stat-item pending">예정: {{ mentee.pendingTrainings }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -45,6 +49,7 @@ export default {
   border-radius: 12px;
   border: 1px solid #eef2f7;
   padding: 18px 22px;
+  min-height: 140px; /* Height: ~140–150px */
 
   transition: 0.15s ease;
   cursor: pointer;
@@ -102,5 +107,28 @@ export default {
   font-weight: 600;
   color: #6d859a;
   margin-top: 2px;
+}
+
+.training-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.stat-item {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.stat-item.completed {
+  background-color: #d1fae5; /* Light green */
+  color: #059669; /* Darker green */
+}
+
+.stat-item.pending {
+  background-color: #fef3c7; /* Light yellow */
+  color: #92400e; /* Darker yellow */
 }
 </style>
