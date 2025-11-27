@@ -1,59 +1,85 @@
 <template>
-  <div class="detail-page">
-    <div class="detail-card">
-      <header class="detail-header">
-        <h2>멘토링 세션 상세</h2>
-        <button class="back-btn" @click="$router.back()">← 뒤로가기</button>
-      </header>
+  <div class="org-page">
+    <div class="content-card">
+      <div class="card-header">
+        <div class="title-wrap">
+          <h2 class="card-title">멘토링 세션 상세</h2>
+          <p class="card-sub">세션의 상세 정보 및 피드백을 관리합니다.</p>
+        </div>
+        <div class="controls">
+          <button class="btn-ghost" @click="$router.back()">← 목록으로</button>
+        </div>
+      </div>
 
       <!-- 세션 정보 표시 -->
-      <section v-if="!editMode" class="info-section">
-        <h3>멘티 정보</h3>
-        <div class="info-row"><span class="label">이름</span><span class="value">{{ session.menteeName }}</span></div>
-        <div class="info-row"><span class="label">이메일</span><span class="value">{{ session.menteeEmail }}</span></div>
-        
-        <h3 style="margin-top: 30px;">세션 정보</h3>
-        <div class="info-row"><span class="label">예약 날짜</span><span class="value">{{ formatDisplayDateTime(session.scheduledAt) }}</span></div>
-        <div class="info-row">
-          <span class="label">상태</span>
-          <span class="value">
-            <span :class="['status-tag', getStatusClass(session.status)]">
-              {{ getStatusText(session.status) }}
-            </span>
-          </span>
+      <div v-if="!editMode" class="card-body">
+        <div class="info-grid">
+          <div class="info-group">
+            <h3 class="group-title">멘티 정보</h3>
+            <div class="mentee-info-display">
+              <div class="avatar">
+                <img v-if="session.menteeProfileImageUrl" :src="getFullImageUrl(session.menteeProfileImageUrl)" alt="Mentee Profile" class="profile-image" />
+                <span v-else>{{ initials(session.menteeName) }}</span>
+              </div>
+              <dl class="info-list">
+                <dt>이름</dt>
+                <dd>{{ session.menteeName }}</dd>
+                <dt>이메일</dt>
+                <dd>{{ session.menteeEmail }}</dd>
+              </dl>
+            </div>
+          </div>
+          <div class="info-group">
+            <h3 class="group-title">세션 정보</h3>
+            <dl class="info-list">
+              <dt>예약 날짜</dt>
+              <dd>{{ formatDisplayDateTime(session.scheduledAt) }}</dd>
+              <dt>상태</dt>
+              <dd>
+                <span :class="['tag', getStatusClass(session.status)]">
+                  {{ getStatusText(session.status) }}
+                </span>
+              </dd>
+            </dl>
+          </div>
         </div>
-        <div class="info-row"><span class="label">멘토 피드백</span><span class="value memo">{{ session.feedback || "아직 피드백이 작성되지 않았습니다." }}</span></div>
-      </section>
+        <div class="info-group feedback-group">
+          <h3 class="group-title">멘토 피드백</h3>
+          <p class="feedback-content">{{ session.feedback || "아직 피드백이 작성되지 않았습니다." }}</p>
+        </div>
+      </div>
 
       <!-- 피드백 수정 폼 -->
-      <section v-else class="form-section">
-        <div class="form-row">
-          <label for="session-status">세션 상태</label>
-          <select id="session-status" v-model="form.status">
-            <option value="SCHEDULED">예정</option>
-            <option value="COMPLETED">완료</option>
-            <option value="NO_SHOW">불참</option>
-            <option value="CANCELLED">취소</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="session-datetime">멘토링 일정</label>
-          <input id="session-datetime" type="datetime-local" v-model="form.scheduledAt" />
+      <div v-else class="card-body">
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="session-status">세션 상태</label>
+            <select id="session-status" v-model="form.status" class="form-input">
+              <option value="SCHEDULED">예정</option>
+              <option value="COMPLETED">완료</option>
+              <option value="NO_SHOW">불참</option>
+              <option value="CANCELLED">취소</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="session-datetime">멘토링 일정</label>
+            <input id="session-datetime" type="datetime-local" v-model="form.scheduledAt" class="form-input" />
+          </div>
         </div>
         <div class="form-row">
           <label for="session-feedback">피드백</label>
-          <textarea id="session-feedback" v-model="form.feedback" rows="5" placeholder="피드백을 입력하세요."></textarea>
+          <textarea id="session-feedback" v-model="form.feedback" rows="6" placeholder="피드백을 입력하세요." class="form-textarea"></textarea>
         </div>
-      </section>
+      </div>
 
       <!-- 버튼 영역 -->
-      <footer class="detail-footer">
+      <div class="card-footer">
         <button v-if="!editMode" class="btn-primary" @click="enterEditMode">피드백 작성/수정</button>
         <template v-if="editMode">
-          <button class="btn-outline" @click="cancelEdit">취소</button>
+          <button class="btn-ghost" @click="cancelEdit">취소</button>
           <button class="btn-primary" @click="saveFeedback">피드백 저장</button>
         </template>
-      </footer>
+      </div>
     </div>
   </div>
 </template>
@@ -61,6 +87,7 @@
 <script>
 import mentoringService from "@/services/mentoringService";
 import { useAuthStore } from "@/store/authStore";
+import http from '@/services/http';
 
 export default {
   name: "MentorSessionDetailPage",
@@ -115,7 +142,6 @@ export default {
     },
     async saveFeedback() {
       try {
-        // attended 필드 대신 status 필드를 전송
         const feedbackData = {
           status: this.form.status,
           feedback: this.form.feedback,
@@ -124,11 +150,21 @@ export default {
         await mentoringService.submitSessionFeedback(this.mentorId, this.sessionId, feedbackData);
         alert("피드백이 저장되었습니다.");
         this.editMode = false;
-        await this.fetchSessionDetails(); // 정보 새로고침
+        await this.fetchSessionDetails();
       } catch (e) {
         console.error("피드백 저장 실패", e);
         alert("피드백 저장에 실패했습니다.");
       }
+    },
+    getFullImageUrl(relativePath) {
+      if (!relativePath) return null;
+      const base = http.defaults.baseURL.replace(/\/$/, '');
+      const path = relativePath.replace(/^\//, '');
+      return `${base}/${path}`;
+    },
+    initials(name) {
+      if (!name) return ''
+      return String(name).trim().charAt(0).toUpperCase();
     },
     formatDisplayDateTime(dateTime) {
       if (!dateTime) return "N/A";
@@ -141,10 +177,10 @@ export default {
     },
     getStatusClass(status) {
       const classMap = {
-        SCHEDULED: 'scheduled',
-        COMPLETED: 'completed',
-        NO_SHOW: 'noshow',
-        CANCELLED: 'cancelled'
+        SCHEDULED: 'tag-newbie',
+        COMPLETED: 'tag-admin',
+        NO_SHOW: 'tag-mentor',
+        CANCELLED: 'tag-default'
       };
       return classMap[status] || 'default';
     }
@@ -153,32 +189,117 @@ export default {
 </script>
 
 <style scoped>
-.detail-page { display: flex; justify-content: center; padding: 40px; }
-.detail-card { width: 800px; background: white; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
-.detail-header { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid #f1f1f1; }
-.detail-header h2 { margin: 0; font-size: 20px; }
-.info-section, .form-section { padding: 24px; }
-.info-section h3 { font-size: 18px; margin-top: 0; margin-bottom: 14px; }
-.info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f1f1; }
-.label { color: #6b7280; font-weight: 700; }
-.value { font-weight: 500; }
-.memo { white-space: pre-wrap; text-align: right; }
+/* Common styles from list page */
+.org-page { padding: 28px 40px; display:flex; justify-content:center; }
+.content-card { width: 1100px; max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(9,30,66,0.08); overflow: hidden; }
+.card-header { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; padding: 20px 28px; border-bottom: 1px solid #eef2f7; flex-wrap:wrap; }
+.title-wrap { display:flex; flex-direction:column; gap:4px; }
+.card-title { margin:0; font-size:20px; color:#10243b }
+.card-sub { margin: 4px 0 0; color:#7d93ad; font-size:13px }
+.controls { display:flex; gap:12px; align-items:center; }
+.btn-primary { background:#294594; color:#fff; padding:10px 16px; border-radius:10px; border:none; cursor:pointer; font-weight: 600; }
+.btn-ghost { background: transparent; border: 1px solid #e6eef8; color: #294594; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight: 600; }
+.card-body { padding: 28px 32px; }
+.card-footer { padding: 20px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:center; gap: 12px; }
 
-.form-row { margin-bottom: 20px; }
-.form-section label { display: block; font-size: 14px; color: #6d859a; margin-bottom: 8px; font-weight: 600; }
-.form-section input[type="datetime-local"], .form-section textarea, .form-section select {
-  width: 100%; padding: 12px 14px; border: 1px solid #dde4ee; border-radius: 8px; font-size: 15px;
+/* Detail page specific styles */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+.group-title {
+  font-size: 16px;
+  color: #10243b;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+.mentee-info-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.avatar {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  background: #294594;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 700;
+  font-size: 24px;
+  overflow: hidden;
+}
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.info-list dt {
+  color: #7d93ad;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.info-list dd {
+  color: #10243b;
+  font-size: 15px;
+  font-weight: 500;
+  margin-left: 0;
+  margin-bottom: 16px;
+}
+.info-list dd:last-of-type {
+  margin-bottom: 0;
+}
+.feedback-content {
+  white-space: pre-wrap;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.6;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  min-height: 100px;
 }
 
-.detail-footer { padding: 24px; border-top: 1px solid #f1f1f1; display: flex; justify-content: flex-end; gap: 12px; }
-.btn-primary { background: #294594; color: white; padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; }
-.btn-outline { background: transparent; border: 1px solid #d0d7e2; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.back-btn { background: transparent; border: 1px solid #d0d7e2; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+/* Form styles */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.form-row {
+  display: flex;
+  flex-direction: column;
+}
+.form-row label {
+  font-size: 14px;
+  color: #334155;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6eef8;
+  background: #f8fbff;
+  font-size: 15px;
+}
+.form-textarea {
+  resize: vertical;
+}
 
-.status-tag { padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 700; text-align: center; }
-.status-tag.completed { background: #d1fae5; color: #059669; }
-.status-tag.scheduled { background: #fef3c7; color: #92400e; }
-.status-tag.noshow { background: #fee2e2; color: #b91c1c; }
-.status-tag.cancelled { background: #e5e7eb; color: #4b5563; }
-.status-tag.default { background: #e5e7eb; color: #4b5563; }
+/* Tag styles from list page */
+.tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700; display: inline-block; }
+.tag-admin { background:#ffe9e9; color:#c94242 }
+.tag-mentor { background:#f6f8d1; color:#b0b900 }
+.tag-newbie { background:#f0fff6; color:#0a9a52 }
+.tag-default { background: #e5e7eb; color: #4b5563; }
 </style>
