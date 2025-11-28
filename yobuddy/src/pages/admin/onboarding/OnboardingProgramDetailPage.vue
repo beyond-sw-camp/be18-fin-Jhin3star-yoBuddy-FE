@@ -8,7 +8,8 @@
     </header>
     <div class="calendar-and-list">
       <section class="calendar-area">
-        <div class="calendar-wrapper" @wheel.prevent @touchmove.prevent>
+        <div class="calendar-wrapper" style="overflow: hidden; position: relative;">
+        <div ref="calendarBlocker" class="calendar-blocker" aria-hidden="true"></div>
         <CalendarView
           :show-date="calendarShowDate"
           :items="calendarItems"
@@ -86,22 +87,47 @@
             <div class="card-title">KPI 점수</div>
             <div class="card-body chart-placeholder">&nbsp;</div>
           </div>
-          <div class="card list-card">
+          <div class="card list-card mentors-card">
             <div class="card-title">멘토 목록</div>
             <div class="card-body">
-              <ul class="people-list">
-                <li v-if="!program?.mentors || program.mentors.length === 0" class="empty">멘토 정보 없음</li>
-                <li v-else v-for="(m, i) in program.mentors" :key="m.id || i">{{ m.name || m.fullName || m }}</li>
-              </ul>
+                <ul class="people-list">
+                  <li v-if="mentorDisplayList.length === 0" class="empty">멘토 정보 없음</li>
+                  <li v-else v-for="(mentor, i) in mentorDisplayList" :key="mentor.id || i">
+                    <div class="person-row" @click="openUserDetail(mentor)">
+                      <div class="avatar">{{ initials(mentor.name || mentor.label) }}</div>
+                      <div class="meta">
+                        <div class="name">{{ mentor.name || mentor.label }}</div>
+                        <div class="email">{{ mentor.email || '' }}</div>
+                      </div>
+                      <div class="right">
+                        <div class="dept">{{ mentor.department || '' }}</div>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
             </div>
           </div>
-          <div class="card list-card">
-            <div class="card-title">멘티 목록</div>
+          <div class="card list-card mentees-card">
+            <div class="card-title">멘티 목록
+              <button class="btn-add-mentee" @click="onAddMentee" title="멘티 추가">+</button>
+            </div>
             <div class="card-body">
-              <ul class="people-list">
-                <li v-if="!program?.mentees || program.mentees.length === 0" class="empty">멘티 정보 없음</li>
-                <li v-else v-for="(m, i) in program.mentees" :key="m.id || i">{{ m.name || m.fullName || m }}</li>
-              </ul>
+                <ul class="people-list">
+                  <li v-if="menteeDisplayList.length === 0" class="empty">멘티 정보 없음</li>
+                  <li v-else v-for="(mentee, i) in menteeDisplayList" :key="mentee.id || i">
+                    <div class="person-row" @click="openUserDetail(mentee)">
+                      <div class="avatar">{{ initials(mentee.name || mentee.label) }}</div>
+                      <div class="meta">
+                        <div class="name">{{ mentee.name || mentee.label }}</div>
+                        <div class="email">{{ mentee.email || '' }}</div>
+                      </div>
+                      <div class="right">
+                        <div class="dept">{{ mentee.department || '' }}</div>
+                        <div class="join">{{ mentee.joinDate ? (String(mentee.joinDate)).slice(0,10) : '' }}</div>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
             </div>
           </div>
         </div>
@@ -109,6 +135,20 @@
     </section>
 
     <!-- simplified UI: no per-day modal; use schedule popup on date click -->
+    <UserDetailpopup
+      :show="showUserDetail"
+      :user="selectedUser"
+      @close="showUserDetail = false"
+      @saved="onUserSaved"
+    />
+
+    <OnboardingProgramAddUserPopup
+      :visible="showAddMenteeModal"
+      :initial-selected="menteeProfiles"
+      @close="showAddMenteeModal = false"
+      @added="onAddMenteeConfirmed"
+      @confirm="onModalConfirmed"
+    />
 
     <OnboardingSetschedulePopup
       :visible="showSetScheduleModal"
@@ -124,12 +164,16 @@
 
 <script>
 import { CalendarView, CalendarViewHeader } from 'vue-simple-calendar'
+import 'vue-simple-calendar/dist/vue-simple-calendar.css'
 import http from '@/services/http'
-import OnboardingSetschedulePopup from '@/pages/admin/onboarding/onboardingSetschedulePopup.vue'
+import userService from '@/services/user'
+import OnboardingSetschedulePopup from '@/pages/admin/onboarding/OnboardingSetschedulePopup.vue'
+import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue'
+import OnboardingProgramAddUserPopup from '@/pages/admin/onboarding/OnboardingProgramAddUserPopup.vue'
 
 export default {
   name: 'OnboardingProgramDetailPage',
-  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup },
+  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup, UserDetailpopup, OnboardingProgramAddUserPopup },
   data() {
     return {
       programId: this.$route.params.programId || null,
@@ -137,8 +181,14 @@ export default {
       internalShowDate: new Date(),
       trainings: [],
       selectedDate: null,
-        showSetScheduleModal: false,
-        showDebug: true,
+      showSetScheduleModal: false,
+      showDebug: true,
+      enrollments: [],
+      mentorProfiles: [],
+      showAddMenteeModal: false,
+      showUserDetail: false,
+      selectedUser: null,
+      menteeProfiles: [],
     }
   },
   computed: {
@@ -213,8 +263,7 @@ export default {
       const endKey = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
       map[endKey] = (map[endKey] || []).concat(['program-end'])
       return map
-    }
-    ,
+    },
     // date => count map computed from trainings/allDayItems to avoid repeated parsing
     dateCountMap() {
       const map = {}
@@ -228,6 +277,14 @@ export default {
         map[key] = (map[key] || 0) + 1
       })
       return map
+    },
+    mentorDisplayList() {
+      if (this.mentorProfiles && this.mentorProfiles.length) return this.mentorProfiles
+      return this.normalizeProgramPeople(this.program?.mentors)
+    },
+    menteeDisplayList() {
+      if (this.menteeProfiles && this.menteeProfiles.length) return this.menteeProfiles
+      return this.normalizeProgramPeople(this.program?.mentees)
     }
   },
   watch: {
@@ -235,6 +292,7 @@ export default {
       immediate: true,
       handler(v) {
         this.programId = v
+        console.log('[Onboarding] route param programId changed', v)
         this.loadProgram()
       }
     }
@@ -260,28 +318,113 @@ export default {
     }
   },
   mounted() {
+    console.log('[Onboarding] mounted - programId', this.programId)
     // ensure badges are applied when component first appears
     this.$nextTick(() => {
       try { this.applyDomBadges() } catch (e) { /* ignore */ }
     })
     // re-apply badges on window resize (layout may change)
     window.addEventListener('resize', this.applyDomBadges)
+    // Block calendar element from reacting to wheel/touch gestures that navigate by week
+    try {
+      // use a handler that prevents default and stops propagation; attach as non-passive so preventDefault works
+      this._calendarWheelHandler = (e) => {
+        try {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault()
+        } catch (err) { /* ignore */ }
+        try { if (e && typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation() } catch (err) { /* ignore */ }
+      }
+      const rootEl = this.$el && this.$el.querySelector && this.$el.querySelector('.calendar-wrapper')
+      const innerEl = this.$el && this.$el.querySelector && this.$el.querySelector('.calendar-area ::v-deep .cv-wrapper')
+      // attach to both wrapper and inner calendar if available
+      if (rootEl) {
+        rootEl.addEventListener('wheel', this._calendarWheelHandler, { capture: true, passive: false })
+        rootEl.addEventListener('touchmove', this._calendarWheelHandler, { capture: true, passive: false })
+      }
+      // try to attach to cv-wrapper (library DOM) if present
+      const cv = this.$el && this.$el.querySelector && (this.$el.querySelector('.cv-wrapper') || (innerEl && innerEl.parentElement))
+      if (cv) {
+        cv.addEventListener('wheel', this._calendarWheelHandler, { capture: true, passive: false })
+        cv.addEventListener('touchmove', this._calendarWheelHandler, { capture: true, passive: false })
+      }
+      // overlay blocker (stronger) - if element injected in template exists, attach direct handlers
+      // Note: do NOT attach pointer/pointerdown handlers to the visual overlay.
+      // The overlay element exists only to positionally cover the calendar when
+      // needed, but it must allow clicks to pass through so date selection still
+      // works. We rely on root+document-level wheel/touchmove handlers to block
+      // scroll-based week navigation instead.
+      // also attach a document-level blocker to catch events the library may listen for elsewhere
+      this._documentCalendarBlocker = (e) => {
+        try {
+          const path = e.composedPath ? e.composedPath() : (e.path || [])
+          // if any element in the event path is inside our calendar-area, block
+          const hit = Array.from(path || []).some(el => {
+            try { return el && el.classList && (el.classList.contains && el.classList.contains('calendar-area') || el.classList.contains('cv-wrapper') || el.classList.contains('calendar-wrapper')) } catch (err) { return false }
+          })
+          if (!hit) {
+            // fallback: check target.closest
+            const tgt = e.target || (e.srcElement || null)
+            if (tgt && tgt.closest) {
+              const found = tgt.closest && (tgt.closest('.calendar-area') || tgt.closest('.cv-wrapper') || tgt.closest('.calendar-wrapper'))
+              if (!found) return
+            } else {
+              return
+            }
+          }
+          if (e && typeof e.preventDefault === 'function') e.preventDefault()
+          if (e && typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
+        } catch (err) {
+          /* ignore */
+        }
+      }
+      document.addEventListener('wheel', this._documentCalendarBlocker, { capture: true, passive: false })
+      document.addEventListener('touchmove', this._documentCalendarBlocker, { capture: true, passive: false })
+    } catch (err) {
+      console.debug('[Onboarding] failed to attach calendar wheel blocker', err)
+    }
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.applyDomBadges)
+    try {
+      const el = this.$el && this.$el.querySelector && this.$el.querySelector('.calendar-wrapper')
+      if (el && this._calendarWheelHandler) {
+        el.removeEventListener('wheel', this._calendarWheelHandler, { capture: true })
+        el.removeEventListener('touchmove', this._calendarWheelHandler, { capture: true })
+      }
+      const cv = this.$el && this.$el.querySelector && (this.$el.querySelector('.cv-wrapper') || this.$el.querySelector('.calendar-area ::v-deep .cv-wrapper'))
+      if (cv && this._calendarWheelHandler) {
+        cv.removeEventListener('wheel', this._calendarWheelHandler, { capture: true })
+        cv.removeEventListener('touchmove', this._calendarWheelHandler, { capture: true })
+      }
+      // overlay had no pointer handlers attached (clicks must be allowed through)
+      if (this._documentCalendarBlocker) {
+        document.removeEventListener('wheel', this._documentCalendarBlocker, { capture: true })
+        document.removeEventListener('touchmove', this._documentCalendarBlocker, { capture: true })
+      }
+    } catch (err) {
+      console.debug('[Onboarding] failed to remove calendar wheel blocker', err)
+    }
   },
   methods: {
+    initials(name) {
+      if (!name) return ''
+      const parts = String(name).split('')
+      return parts.slice(0,2).join('')
+    },
     goBack() {
       this.$router.push('/admin/onboarding/programs')
     },
     async loadProgram() {
       if (!this.programId) return
       try {
+        console.log('[Onboarding] loadProgram start for', this.programId)
         const resp = await http.get(`/api/v1/admin/programs/${this.programId}`)
         this.program = resp?.data ?? resp
         if (this.program && this.program.startDate) this.internalShowDate = new Date(this.program.startDate)
         // fetch trainings for this program
         this.fetchTrainings()
+        // fetch enrollments (mentors & mentees)
+        this.fetchEnrollments()
         // debug log
         console.log('[Onboarding] program loaded', this.program)
         console.log('[Onboarding] calendarItems after program load', this.calendarItems)
@@ -324,6 +467,264 @@ export default {
         console.error('트레이닝 조회 실패', e)
         this.trainings = []
       }
+    },
+    async fetchEnrollments() {
+      if (!this.programId) return
+      try {
+        const resp = await http.get(`/api/v1/admin/programs/${this.programId}/enrollments`)
+        if (this.showDebug) console.log('[Onboarding] fetchEnrollments resp', resp)
+        const body = resp;
+        if (this.showDebug) console.log('[Onboarding] fetchEnrollments body keys', body && typeof body === 'object' ? Object.keys(body) : typeof body)
+        const items = Array.isArray(body)
+          ? body.enrollments
+          : Array.isArray(body.items)
+            ? body.items
+            : Array.isArray(body.content)
+              ? body.content
+              : Array.isArray(body.data)
+                ? body.data
+                : []
+        this.enrollments = items
+        // filter out withdrawn enrollments for display/processing
+        const activeEnrollments = (items || []).filter(en => {
+          try {
+            const status = (en.enrollmentStatus || en.status || en.enrollment_status || (en.user && (en.user.enrollmentStatus || en.user.status)) || '').toString().toUpperCase()
+            return status !== 'WITHDRAWN'
+          } catch (e) {
+            return true
+          }
+        })
+        if (this.showDebug) console.log('[Onboarding] enrollments parsed', { count: items.length, sample: items.slice(0,3) })
+        // populate a quick fallback list so UI shows immediately (labels are userId until user detail resolves)
+        try {
+          const quick = (activeEnrollments || []).map(en => {
+            const uid = this.extractEnrollmentUserId(en)
+            return this.buildPersonFromData({ userId: uid, id: uid }, `#${uid}`)
+          }).filter(Boolean)
+          // by default enrollments are mentees for onboarding programs
+          this.mentorProfiles = []
+          this.menteeProfiles = quick
+        } catch (e) {
+          // ignore
+        }
+        // then enrich with real user data where possible
+        await this.populateEnrollmentUsers(activeEnrollments)
+      } catch (e) {
+        console.error('프로그램 등록 정보 조회 실패', e)
+        this.enrollments = []
+        this.mentorProfiles = []
+        this.menteeProfiles = []
+      }
+    },
+    async populateEnrollmentUsers(enrollments) {
+      if (!enrollments || enrollments.length === 0) {
+        this.mentorProfiles = []
+        this.menteeProfiles = []
+        return
+      }
+      const ids = [...new Set(enrollments.map(enr => this.extractEnrollmentUserId(enr)).filter(Boolean))]
+      if (this.showDebug) console.log('[Onboarding] enrollment user ids', ids)
+      if (!ids.length) {
+        this.mentorProfiles = []
+        this.menteeProfiles = []
+        return
+      }
+      const userMap = {}
+      await Promise.all(ids.map(async userId => {
+        try {
+          const resp = await userService.getUserById(userId)
+          userMap[String(userId)] = resp ?? null
+          if (this.showDebug) console.log('[Onboarding] fetched user', userId, userMap[String(userId)])
+        } catch (err) {
+          console.warn('[Onboarding] user lookup failed', userId, err)
+        }
+      }))
+      if (this.showDebug) console.log('[Onboarding] userMap keys', Object.keys(userMap))
+      const mentors = []
+      const mentees = []
+      enrollments.forEach(enrollment => {
+        const userId = this.extractEnrollmentUserId(enrollment)
+        const role = this.detectEnrollmentRole(enrollment)
+        const user = userId ? userMap[String(userId)] : null
+        const person = user
+          ? this.buildPersonFromData(user)
+          : this.buildPersonFromData(enrollment.user || enrollment, enrollment.userName || enrollment.name || enrollment.nickname || enrollment.title)
+        if (!person) {
+          if (this.showDebug) console.log('[Onboarding] skipped enrollment - no person data', enrollment)
+          return
+        }
+        if (this.showDebug) console.log('[Onboarding] enrollment resolved', { enrollment, userId, role, person })
+        if (role === 'mentor') {
+          mentors.push(person)
+        } else if (role === 'mentee') {
+          mentees.push(person)
+        } else {
+          // fallback to mentee when role undefined
+          mentees.push(person)
+        }
+      })
+      this.mentorProfiles = mentors
+      this.menteeProfiles = mentees
+      if (this.showDebug) console.log('[Onboarding] mentor/mentee profiles', { mentors: mentors.length, mentees: mentees.length, mentorSample: mentors.slice(0,3), menteeSample: mentees.slice(0,3) })
+    },
+    extractEnrollmentUserId(enrollment) {
+      if (!enrollment) return null
+      return enrollment.userId || enrollment.user_id || (enrollment.user && (enrollment.user.id || enrollment.user.userId)) || enrollment.memberId || null
+    },
+    detectEnrollmentRole(enrollment) {
+      if (!enrollment) return null
+      const candidate = (enrollment.role || enrollment.type || enrollment.enrollmentType || enrollment.userType || enrollment.category || '').toString().toLowerCase()
+      if (/mentor/.test(candidate)) return 'mentor'
+      if (/mentee|learner|trainee/.test(candidate)) return 'mentee'
+      if (enrollment.isMentor || enrollment.mentor || enrollment.is_mentor || (enrollment.user && enrollment.user.isMentor)) return 'mentor'
+      if (enrollment.isMentee || enrollment.mentee || enrollment.is_mentee || (enrollment.user && enrollment.user.isMentee)) return 'mentee'
+      return null
+    },
+    buildPersonFromData(value, fallbackName) {
+      if (!value && !fallbackName) return null
+      if (typeof value === 'string' || typeof value === 'number') {
+        const label = String(value)
+        return { id: label, label, name: label }
+      }
+      // try common user fields
+      const id = value.id || value.userId || value.user_id || (value.user && (value.user.id || value.user.userId)) || null
+      const name = value.name || value.fullName || value.full_name || value.displayName || `${value.firstName || ''} ${value.lastName || ''}`.trim() || null
+      const email = value.email || value.username || null
+      const phone = value.phoneNumber || value.phone || value.mobile || null
+      const roleRaw = value.role || (value.roles && value.roles[0]) || null
+      const role = roleRaw ? String(roleRaw).toUpperCase() : null
+      const roleLabel = role === 'ADMIN' ? '관리자' : role === 'MENTOR' ? '멘토' : '신입'
+      const department = value.departmentName || value.department || (value.team && value.team.name) || null
+      const joinDate = value.joinedAt || value.joinDate || value.hireDate || null
+      const label = name || email || id || fallbackName || `#${id}`
+      return { id, label, name, email, phone, role, roleLabel, department, joinDate, meta: value }
+    },
+    normalizeProgramPeople(list) {
+      if (!Array.isArray(list) || !list.length) return []
+      return list.map(item => this.buildPersonFromData(item)).filter(Boolean)
+    },
+    openUserDetail(user) {
+      if (!user) return
+      // ensure we pass the raw meta object if available for the detail popup
+      const payload = user && user.meta ? user.meta : user
+      this.selectedUser = payload || user
+      this.showUserDetail = true
+    },
+    onAddMentee() {
+      this.showAddMenteeModal = true
+    },
+    async onAddMenteeConfirmed(user) {
+      if (!user) return
+      const person = this.buildPersonFromData(user)
+      // avoid duplicates
+      const exists = (this.menteeProfiles || []).some(p => String(p.id) === String(person.id) || (p.meta && String(p.meta.id) === String(person.id)))
+      if (exists) {
+        window.alert('이미 멘티 목록에 존재합니다.')
+        return
+      }
+      this.menteeProfiles = Array.isArray(this.menteeProfiles) ? [...this.menteeProfiles, person] : [person]
+      // persist single add to server
+      const uid = person.id || (person.meta && person.meta.id)
+      if (uid) {
+        try {
+          try {
+            await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, [uid])
+          } catch (err) {
+            // fallback to wrapped payload
+            await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, { userIds: [uid] })
+          }
+        } catch (err) {
+          console.error('Failed to persist single enrollment add', err)
+        } finally {
+          this.fetchEnrollments()
+        }
+      }
+    },
+    async onModalConfirmed(payload) {
+      console.debug('[Onboarding] modal confirmed payload', payload)
+      if (!payload) {
+        this.fetchEnrollments()
+        return
+      }
+      let added = Array.isArray(payload.added) ? payload.added.map(String).filter(Boolean) : []
+      const removed = Array.isArray(payload.removed) ? payload.removed.filter(Boolean) : []
+      // filter out already-enrolled users from `added` by comparing to current enrollments' userId
+      const existingUserIds = new Set((this.enrollments || []).map(e => String(this.extractEnrollmentUserId(e))).filter(Boolean))
+      const beforeFilterCount = added.length
+      added = added.filter(id => !existingUserIds.has(String(id)))
+      const filteredCount = beforeFilterCount - added.length
+      if (filteredCount > 0) {
+        console.debug('[Onboarding] filtered already-registered userIds from added', { filteredCount })
+      }
+      if (!added.length && !removed.length) {
+        this.fetchEnrollments()
+        return
+      }
+      try {
+        // POST added userIds (try plain array, then wrapped)
+        if (added.length) {
+          try {
+            await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, added)
+          } catch (err) {
+            try {
+              await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, { userIds: added })
+            } catch (err2) {
+              // if server complains that some users already enrolled, ignore and continue
+              const errMsg = err2 && err2.response && err2.response.data && (err2.response.data.message || JSON.stringify(err2.response.data)) || err2.message || String(err2)
+              console.error('Failed to add enrollments', err, err2)
+              if (/already registered|이미 등록|already enrolled/i.test(errMsg)) {
+                console.warn('[Onboarding] server reports some users already registered; continuing')
+              } else {
+                throw err2
+              }
+            }
+          }
+        }
+
+        // For removals, backend expects enrollmentId (not userId). Map userId -> enrollmentId from this.enrollments
+        if (removed.length) {
+          const enrollmentIds = (removed || []).map(uid => {
+            const en = (this.enrollments || []).find(e => String(this.extractEnrollmentUserId(e)) === String(uid))
+            if (!en) return null
+            return en.id || en.enrollmentId || en.enrollment_id || (en.enrollment && (en.enrollment.id || en.enrollment.enrollmentId)) || null
+          }).filter(Boolean)
+          const missingCount = removed.length - enrollmentIds.length
+          if (missingCount > 0) {
+            console.warn('[Onboarding] some removals could not be mapped to enrollmentId', { removed, enrollmentIds })
+            // inform user but continue with mapped deletions
+            window.alert(`일부 삭제 항목을 찾을 수 없어 건너뛰었습니다 (${missingCount}건).`)
+          }
+          if (enrollmentIds.length) {
+            await Promise.all(enrollmentIds.map(eid => http.delete(`/api/v1/admin/programs/${this.programId}/enrollments/${encodeURIComponent(eid)}`)))
+          }
+        }
+      } catch (err) {
+        console.error('onModalConfirmed error', err)
+        const msg = err && err.response && (err.response.data && (err.response.data.message || JSON.stringify(err.response.data))) || err.message || String(err)
+        window.alert('저장 중 오류가 발생했습니다: ' + msg)
+      } finally {
+        this.fetchEnrollments()
+      }
+    },
+    onUserSaved(updated) {
+      if (!updated || !updated.id) {
+        this.showUserDetail = false
+        this.selectedUser = null
+        return
+      }
+      // merge updates into mentor/mentee lists where applicable
+      const merge = (arr) => arr.map(p => {
+        if (!p) return p
+        if (String(p.id) === String(updated.id) || (p.meta && String(p.meta.id) === String(updated.id))) {
+          return this.buildPersonFromData(updated)
+        }
+        return p
+      })
+      this.mentorProfiles = merge(this.mentorProfiles || [])
+      this.menteeProfiles = merge(this.menteeProfiles || [])
+      // also close modal
+      this.showUserDetail = false
+      this.selectedUser = null
     },
     setShowDate(d) {
       if (d) this.internalShowDate = new Date(d)
@@ -568,12 +969,15 @@ export default {
 .page-title { font-size:24px; font-weight:700;}
 .program-info { text-align:center; margin-bottom:14px;  }
 .calendar-area { max-width:1100px; margin:0; width: 70%; background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1) }
+.calendar-wrapper { max-height: 540px; overflow: hidden; }
+.calendar-wrapper { position: relative; }
+.calendar-blocker { position: absolute; inset: 0; z-index: 9999; background: transparent; pointer-events: none; }
 .btn-outline { background: transparent; border: 1px solid #d0d7e2; padding: 8px 14px; border-radius: 8px }
 
 /* Adopt modal calendar styles but target the page's calendar area */
 .calendar-area ::v-deep .cv-wrapper {
   width: 100%;
-  min-height: 520px;
+  min-height: 540px;
   padding: 0 !important;
   box-sizing: border-box;
 }
@@ -650,8 +1054,6 @@ export default {
 .calendar-area ::v-deep .cv-day .cv-day-number.current:after {
   display: none !important;
   content: none !important;
-
-  overflow: visible !important;
 }
 .calendar-area ::v-deep .cv-header-days .cv-header-day {
   background: transparent !important;
@@ -661,14 +1063,13 @@ export default {
 .calendar-area ::v-deep .cv-day {
   position: relative !important; /* allow badge absolute positioning (fixed invalid 'block' value) */
   flex: 1 1 0 !important;
-  min-height: 110px !important;
-  height: 110px !important;
+  min-height: 80px !important;
+  height: 88px !important;
   box-sizing: border-box !important;
   padding: 6px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
-  overflow: visible !important;
 }
 /* ensure calendar day is positioned for absolute badges */
 .calendar-area ::v-deep .cv-day { position: relative !important }
@@ -826,7 +1227,7 @@ export default {
 .fade-enter-from, .fade-leave-to { opacity: 0 }
 .cv-day .day-scroll-area { display: none } /* legacy selector - hide */
 
-.calendar-area .calendar-wrapper { touch-action: none } /* block touch swipe scrolling */
+  .calendar-area .calendar-wrapper { touch-action: auto } /* allow touch swipe scrolling inside calendar wrapper */
 
 /* Two-column layout: calendar + right-side list */
 .calendar-and-list { display: flex; gap: 18px; align-items: stretch; margin-bottom: 16px }
@@ -870,10 +1271,10 @@ export default {
 
 .program-frame {
   width: 100%;
-  border: 2px solid #2b7cff; /* blue frame */
   border-radius: 10px;
   padding: 18px;
   background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1)
 }
 .program-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px }
 .program-title { display:flex; flex-direction:column }
@@ -890,4 +1291,46 @@ export default {
 .people-list { list-style:none; padding:0; margin:0 }
 .people-list li { padding:8px 0; border-bottom:1px dashed #eef3fb }
 .people-list li.empty { color:#6b7280; padding:10px 0 }
+
+/* Make mentee list compact and scrollable */
+.mentees-card .card-body { max-height: 240px; overflow: auto; padding-right: 8px }
+.mentees-card .people-list li { padding:8px 6px }
+.mentors-card .card-body { max-height: 320px; overflow: auto; padding-right: 8px }
+
+/* person row used for mentor/mentee compact view */
+.person-row { display:flex; align-items:center; gap:25px; margin-bottom:12px }
+.person-row .avatar { width:40px; height:40px; border-radius:50%; background:#e6eef8; display:flex; align-items:center; justify-content:center; font-weight:700; color:#294594 }
+.person-row .meta { flex:1; min-width:0 }
+.person-row .meta .name { font-weight:800; color:#0f1724 }
+.person-row .meta .email { font-size:13px; color:#6b7280 }
+.person-row .right { display:flex; flex-direction:column; align-items:flex-end; gap:4px }
+.person-row .right .dept { font-size:13px; color:#44546a }
+.person-row .right .join { font-size:12px; color:#94a3b8 }
+/* Hover highlight for person rows */
+.person-row { transition: all 140ms ease; border-radius:6px; }
+.person-row:hover { background: rgba(41,69,148,0.04); cursor: pointer; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(3,10,18,0.04); }
+.person-row:active { transform: translateY(0); }
+
+/* Lightweight tooltip container (optional content can be injected) */
+.person-row .tooltip { display:none; position:absolute; transform:translateY(-8px); background:#fff; border:1px solid rgba(16,36,59,0.06); padding:8px 10px; border-radius:8px; box-shadow:0 8px 30px rgba(3,10,18,0.06); font-size:13px; color:#10243b; white-space:nowrap; z-index:1200 }
+.person-row:hover .tooltip { display:block }
+
+/* small circular add button shown on the mentee card title */
+.btn-add-mentee {
+  float: right;
+  width: 30px;
+  height: 30px;
+  line-height: 28px;
+  border-radius: 50%;
+  background: #294594;
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(41,69,148,0.12);
+}
+.btn-add-mentee:hover { transform: translateY(-2px) }
 </style>

@@ -46,24 +46,53 @@
           </section>
 
           <section class="right">
-            <h4>트레이닝 목록</h4>
-            <div v-if="loadingTrainings">로딩 중...</div>
-            <div v-else>
+            <div class="right-tabs">
+              <button :class="['tab', { active: activeRightTab === 'training' }]" @click="activeRightTab = 'training'">트레이닝</button>
+              <button :class="['tab', { active: activeRightTab === 'assignment' }]" @click="activeRightTab = 'assignment'">과제</button>
+            </div>
+
+            <div v-if="activeRightTab === 'training'">
+              <h4>트레이닝 목록</h4>
+              <div v-if="loadingTrainings">로딩 중...</div>
+              <div v-else>
                 <ul class="training-list">
                   <li v-for="(t, i) in availableTrainings" :key="t.trainingId || t.id || i" class="training-row">
-                      <div class="training-left">
-                        <div>
-                          <span class="training-title">{{ t.title || t.name || t.trainingTitle || t.trainingName }}</span>
-                          <span class="training-type">{{ formatTrainingType(t) }}</span>
-                        </div>
-                        <div class="training-meta">{{ formatTrainingDates(t) }}</div>
+                    <div class="training-left">
+                      <div>
+                        <span class="training-title">{{ t.title || t.name || t.trainingTitle || t.trainingName }}</span>
+                        <span class="training-type">{{ formatTrainingType(t) }}</span>
                       </div>
+                      <div class="training-meta">{{ formatTrainingDates(t) }}</div>
+                    </div>
                     <div class="training-actions">
                       <button class="btn-add" @click="addTrainingToDate(t)">추가</button>
                     </div>
                   </li>
                   <li v-if="availableTrainings.length === 0" class="empty">표시할 트레이닝이 없습니다.</li>
                 </ul>
+              </div>
+            </div>
+
+            <div v-else>
+              <h4>과제 목록</h4>
+              <div v-if="loadingAssignments">로딩 중...</div>
+              <div v-else>
+                <ul class="training-list">
+                  <li v-for="(a, i) in availableAssignments" :key="a.assignmentId || a.id || i" class="training-row">
+                    <div class="training-left">
+                      <div>
+                        <span class="training-title">{{ a.title || a.name || a.subject }}</span>
+                        <span class="training-type">{{ a.type || '' }}</span>
+                      </div>
+                      <div class="training-meta">{{ formatTrainingDates(a) }}</div>
+                    </div>
+                    <div class="training-actions">
+                      <button class="btn-add" @click="addAssignmentToDate(a)">추가</button>
+                    </div>
+                  </li>
+                  <li v-if="availableAssignments.length === 0" class="empty">표시할 과제가 없습니다.</li>
+                </ul>
+              </div>
             </div>
           </section>
         </div>
@@ -98,13 +127,16 @@ export default {
       title: '',
       description: '',
       trainings: [],
+      assignments: [],
       loadingTrainings: false,
+      loadingAssignments: false,
+      activeRightTab: 'training',
       selectedTrainings: [],
     }
   },
   watch: {
     visible(val) {
-      if (val) this.loadTrainings()
+      if (val) { this.loadTrainings(); this.loadAssignments() }
       console.log('[OnboardingPopup] visible ->', val, 'date:', this.date)
       // also log incoming visibleDayItems for quick debug
       console.log('[OnboardingPopup] visibleDayItems ->', this.visibleDayItems)
@@ -151,6 +183,19 @@ export default {
         if (alreadySelected) return false
         return true
       })
+    },
+    availableAssignments() {
+      const assignedIds = new Set((this.visibleDayItems || []).map(it => (it.id != null ? String(it.id) : null)).filter(Boolean))
+      const assignedTitles = new Set((this.visibleDayItems || []).map(it => (it.title || '').toString()).filter(Boolean))
+      return (this.assignments || []).filter(a => {
+        const aid = a.assignmentId || a.id || a.assignment_id
+        if (aid && assignedIds.has(String(aid))) return false
+        const title = (a.title || a.name || a.subject || '').toString()
+        if (title && assignedTitles.has(title)) return false
+        const alreadySelected = this.selectedTrainings.some(s => (s.assignmentId || s.id) && (s.assignmentId || s.id) === (a.assignmentId || a.id))
+        if (alreadySelected) return false
+        return true
+      })
     }
   },
   methods: {
@@ -174,20 +219,31 @@ export default {
       await this.deleteAssignedTraining(item)
     },
     async deleteAssignedTraining(item) {
-      // determine training id from item
+      // determine whether this is an assignment or a training
+      const aid = item.assignmentId || item.id || item.assignment_id
       const tid = item.trainingId || item.id || item.training_id
-      if (!tid || !this.programId) {
-        console.warn('삭제할 training id 또는 programId가 없습니다.', item)
-        return
+      if (aid && this.programId) {
+        try {
+          await http.delete(`/api/v1/admin/programs/${this.programId}/assignments/${aid}`)
+          this.$emit('training-removed', { assignmentId: aid })
+          return
+        } catch (e) {
+          console.error('과제 삭제 실패', e)
+          alert('삭제에 실패했습니다.')
+          return
+        }
       }
-      try {
-        await http.delete(`/api/v1/admin/programs/${this.programId}/trainings/${tid}`)
-        // notify parent to refresh
-        this.$emit('training-removed', { trainingId: tid })
-      } catch (e) {
-        console.error('트레이닝 삭제 실패', e)
-        // optionally show an alert
-        alert('삭제에 실패했습니다.')
+      if (tid && this.programId) {
+        try {
+          await http.delete(`/api/v1/admin/programs/${this.programId}/trainings/${tid}`)
+          // notify parent to refresh
+          this.$emit('training-removed', { trainingId: tid })
+        } catch (e) {
+          console.error('트레이닝 삭제 실패', e)
+          alert('삭제에 실패했습니다.')
+        }
+      } else {
+        console.warn('삭제할 training/assignment id 또는 programId가 없습니다.', item)
       }
     },
     isSelected(training) {
@@ -218,6 +274,28 @@ export default {
       }
     },
 
+    async loadAssignments() {
+      this.loadingAssignments = true
+      try {
+        const resp = await http.get('/api/v1/admin/tasks')
+        const body = resp?.data ?? resp
+        if (Array.isArray(body)) {
+          this.assignments = body
+        } else if (Array.isArray(body.content)) {
+          this.assignments = body.content
+        } else if (Array.isArray(body.items)) {
+          this.assignments = body.items
+        } else {
+          this.assignments = []
+        }
+      } catch (e) {
+        console.error('과제 목록 로드 실패', e)
+        this.assignments = []
+      } finally {
+        this.loadingAssignments = false
+      }
+    },
+
     addTrainingToDate(training) {
       // Do NOT call server here. Move training to local selected list for this date.
       const tid = training.trainingId || training.id
@@ -235,9 +313,27 @@ export default {
       this.selectedTrainings.push(copy)
     },
 
+    addAssignmentToDate(assignment) {
+      const aid = assignment.assignmentId || assignment.id
+      const exists = this.selectedTrainings.some(t => (t.assignmentId || t.id) === aid)
+      if (exists) return
+      const copy = Object.assign({}, assignment)
+      copy._isAssignment = true
+      const yyyy = this.getLocalDatePart(this.date)
+      copy._editDate = yyyy
+      copy._startTime = '12:00'
+      copy._endTime = '13:00'
+      copy.startDate = this.combineDateTime(yyyy, copy._startTime)
+      copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+      this.selectedTrainings.push(copy)
+    },
+
     removeSelectedTraining(training) {
-      const tid = training.trainingId || training.id
-      this.selectedTrainings = this.selectedTrainings.filter(t => (t.trainingId || t.id) !== tid)
+      const id = training.trainingId || training.assignmentId || training.id
+      this.selectedTrainings = this.selectedTrainings.filter(t => {
+        const tid = t.trainingId || t.assignmentId || t.id
+        return tid !== id
+      })
     },
     combineDateTime(dateStr, timeStr) {
       if (!dateStr) return null
@@ -294,46 +390,38 @@ export default {
       // On save, assign selectedTrainings to program (call API for each) then emit assigned events
       const assignedList = []
       const promises = this.selectedTrainings.map(async (t) => {
-        const tid = t.trainingId || t.id
-        if (this.programId && tid) {
+        const isAssignment = !!(t._isAssignment || t.assignmentId || t.assignment_id)
+        const id = isAssignment ? (t.assignmentId || t.id) : (t.trainingId || t.id)
+        if (this.programId && id) {
           try {
-            // determine training type to form payload
             const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
             const payload = {}
             if (rawType === 'ONLINE') {
-              // ONLINE: server expects date-only values (LocalDate). Send YYYY-MM-DD.
               const sdDate = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
               const edDate = (t._editDate && (t._endTime || t._startTime)) ? (t._editDate) : (t.endDate ? this.getLocalDatePart(t.endDate) : null)
               if (sdDate) payload.startDate = sdDate
               if (edDate) payload.endDate = edDate
             } else {
-              // OFFLINE: backend requires LocalDateTime (no timezone) in `scheduledAt` (camelCase).
-              // Build 'YYYY-MM-DDTHH:mm:ss' from editable fields. If time is missing, use 09:00.
               const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
               const timePart = t._startTime || '09:00'
               const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
               if (sched) payload.scheduledAt = sched
             }
-
-            // Fallback: include assignedDate if no richer payload available
             if (Object.keys(payload).length === 0) payload.assignedDate = this.date
 
-            const resp = await http.post(`/api/v1/admin/programs/${this.programId}/trainings/${tid}`, payload)
+            const url = isAssignment ? `/api/v1/admin/programs/${this.programId}/assignments/${id}` : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
+            const resp = await http.post(url, payload)
             const body = resp?.data ?? resp
             const assigned = body || Object.assign({}, t)
-            // ensure assigned has dates for parent rendering
             assigned.startDate = assigned.startDate || t.startDate
             assigned.endDate = assigned.endDate || t.endDate
-            // map possible server returned fields to startDate for calendar rendering
             if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
             assignedList.push(assigned)
           } catch (e) {
-            console.error('트레이닝 할당 실패', e)
-            // fallback: still push local version
+            console.error('일정 할당 실패', e)
             assignedList.push(Object.assign({}, t))
           }
         } else {
-          // no programId or tid: just use local object
           assignedList.push(Object.assign({}, t))
         }
       })
@@ -363,7 +451,7 @@ export default {
   z-index: 1500;
 }
 .set-modal {
-  width: 760px;
+   width: 760px;
   max-width: 96vw;
   min-width: 520px;
   background: #fff;
@@ -401,6 +489,9 @@ input, textarea { width:100%; box-sizing:border-box; padding:8px; border:1px sol
 .training-actions { margin-left:12px }
 .btn-add { background: #2b7cff; color: #fff; border: none; padding:6px 10px; border-radius:6px; cursor:pointer }
 .btn-add:hover { opacity:0.95 }
+.right-tabs { display:flex; gap:8px; margin-bottom:8px }
+.tab { padding:6px 10px; border-radius:8px; border:1px solid transparent; background:transparent; cursor:pointer }
+.tab.active { background:#f1f5ff; border-color:#dfe8ff }
 .training-assigned { margin-top:6px; font-size:12px; color:#475569 }
 .training-type { font-size:12px; color:#475569; margin-left:8px; font-weight:600 }
 .selected-row { display:flex; align-items:flex-start; justify-content:space-between }
