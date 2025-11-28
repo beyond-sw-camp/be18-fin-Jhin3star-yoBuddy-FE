@@ -15,11 +15,13 @@
             <div v-if="!(visibleDayItems && visibleDayItems.length) && !(selectedTrainings && selectedTrainings.length)" class="empty">해당 날짜에 일정이 없습니다.</div>
             <ul class="item-list">
               <!-- user-selected trainings for this date (not yet saved) -->
-              <li v-for="(it, idx) in selectedTrainings" :key="`sel-${it.trainingId||it.id||idx}`" class="item-row">
+              <li v-for="(it, idx) in selectedTrainings" :key="`sel-${it.trainingId||it.assignmentId||it.taskId||it.id||idx}`" class="item-row">
                 <div class="selected-row">
                   <div class="selected-left">
                     <div class="item-title">
                       {{ it.title }}
+                      <span v-if="(it._isAssignment || it.taskId || it.task_id)" class="item-badge">과제</span>
+                      <span v-else class="item-badge item-badge--training">트레이닝</span>
                       <span class="training-type">{{ formatTrainingType(it) }}</span>
                       <button class="btn-outline btn-small selected-inline-btn" @click="removeSelectedTraining(it)">취소</button>
                     </div>
@@ -33,7 +35,7 @@
                 </div>
               </li>
               <!-- existing items from parent (visibleDayItems) -->
-              <li v-for="(it, idx) in visibleDayItems" :key="it.id || idx" class="item-row">
+              <li v-for="(it, idx) in mergedVisibleDayItems" :key="it.id || idx" class="item-row">
                 <div class="item-left">
                   <div class="item-title">{{ it.title }}</div>
                   <div class="item-time">{{ formatItemTime(it) }}</div>
@@ -47,8 +49,8 @@
 
           <section class="right">
             <div class="right-tabs">
-              <button :class="['tab', { active: activeRightTab === 'training' }]" @click="activeRightTab = 'training'">트레이닝</button>
-              <button :class="['tab', { active: activeRightTab === 'assignment' }]" @click="activeRightTab = 'assignment'">과제</button>
+              <button :class="['tab', { active: activeRightTab === 'training' }]" @click="setActiveRightTab('training')">트레이닝</button>
+              <button :class="['tab', { active: activeRightTab === 'assignment' }]" @click="setActiveRightTab('assignment')">과제</button>
             </div>
 
             <div v-if="activeRightTab === 'training'">
@@ -60,6 +62,7 @@
                     <div class="training-left">
                       <div>
                         <span class="training-title">{{ t.title || t.name || t.trainingTitle || t.trainingName }}</span>
+                        <span class="item-badge item-badge--training">트레이닝</span>
                         <span class="training-type">{{ formatTrainingType(t) }}</span>
                       </div>
                       <div class="training-meta">{{ formatTrainingDates(t) }}</div>
@@ -82,6 +85,7 @@
                     <div class="training-left">
                       <div>
                         <span class="training-title">{{ a.title || a.name || a.subject }}</span>
+                        <span class="item-badge">과제</span>
                         <span class="training-type">{{ a.type || '' }}</span>
                       </div>
                       <div class="training-meta">{{ formatTrainingDates(a) }}</div>
@@ -169,10 +173,34 @@ export default {
       })
     }
     ,
+    // Merge parent-provided visibleDayItems with program-scoped assignments (tasks)
+    mergedVisibleDayItems() {
+      const base = this.visibleDayItems || []
+      // if no program or no assignments loaded, return base
+      if (!this.programId || !(this.assignments && this.assignments.length) || !this.date) return base
+      const datePart = this.getLocalDatePart(this.date)
+
+      const mapped = (this.assignments || []).map(a => {
+        const id = a.assignmentId || a.id || a.taskId || a.task_id
+        const title = a.title || a.name || a.subject
+        const due = a.due_date || a.dueDate || a.startDate || a.assignedDate || a.assigned_date || a.date || a.trainingDate
+        const start = a.startDate || a.scheduledAt || a.scheduled_at || due
+        return Object.assign({}, a, { id, title, startDate: start, _isAssignment: true })
+      }).filter(it => {
+        const itemDate = this.getLocalDatePart(it.startDate)
+        return itemDate === datePart
+      })
+
+      // avoid duplicates against base by id/title
+      const baseIds = new Set((base || []).map(b => String(b.id || b.assignmentId || b.taskId || b.id)).filter(Boolean))
+      const uniques = mapped.filter(m => !baseIds.has(String(m.id)))
+      return base.concat(uniques)
+    }
+    ,
     availableTrainings() {
       // Exclude trainings that are already present in visibleDayItems or already selected locally
-      const assignedIds = new Set((this.visibleDayItems || []).map(it => (it.id != null ? String(it.id) : null)).filter(Boolean))
-      const assignedTitles = new Set((this.visibleDayItems || []).map(it => (it.title || '').toString()).filter(Boolean))
+      const assignedIds = new Set((this.mergedVisibleDayItems || []).map(it => (it.id != null ? String(it.id) : null)).filter(Boolean))
+      const assignedTitles = new Set((this.mergedVisibleDayItems || []).map(it => (it.title || '').toString()).filter(Boolean))
       return (this.trainings || []).filter(t => {
         const tid = t.trainingId || t.id || t.training_id
         if (tid && assignedIds.has(String(tid))) return false
@@ -185,14 +213,14 @@ export default {
       })
     },
     availableAssignments() {
-      const assignedIds = new Set((this.visibleDayItems || []).map(it => (it.id != null ? String(it.id) : null)).filter(Boolean))
-      const assignedTitles = new Set((this.visibleDayItems || []).map(it => (it.title || '').toString()).filter(Boolean))
+      const assignedIds = new Set((this.mergedVisibleDayItems || []).map(it => (it.id != null ? String(it.id) : null)).filter(Boolean))
+      const assignedTitles = new Set((this.mergedVisibleDayItems || []).map(it => (it.title || '').toString()).filter(Boolean))
       return (this.assignments || []).filter(a => {
-        const aid = a.assignmentId || a.id || a.assignment_id
+        const aid = a.assignmentId || a.id || a.assignment_id || a.taskId || a.task_id
         if (aid && assignedIds.has(String(aid))) return false
         const title = (a.title || a.name || a.subject || '').toString()
         if (title && assignedTitles.has(title)) return false
-        const alreadySelected = this.selectedTrainings.some(s => (s.assignmentId || s.id) && (s.assignmentId || s.id) === (a.assignmentId || a.id))
+        const alreadySelected = this.selectedTrainings.some(s => (s.assignmentId || s.id || s.taskId || s.task_id) && (s.assignmentId || s.id || s.taskId || s.task_id) === (a.assignmentId || a.id || a.taskId || a.task_id))
         if (alreadySelected) return false
         return true
       })
@@ -219,18 +247,27 @@ export default {
       await this.deleteAssignedTraining(item)
     },
     async deleteAssignedTraining(item) {
-      // determine whether this is an assignment or a training
-      const aid = item.assignmentId || item.id || item.assignment_id
+      // determine whether this is an assignment/task or a training
+      const aid = item.assignmentId || item.id || item.assignment_id || item.taskId || item.task_id
       const tid = item.trainingId || item.id || item.training_id
       if (aid && this.programId) {
         try {
-          await http.delete(`/api/v1/admin/programs/${this.programId}/assignments/${aid}`)
+          // primary: try tasks path (preferred)
+          await http.delete(`/api/v1/admin/programs/${this.programId}/tasks/${aid}`)
           this.$emit('training-removed', { assignmentId: aid })
           return
         } catch (e) {
-          console.error('과제 삭제 실패', e)
-          alert('삭제에 실패했습니다.')
-          return
+          console.debug('tasks delete failed, trying assignments delete', e)
+          try {
+            // fallback: older assignments path
+            await http.delete(`/api/v1/admin/programs/${this.programId}/assignments/${aid}`)
+            this.$emit('training-removed', { assignmentId: aid })
+            return
+          } catch (e2) {
+            console.error('과제 삭제 실패 (both tasks/assignments)', e2)
+            alert('삭제에 실패했습니다.')
+            return
+          }
         }
       }
       if (tid && this.programId) {
@@ -277,22 +314,38 @@ export default {
     async loadAssignments() {
       this.loadingAssignments = true
       try {
-        const resp = await http.get('/api/v1/admin/tasks')
+        const params = this.programId ? { params: { programId: this.programId } } : {}
+        const resp = await http.get('/api/v1/admin/tasks', params)
+        console.debug('[OnboardingSetschedulePopup] loadAssignments resp:', resp)
+        // tolerate multiple response shapes. examples:
+        // 1) array response: [ ... ]
+        // 2) wrapper with { content: [...] } or { items: [...] }
+        // 3) our API: { message, data: { totalCount, tasks: [...] }, statusCode }
         const body = resp?.data ?? resp
-        if (Array.isArray(body)) {
-          this.assignments = body
-        } else if (Array.isArray(body.content)) {
-          this.assignments = body.content
-        } else if (Array.isArray(body.items)) {
-          this.assignments = body.items
-        } else {
-          this.assignments = []
+        const tryArray = (obj) => Array.isArray(obj) ? obj : null
+
+        let found = tryArray(body) || tryArray(body.content) || tryArray(body.items) || tryArray(body.data) || null
+        if (!found && body && typeof body === 'object') {
+          // check common nested fields
+          if (Array.isArray(body.tasks)) found = body.tasks
+          else if (body.data && Array.isArray(body.data.tasks)) found = body.data.tasks
+          else if (body.result && Array.isArray(body.result.items)) found = body.result.items
         }
+        this.assignments = found || []
       } catch (e) {
         console.error('과제 목록 로드 실패', e)
         this.assignments = []
       } finally {
         this.loadingAssignments = false
+      }
+    },
+
+    setActiveRightTab(tab) {
+      if (!tab) return
+      this.activeRightTab = tab
+      if (tab === 'assignment' && (!this.assignments || this.assignments.length === 0)) {
+        // try loading assignments when user switches to that tab
+        this.loadAssignments()
       }
     },
 
@@ -314,8 +367,8 @@ export default {
     },
 
     addAssignmentToDate(assignment) {
-      const aid = assignment.assignmentId || assignment.id
-      const exists = this.selectedTrainings.some(t => (t.assignmentId || t.id) === aid)
+      const aid = assignment.assignmentId || assignment.id || assignment.taskId || assignment.task_id
+      const exists = this.selectedTrainings.some(t => (t.assignmentId || t.id || t.taskId || t.task_id) === aid)
       if (exists) return
       const copy = Object.assign({}, assignment)
       copy._isAssignment = true
@@ -329,9 +382,9 @@ export default {
     },
 
     removeSelectedTraining(training) {
-      const id = training.trainingId || training.assignmentId || training.id
+      const id = training.trainingId || training.assignmentId || training.taskId || training.id
       this.selectedTrainings = this.selectedTrainings.filter(t => {
-        const tid = t.trainingId || t.assignmentId || t.id
+        const tid = t.trainingId || t.assignmentId || t.taskId || t.id
         return tid !== id
       })
     },
@@ -388,10 +441,20 @@ export default {
     },
     save() {
       // On save, assign selectedTrainings to program (call API for each) then emit assigned events
+      // First, filter out items that are already assigned according to visibleDayItems to avoid duplicate requests
+      const existingAssignedIds = new Set((this.visibleDayItems || []).map(it => String(it.trainingId || it.assignmentId || it.taskId || it.id)).filter(Boolean))
+      const toSave = (this.selectedTrainings || []).filter(t => {
+        const id = String(t.trainingId || t.assignmentId || t.taskId || t.id || '')
+        return id && !existingAssignedIds.has(id)
+      })
+      if ((this.selectedTrainings || []).length !== toSave.length) {
+        console.debug('[OnboardingSetschedulePopup] save: filtered already-assigned items', { total: this.selectedTrainings.length, toSave: toSave.length })
+      }
+
       const assignedList = []
-      const promises = this.selectedTrainings.map(async (t) => {
-        const isAssignment = !!(t._isAssignment || t.assignmentId || t.assignment_id)
-        const id = isAssignment ? (t.assignmentId || t.id) : (t.trainingId || t.id)
+      const promises = toSave.map(async (t) => {
+        const isAssignment = !!(t._isAssignment || t.assignmentId || t.assignment_id || t.taskId || t.task_id)
+        const id = isAssignment ? (t.assignmentId || t.id || t.taskId || t.task_id) : (t.trainingId || t.id)
         if (this.programId && id) {
           try {
             const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
@@ -407,10 +470,27 @@ export default {
               const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
               if (sched) payload.scheduledAt = sched
             }
-            if (Object.keys(payload).length === 0) payload.assignedDate = this.date
+            if (Object.keys(payload).length === 0) {
+              // ensure we send a plain YYYY-MM-DD string for assigned date (avoid Date objects)
+              const assigned = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
+              payload.assignedDate = assigned
+              payload.assigned_date = assigned
+            }
 
-            const url = isAssignment ? `/api/v1/admin/programs/${this.programId}/assignments/${id}` : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
+            // Assignments (tasks) should be posted to /programs/{programId}/tasks/{taskId}
+            const url = isAssignment ? `/api/v1/admin/programs/${this.programId}/tasks/${id}` : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
+            // If this is a task, include due_date (YYYY-MM-DD) from editable date
+            if (isAssignment) {
+              const due = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+              if (due) {
+                // send both snake_case and camelCase to be tolerant to backend naming
+                payload.due_date = due
+                payload.dueDate = due
+              }
+            }
+            console.debug('[OnboardingSetschedulePopup] POST', url, payload)
             const resp = await http.post(url, payload)
+            console.debug('[OnboardingSetschedulePopup] POST resp', resp)
             const body = resp?.data ?? resp
             const assigned = body || Object.assign({}, t)
             assigned.startDate = assigned.startDate || t.startDate
@@ -419,6 +499,23 @@ export default {
             assignedList.push(assigned)
           } catch (e) {
             console.error('일정 할당 실패', e)
+            // handle duplicate-mapping 400 errors gracefully and surface full response for debugging
+            try {
+              const respErr = e?.response
+              const status = respErr?.status
+              const data = respErr?.data
+              console.debug('[OnboardingSetschedulePopup] error response data:', data)
+              const msg = (data && (data.message || data.error || data.msg)) || ''
+              if (status === 400 && typeof msg === 'string' && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
+                console.warn('[OnboardingSetschedulePopup] duplicate mapping, skipping:', msg)
+                assignedList.push(Object.assign({}, t))
+                return
+              }
+              const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
+              window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
+            } catch (inner) {
+              // ignore
+            }
             assignedList.push(Object.assign({}, t))
           }
         } else {
@@ -431,6 +528,8 @@ export default {
         assignedList.forEach(a => this.$emit('training-assigned', a))
         // also emit generic save event for other metadata if needed
         this.$emit('save', { date: this.date, title: this.title, description: this.description })
+        // notify parent that assignments were saved so it can refresh program-scoped tasks
+        try { this.$emit('assignments-saved') } catch (e) { /* ignore */ }
         // clear local selections
         this.selectedTrainings = []
         this.close()
@@ -451,9 +550,9 @@ export default {
   z-index: 1500;
 }
 .set-modal {
-   width: 760px;
-  max-width: 96vw;
-  min-width: 520px;
+   width: 960px;
+  max-width: 98vw;
+  min-width: 720px;
   background: #fff;
   border-radius: 10px;
   padding: 22px;
@@ -498,6 +597,8 @@ input, textarea { width:100%; box-sizing:border-box; padding:8px; border:1px sol
 .selected-left { flex:1 }
 .selected-actions { margin-left:12px }
 .selected-inline-btn { margin-left: 40%; vertical-align: middle }
+.item-badge { display:inline-block; margin-left:8px; padding:2px 8px; font-size:11px; border-radius:12px; background:#fff3cd; color:#854d00; border:1px solid #ffeeba }
+.item-badge--training { background:#e6f0ff; color:#13306e; border-color:#d3e1ff }
 .dt-controls { display:flex; gap:8px; align-items:center; margin-top:8px }
 .dt-controls label { font-size:12px; color:#6b7280 }
 .dt-controls input { margin-left:6px; padding:4px; border-radius:4px; border:1px solid #dfe6f0 }

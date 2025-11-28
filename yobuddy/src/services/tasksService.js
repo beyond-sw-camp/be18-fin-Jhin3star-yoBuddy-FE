@@ -1,5 +1,7 @@
 import http from '@/services/http'
 
+const _taskCache = new Map()
+
 const tasksService = {
   // **********************
   // Admin APIs
@@ -8,8 +10,20 @@ const tasksService = {
     return http.get('/api/v1/admin/tasks', { params })
   },
 
-  get(id) {
-    return http.get(`/api/v1/admin/tasks/${id}`)
+  get(id, opts = {}) {
+    const force = opts && opts.forceRefresh
+    if (!id) return Promise.reject(new Error('missing id'))
+    try {
+      const key = String(id)
+      if (!force && _taskCache.has(key)) {
+        return _taskCache.get(key)
+      }
+      const p = http.get(`/api/v1/admin/tasks/${id}`).then(res => res).catch(err => { _taskCache.delete(key); throw err })
+      _taskCache.set(key, p)
+      return p
+    } catch (e) {
+      return Promise.reject(e)
+    }
   },
 
   create(body) {
