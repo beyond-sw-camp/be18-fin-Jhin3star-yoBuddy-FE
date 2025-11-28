@@ -75,6 +75,14 @@ const routes = [
     meta: { requiresAuth: true, adminOnly: true }
   },
   {
+    path: '/admin/onboarding/programs',
+    component: () => import('@/pages/admin/onboarding/OnboardingProgramList.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
+    path: '/admin/onboarding/programs/:programId',
+    name: 'OnboardingProgramDetail',
+    component: () => import('@/pages/admin/onboarding/OnboardingProgramDetailPage.vue'),
     path: '/admin/trainings/results',
     component: () => import('@/pages/admin/training/trainingresult/TrainingResultList.vue'),
     meta: { requiresAuth: true, adminOnly: true }
