@@ -51,8 +51,11 @@
             <ul class="day-items">
               <li v-for="(it, idx) in dayItems" :key="it.id || idx" class="day-item">
                 <div class="left">
-                  <div class="title">{{ it.title }}</div>
-                  <div class="meta">{{ it.startDate ? (new Date(it.startDate)).toLocaleTimeString() : '' }}{{ it.endDate ? ' - ' + (new Date(it.endDate)).toLocaleTimeString() : '' }}</div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                    <div class="item-type-badge">{{ it.kind === 'task' ? '과제' : (it.kind === 'training' ? '트레이닝' : '') }}</div>
+                    <div class="title">{{ it.title }}</div>
+                  </div>
+                  <div class="meta">{{ formatItemTime(it) }}</div>
                 </div>
                 <div class="actions">
                   <button class="btn-outline btn-small" @click="openDateModal(selectedDate)">편집</button>
@@ -156,6 +159,7 @@
       :day-items="dayItems"
       :program-id="programId"
       @close="showSetScheduleModal = false"
+      @assignments-saved="fetchProgramTasks"
       @training-assigned="onTrainingAssigned"
       @training-removed="onTrainingRemoved"
     />
@@ -167,7 +171,8 @@ import { CalendarView, CalendarViewHeader } from 'vue-simple-calendar'
 import 'vue-simple-calendar/dist/vue-simple-calendar.css'
 import http from '@/services/http'
 import userService from '@/services/user'
-import OnboardingSetschedulePopup from '@/pages/admin/onboarding/OnboardingSetschedulePopup.vue'
+import tasksService from '@/services/tasksService'
+import OnboardingSetschedulePopup from '@/pages/admin/onboarding/onboardingSetschedulePopup.vue'
 import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue'
 import OnboardingProgramAddUserPopup from '@/pages/admin/onboarding/OnboardingProgramAddUserPopup.vue'
 
@@ -184,6 +189,7 @@ export default {
       showSetScheduleModal: false,
       showDebug: true,
       enrollments: [],
+      programTasks: [],
       mentorProfiles: [],
       showAddMenteeModal: false,
       showUserDetail: false,
@@ -206,42 +212,60 @@ export default {
       return this.internalShowDate
     },
     dayItems() {
-      // Return trainings scheduled for the currently selected date.
+      // Return trainings and program-assigned tasks scheduled for the currently selected date.
       if (!this.selectedDate) return []
       const target = new Date(this.selectedDate)
       target.setHours(0,0,0,0)
-      return (this.trainings || []).filter(t => {
+      const trainingItems = (this.trainings || []).filter(t => {
         const sd = t.startDate ? new Date(t.startDate) : (t.scheduledAt ? new Date(t.scheduledAt) : null)
         if (!sd) return false
         sd.setHours(0,0,0,0)
         return sd.getTime() === target.getTime()
       }).map(t => {
-        // normalize shape expected by the popup (title, startDate, endDate, id, classes)
         return {
           id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
           title: t.title || t.name || t.trainingTitle || '일정',
           startDate: t.startDate || t.scheduledAt || t.scheduled_at || null,
           endDate: t.endDate || t.end || null,
-          classes: (t.type ? [String(t.type).toLowerCase()] : [])
+          classes: (t.type ? [String(t.type).toLowerCase()] : []),
+          kind: 'training'
         }
       })
+
+      // programTasks are already normalized in fetchProgramTasks
+      const taskItems = (this.programTasks || []).filter(p => {
+        if (!p || !p.startDate) return false
+        const sd = new Date(p.startDate)
+        if (isNaN(sd.getTime())) return false
+        sd.setHours(0,0,0,0)
+        return sd.getTime() === target.getTime()
+      }).map(p => ({ id: p.id, title: p.title || '과제', startDate: p.startDate, endDate: p.endDate, classes: p.classes || ['tesk'] }))
+
+      // mark task kind
+      const taskItemsMarked = taskItems.map(i => Object.assign({}, i, { kind: 'task' }))
+
+      return [...trainingItems, ...taskItemsMarked]
     },
     // All items mapped per-date (used for custom rendering and popup)
     allDayItems() {
-      // Build a normalized list of day items from trainings so logs and other
-      // consumers can see the items. We keep `calendarItems` empty so the
-      // calendar doesn't render full pill UI, but `allDayItems` mirrors
-      // loaded trainings.
-      if (!this.trainings || !this.trainings.length) return []
-      return (this.trainings || []).map(t => {
-        return {
-          id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
-          title: t.title || t.name || t.trainingTitle || '일정',
-          startDate: t.startDate || t.scheduledAt || t.scheduled_at || null,
-          endDate: t.endDate || t.end || null,
-          classes: (t.type ? [String(t.type).toLowerCase()] : [])
-        }
-      })
+      // Build a normalized list of day items from trainings and program tasks
+      const trainingItems = (this.trainings || []).map(t => ({
+        id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
+        title: t.title || t.name || t.trainingTitle || '일정',
+        startDate: t.startDate || t.scheduledAt || t.scheduled_at || null,
+        endDate: t.endDate || t.end || null,
+        classes: (t.type ? [String(t.type).toLowerCase()] : []),
+        kind: 'training'
+      }))
+      const taskItems = (this.programTasks || []).map(p => ({
+        id: p.id,
+        title: p.title || '과제',
+        startDate: p.startDate || null,
+        endDate: p.endDate || null,
+        classes: p.classes || ['task'],
+        kind: 'task'
+      }))
+      return [...trainingItems, ...taskItems]
     },
     calendarItems() {
       // Intentionally return no items so calendar doesn't render pill UI.
@@ -323,6 +347,21 @@ export default {
     this.$nextTick(() => {
       try { this.applyDomBadges() } catch (e) { /* ignore */ }
     })
+    
+    // emit a global event so external listeners can react when this page mounts
+    try {
+      this.$nextTick(() => {
+        try {
+          const ev = new CustomEvent('onboarding:mounted', { detail: { programId: this.programId } })
+          document.dispatchEvent(ev)
+          console.debug('[Onboarding] dispatched onboarding:mounted', { programId: this.programId })
+        } catch (err) {
+          console.debug('[Onboarding] failed to dispatch onboarding:mounted', err)
+        }
+      })
+    } catch (err) {
+      console.debug('[Onboarding] onboarding:mounted dispatch setup failed', err)
+    }
     // re-apply badges on window resize (layout may change)
     window.addEventListener('resize', this.applyDomBadges)
     // Block calendar element from reacting to wheel/touch gestures that navigate by week
@@ -411,6 +450,49 @@ export default {
       const parts = String(name).split('')
       return parts.slice(0,2).join('')
     },
+    formatItemTime(it) {
+      try {
+        const s = it.startDate ? new Date(it.startDate) : null
+        const e = it.endDate ? new Date(it.endDate) : null
+        if (!s) return ''
+        // if start and end exist and both are midnight (00:00:00) or identical date-times, show date only
+        const isMidnight = (d) => d && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
+        if (e && s.getTime() === e.getTime()) {
+          if (isMidnight(s)) return s.toLocaleDateString()
+          return s.toLocaleTimeString()
+        }
+        if (e && isMidnight(s) && isMidnight(e)) {
+          // multi-day/date range where both are dates (no times)
+          return `${s.toLocaleDateString()} ~ ${e.toLocaleDateString()}`
+        }
+        if (!e) {
+          if (isMidnight(s)) return s.toLocaleDateString()
+          return s.toLocaleTimeString()
+        }
+        // default: show time range
+        return `${s.toLocaleTimeString()} - ${e.toLocaleTimeString()}`
+      } catch (e) {
+        return ''
+      }
+    },
+    // temporary debug helper: prints current lists and normalized dates to console
+    dumpDebugState(hint) {
+      try {
+        console.groupCollapsed('[Onboarding] DEBUG SNAPSHOT', hint || '')
+        console.log('selectedDate (raw):', this.selectedDate)
+        try { console.log('selectedDate (ISO):', this.selectedDate ? (new Date(this.selectedDate)).toISOString().slice(0,10) : null) } catch(e) { console.debug('[Onboarding] selectedDate ISO conversion error', e) }
+        console.log('dayItems.length:', Array.isArray(this.dayItems) ? this.dayItems.length : 'no dayItems')
+        if (Array.isArray(this.dayItems)) console.table(this.dayItems.map(it => ({ id: it.id, title: it.title, startDate: it.startDate, kind: it.kind })))
+        console.log('allDayItems.length:', Array.isArray(this.allDayItems) ? this.allDayItems.length : 'no allDayItems')
+        if (Array.isArray(this.allDayItems)) console.table(this.allDayItems.map(it => ({ id: it && it.id, title: it && it.title, startDate: it && it.startDate, meta_detail_start: it && it.meta && it.meta.detail && (it.meta.detail.startDate || it.meta.detail.scheduledAt), meta_mapping_due: it && it.meta && it.meta.mapping && (it.meta.mapping.dueDate || it.meta.mapping.due_date) })))
+        console.log('programTasks.length:', Array.isArray(this.programTasks) ? this.programTasks.length : 0)
+        if (Array.isArray(this.programTasks)) console.table(this.programTasks.map(t => ({ id: t.id, title: t.title, startDate: t.startDate })))
+        console.log('dateCountMap sample keys:', Object.keys(this.dateCountMap || {}).slice(0,10))
+        console.groupEnd()
+      } catch (e) {
+        console.error('[Onboarding] dumpDebugState failed', e)
+      }
+    },
     goBack() {
       this.$router.push('/admin/onboarding/programs')
     },
@@ -423,8 +505,10 @@ export default {
         if (this.program && this.program.startDate) this.internalShowDate = new Date(this.program.startDate)
         // fetch trainings for this program
         this.fetchTrainings()
+        this.fetchProgramTasks()
         // fetch enrollments (mentors & mentees)
         this.fetchEnrollments()
+        // fetch program-scoped task mappings and enrich them
         // debug log
         console.log('[Onboarding] program loaded', this.program)
         console.log('[Onboarding] calendarItems after program load', this.calendarItems)
@@ -466,6 +550,83 @@ export default {
       } catch (e) {
         console.error('트레이닝 조회 실패', e)
         this.trainings = []
+      }
+    },
+    async fetchProgramTasks() {
+      if (!this.programId) return
+      try {
+        const resp = await http.get(`/api/v1/admin/programs/${this.programId}/tasks`)
+        const body = resp?.data ?? resp
+        if (this.showDebug) console.debug('[Onboarding] fetchProgramTasks raw', body)
+        // Support multiple response shapes: body.data.tasks, body.tasks, body.tasksList, body.data
+        const mappings = (body && (body.data && Array.isArray(body.data.tasks) ? body.data.tasks : (Array.isArray(body.tasks) ? body.tasks : (Array.isArray(body.data) ? body.data : [])))) || []
+        // normalize mappings: ensure array of objects with taskId and dueDate
+        const unique = []
+        const seen = new Set()
+        mappings.forEach(m => {
+          const tid = m.taskId || m.task_id || m.id || m.task || null
+          if (!tid) return
+          if (seen.has(String(tid))) return
+          seen.add(String(tid))
+          unique.push(m)
+        })
+        console.log('[Onboarding] program task mappings unique', unique.length, unique.slice(0,3))
+        // enrich details
+        const enriched = await Promise.all(unique.map(async (m) => {
+          const tid = m.taskId || m.task_id || m.id || m.task
+          try {
+            const dresp = await tasksService.get(tid)
+            const detail = dresp?.data ?? dresp
+            console.log('[Onboarding] fetched task detail', tid, detail)
+            const title = detail.data.title || detail.name || detail.taskTitle || detail.trainingTitle || (detail.titleName) || '과제'
+            let dueRaw = m.dueDate || m.due_date || m.assignedDate || m.assigned_at || detail.dueDate || detail.due_date || detail.scheduledAt || detail.startDate || null
+            let due = null
+            this.applyDomBadges()
+            if (dueRaw) {
+              // normalize YYYY-MM-DD to YYYY-MM-DDT00:00:00 to avoid Safari/older browser parsing issues
+              if (/^\d{4}-\d{2}-\d{2}$/.test(String(dueRaw))) {
+                due = String(dueRaw) + 'T00:00:00'
+              } else {
+                due = dueRaw
+              }
+            }
+            return {
+              id: detail.id || detail.taskId || tid,
+              title,
+              startDate: due || detail.startDate || detail.scheduledAt || null,
+              endDate: due || detail.endDate || null,
+              classes: ['tesk'],
+              meta: { mapping: m, detail }
+            }
+          } catch (err) {
+            // fallback to mapping-only item
+            const title = m.title || m.name || `task-${tid}`
+            let dueRaw = m.dueDate || m.due_date || m.assignedDate || m.assigned_at || null
+            let due = null
+            if (dueRaw) {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(String(dueRaw))) {
+                due = String(dueRaw) + 'T00:00:00'
+              } else {
+                due = dueRaw
+              }
+            }
+            return { id: tid, title, startDate: due, endDate: due, classes: ['tesk'], meta: { mapping: m } }
+          }
+        }))
+        this.programTasks = enriched.filter(Boolean)
+        if (this.showDebug) console.debug('[Onboarding] programTasks enriched', this.programTasks)
+        // ensure calendar badges are refreshed after programTasks load
+        this.$nextTick(() => {
+          try {
+            this.applyDomBadges()
+          } catch (e) { /* ignore */ }
+          try {
+            this.dumpDebugState && this.dumpDebugState('afterFetchProgramTasks')
+          } catch (e) { /* ignore */ }
+        })
+      } catch (err) {
+        console.warn('[Onboarding] fetchProgramTasks failed', err)
+        this.programTasks = []
       }
     },
     async fetchEnrollments() {
@@ -733,6 +894,7 @@ export default {
       this.selectedDate = d ? new Date(d) : null
       // popup open on date click
       console.log('date clicked', this.selectedDate)
+      try { this.dumpDebugState && this.dumpDebugState('onCalendarDateClick') } catch(e){ console.debug('[Onboarding] dumpDebugState error', e) }
     },
     countItemsForDate(d) {
       // Accept various input shapes: Date/string or slot object
@@ -772,15 +934,63 @@ export default {
       if (typeof slotProps === 'object') {
         candidate = slotProps.date || slotProps.day || slotProps.value || slotProps.raw || slotProps.dateObj || slotProps
       }
-      const target = new Date(candidate)
-      if (isNaN(target.getTime())) return 0
-      target.setHours(0,0,0,0)
-      const key = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`
-      const cnt = this.dateCountMap[key] || 0
-      if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey', { candidate, key, cnt })
+      // compute target key
+      const toKey = (d) => {
+        if (!d) return null
+        try {
+          // If it's a Date object, use its components
+          if (d instanceof Date) {
+            const dt = new Date(d.getTime())
+            dt.setHours(0,0,0,0)
+            return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+          }
+          const s = String(d)
+          // If the string contains an ISO-like date, extract YYYY-MM-DD directly to avoid timezone parsing issues
+          const m = s.match(/(\d{4}-\d{2}-\d{2})/)
+          if (m && m[1]) return m[1]
+          // fallback: attempt Date parse (less reliable across browsers)
+          const dt = new Date(s)
+          if (isNaN(dt.getTime())) return null
+          dt.setHours(0,0,0,0)
+          return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+        } catch (e) { return null }
+      }
+      const targetKey = toKey(candidate)
+      if (!targetKey) {
+        if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey invalid candidate', { candidate, slotProps })
+        return 0
+      }
+      // compute by scanning allDayItems (trainings + tasks) with tolerant date parsing
+      let cnt = 0
+      try {
+        const items = this.allDayItems || []
+        for (let i = 0; i < items.length; i++) {
+          try {
+            const it = items[i]
+            // consider multiple possible date sources including enriched detail and mapping due dates
+            const cand = it.startDate || it.scheduledAt || it.scheduled_at || (it.meta && it.meta.detail && (it.meta.detail.startDate || it.meta.detail.scheduledAt || it.meta.detail.scheduled_at || it.meta.detail.dueDate || it.meta.detail.due_date)) || (it.meta && it.meta.mapping && (it.meta.mapping.dueDate || it.meta.mapping.due_date)) || null
+            const k = toKey(cand)
+            if (k === targetKey) cnt += 1
+          } catch (e) { /* ignore item parse error */ }
+        }
+      } catch (e) {
+        if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey scan failed', e)
+      }
+      // Quick override (user option 2): if this slot's date equals the currently selectedDate,
+      // use the right-side `dayItems` length so badge matches the list the user sees.
+      try {
+        if (this.selectedDate) {
+          const selKey = toKey(this.selectedDate)
+          if (selKey && selKey === targetKey) {
+            // ensure dayItems is available and use its length
+            cnt = Array.isArray(this.dayItems) ? this.dayItems.length : cnt
+          }
+        }
+      } catch (e) { /* ignore */ }
+      if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey', { candidate, targetKey, cnt })
       return cnt
     },
-    onTrainingAssigned(assigned) {
+    async onTrainingAssigned(assigned) {
       if (!assigned) return
       const t = Object.assign({}, assigned)
       if (!t.startDate) {
@@ -791,19 +1001,57 @@ export default {
         }
       }
       if (!t.endDate) t.endDate = t.startDate
-      const newId = t.trainingId || t.id || t.training_id
-      if (newId) {
-        const idx = this.trainings.findIndex(x => (x.trainingId || x.id || x.training_id) === newId)
-        if (idx !== -1) {
-          this.trainings.splice(idx, 1, Object.assign({}, this.trainings[idx], t))
+      const newId = t.trainingId || t.id || t.training_id || t.taskId || t.task_id
+
+      // If this appears to be a training, merge into trainings list
+      if (t.trainingId || t.training_id || (!t.taskId && !t.task_id && newId)) {
+        if (newId) {
+          const idx = this.trainings.findIndex(x => (x.trainingId || x.id || x.training_id) === newId)
+          if (idx !== -1) {
+            this.trainings.splice(idx, 1, Object.assign({}, this.trainings[idx], t))
+          } else {
+            this.trainings = Array.isArray(this.trainings) ? [...this.trainings, t] : [t]
+          }
         } else {
-          this.trainings = Array.isArray(this.trainings) ? [...this.trainings, t] : [t]
+          const exists = this.trainings.some(x => x.title === t.title && x.startDate && new Date(x.startDate).toDateString() === new Date(t.startDate).toDateString())
+          if (!exists) this.trainings = Array.isArray(this.trainings) ? [...this.trainings, t] : [t]
         }
-      } else {
-        const exists = this.trainings.some(x => x.title === t.title && x.startDate && new Date(x.startDate).toDateString() === new Date(t.startDate).toDateString())
-        if (!exists) this.trainings = Array.isArray(this.trainings) ? [...this.trainings, t] : [t]
       }
-      // popup removed — nothing to close here
+
+      // If this looks like a task/assignment (no trainingId, but has task id), try to enrich immediately into programTasks
+      try {
+        const isLikelyTask = !(t.trainingId || t.training_id) && (t.taskId || t.task_id || (!t.trainingId && !t.training_id && t.id))
+        if (isLikelyTask) {
+          const tid = t.taskId || t.task_id || t.id
+          const already = (this.programTasks || []).some(p => String(p.id) === String(tid))
+          if (!already) {
+            try {
+              const dresp = await tasksService.get(tid)
+              const detail = dresp?.data ?? dresp
+              const title = detail.title || detail.name || detail.taskTitle || '과제'
+              let dueRaw = t._editDate || t.startDate || t.dueDate || t.due_date || detail.dueDate || detail.due_date || detail.startDate || null
+              let due = null
+              if (dueRaw) {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(String(dueRaw))) {
+                  due = String(dueRaw) + 'T00:00:00'
+                } else {
+                  due = dueRaw
+                }
+              }
+              const item = { id: detail.id || tid, title, startDate: due || detail.startDate || null, endDate: due || detail.endDate || null, classes: ['tesk'], meta: { detail, mapping: t } }
+              this.programTasks = Array.isArray(this.programTasks) ? [...this.programTasks, item] : [item]
+              if (this.showDebug) console.debug('[Onboarding] onTrainingAssigned enriched task added', item)
+            } catch (err) {
+              console.warn('[Onboarding] onTrainingAssigned - task detail fetch failed', err)
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // refresh program tasks as a safety net (server-side mapping list may differ)
+      this.fetchProgramTasks()
     },
     onTrainingRemoved(payload) {
       // payload: { trainingId }
@@ -816,6 +1064,8 @@ export default {
       })
       // refresh from server to ensure consistency
       this.fetchTrainings()
+      // refresh program task mappings as well
+      this.fetchProgramTasks()
     },
     openDateModal(d) {
       this.selectedDate = d ? new Date(d) : null
@@ -1333,4 +1583,5 @@ export default {
   box-shadow: 0 4px 12px rgba(41,69,148,0.12);
 }
 .btn-add-mentee:hover { transform: translateY(-2px) }
+.item-type-badge { display:inline-block; background:#eef2ff; color:#294594; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700 }
 </style>

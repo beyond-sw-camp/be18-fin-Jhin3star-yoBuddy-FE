@@ -83,11 +83,14 @@ const routes = [
     path: '/admin/onboarding/programs/:programId',
     name: 'OnboardingProgramDetail',
     component: () => import('@/pages/admin/onboarding/OnboardingProgramDetailPage.vue'),
-    path: '/admin/trainings/results',
-    component: () => import('@/pages/admin/training/trainingresult/TrainingResultList.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
+  {
 
+    path: '/admin/trainings/results',
+    component: () => import('@/pages/admin/training/trainingresult/TrainingResultList.vue'),
+     meta: { requiresAuth: true, adminOnly: true }
+  },
   // --- 멘토 기능 ---
   {
     path: '/admin/mentoring/sessions',
