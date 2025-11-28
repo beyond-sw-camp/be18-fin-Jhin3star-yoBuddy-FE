@@ -9,8 +9,8 @@
 
         <section class="center-area section">
           <div class="avatar-large">
-            <img v-if="user && (user.avatarUrl || user.avatar)" :src="user.avatarUrl || user.avatar" alt="avatar" />
-            <span v-else class="avatar-fallback-large">👤</span>
+            <img v-if="fullProfileImageUrl" :src="fullProfileImageUrl" alt="Profile" />
+            <span v-else class="avatar-fallback-large">{{ initials }}</span>
           </div>
           <div class="center-name">{{ user && (user.name || user.userName) ? (user.name || user.userName) : '알 수 없음' }}</div>
         </section>
@@ -122,6 +122,7 @@
 <script>
 import userService from '@/services/user'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import http from '@/services/http';
 
 export default {
   name: 'UserDetailpopup',
@@ -240,6 +241,18 @@ export default {
     doDelete() { this.$emit('delete', this.user); this.showConfirm = false }
   },
   computed: {
+    initials() {
+      const name = this.user?.name || this.user?.userName || '';
+      return name ? name.substring(0, 1).toUpperCase() : '?';
+    },
+    fullProfileImageUrl() {
+      if (this.user?.profileImageUrl) {
+        const base = http.defaults.baseURL.replace(/\/$/, '');
+        const path = this.user.profileImageUrl.replace(/^\//, '');
+        return `${base}/${path}`;
+      }
+      return null;
+    },
     formattedJoinDate() {
       const d = this.user && (this.user.joinedAt || this.user.joinDate || this.user.hireDate) || ''
       if (!d) return '—'
@@ -308,8 +321,30 @@ export default {
 .modal-title { font-size:18px; font-weight:700; color: var(--main-color); letter-spacing:0.2px }
 
 .center-area { text-align:center; padding: 10px 0 18px 0 }
-.avatar-large img { width: 100px; height:100px; border-radius:50%; object-fit:cover; border: 3px solid rgba(41,69,148,0.08); box-shadow: 0 8px 20px rgba(41,69,148,0.06) }
-.avatar-fallback-large { display:inline-block; width:100px; height:100px; line-height:100px; border-radius:50%; background: linear-gradient(180deg,var(--bg-soft),#eef4ff); color:var(--main-color); font-size:36px; border: 2px solid rgba(41,69,148,0.06) }
+.avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 3px solid rgba(41,69,148,0.08);
+  box-shadow: 0 8px 20px rgba(41,69,148,0.06);
+  background: linear-gradient(180deg,var(--bg-soft),#eef4ff);
+}
+.avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar-fallback-large {
+  display:inline-flex;
+  width:100%;
+  height:100%;
+  align-items: center;
+  justify-content: center;
+  color:var(--main-color);
+  font-size:36px;
+}
 .center-name { font-weight:700; margin-top:10px; font-size:20px; color:#10243b; letter-spacing:0.2px }
 
 .two-cols { display:flex; gap:24px; padding: 12px 0; align-items:flex-start; flex-wrap:wrap; margin-left: 12%; padding-bottom: 30px; }
