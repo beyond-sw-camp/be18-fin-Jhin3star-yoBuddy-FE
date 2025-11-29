@@ -123,8 +123,9 @@ export default {
     },
     statusClass(s) {
       const up = String(s || '').toUpperCase()
-      if (up === 'PUBLISHED' || up === 'ACTIVE') return 'tag-admin'
-      if (up === 'DRAFT') return 'tag-newbie'
+      if (up === 'ACTIVE') return 'tag-active'
+      if (up === 'UPCOMING') return 'tag-upcoming'
+      if (up === 'COMPLETED') return 'tag-completed'
       return 'tag-mentor'
     },
     typeLabel(t) {
@@ -260,9 +261,10 @@ export default {
 .user-table thead th { text-align:left; color:#7c96b3; font-weight:700; padding:12px 10px; font-size:13px }
 .user-table tbody tr { border-top:1px solid #f0f4fb }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
-.tag-admin { background:#ffe9e9; color:#c94242 }
-.tag-mentor { background:#f6f8d1; color:#b0b900 }
-.tag-newbie { background:#f0fff6; color:#0a9a52 }
+.tag-mentor { background:#f3f4f6; color:#4b5563 }
+.tag-completed { background:#ffe9e9; color:#294594 }
+.tag-upcoming { background:#f6f8d1; color:#b0b900 }
+.tag-active { background:#f0fff6; color:#0a9a52 }
 .user-table tbody td { padding:16px 10px; vertical-align:middle; color:#123 }
 .name-col { display:flex; gap:12px; align-items:center }
 .avatar { width:36px; height:36px; border-radius:50%; background:#294594; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700 }

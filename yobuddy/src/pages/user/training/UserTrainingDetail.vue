@@ -1,6 +1,11 @@
 <template>
   <div>
-    <TrainingDetailPopup :visible="true" :training="training" @close="$router.back()" />
+    <TrainingDetailPopup
+      v-if="training"
+      :visible="true"
+      :training="training"
+      @close="$router.back()"
+    />
   </div>
 </template>
 

@@ -29,11 +29,17 @@
               <span v-else class="url-empty">정보 없음</span>
             </div>
 
+            <!-- 교육 일시 -->
+            <div class="datetime-row">
+              <div class="label-text">수강 가능 기간:</div>
+              <div class="datetime-value">{{ formatDateRange(training?.startDate, training?.endDate) }}</div>
+            </div>
             <!-- 이수증 섹션 (상태 기반) -->
             <div v-if="isOnlineCompleted && hasSubmittedCertificate" class="certificate-section certificate-flat">
-              <label class="file-input-label">
-              <div class="file-label">이수증 제출 완료</div>
-              </label>
+              <div class="cert-top-row">
+                <div class="file-label">이수증 제출 완료</div>
+                <span class="file-button" @click="openResubmitPicker">다시 제출하기</span>
+              </div>
               <div class="cert-meta-row">
                 <div class="cert-meta">
                   <span class="meta-val">{{ submittedFileName }}</span>
@@ -42,7 +48,6 @@
                   <span class="meta-val">{{ formatDateTime(certificateUploadedAt) }}</span>
                 </div>
                 <input ref="resubmitInput" type="file" @change="onFileChange" accept=".pdf" class="file-input-hidden">
-                <span class="file-button" @click="openResubmitPicker">다시 제출하기</span>
               </div>
             </div>
             <div v-else class="certificate-upload-section">
@@ -81,7 +86,10 @@
             <div v-else class="quiz-button-section">
               <label class="quiz-input-label">
                 <div>
-                  <div class="quiz-label">퀴즈 응시 전</div>
+                  <div class="quiz-label">
+                    퀴즈 응시 전
+                    <span v-if="isOfflineUpcoming" class="quiz-sub-label">(교육 참석 후 퀴즈를 응시해 주세요.)</span>
+                  </div>
                   <span v-if="shouldShowQuizSubLabel" class="quiz-sub-label">(이메일과 알림을 확인해 주세요)</span>
                 </div>
               </label>
@@ -112,6 +120,7 @@ import { useAuthStore } from '@/store/authStore';
 
 export default {
   name: 'TrainingDetailPopup',
+  emits: ['close', 'certificateSubmitted'],
   props: { training: { type: Object, default: null }, visible: { type: Boolean, default: false } },
   setup() {
     const authStore = useAuthStore()
@@ -142,6 +151,10 @@ export default {
     },
     isOfflinePending() {
       return String(this.training?.status || '').toUpperCase() !== 'COMPLETED' && this.training?.type === 'OFFLINE'
+    },
+    isOfflineUpcoming() {
+      const status = String(this.training?.status || '').toUpperCase()
+      return this.training?.type === 'OFFLINE' && (status === 'UPCOMING' || status === 'PENDING')
     },
     isPassingScore() {
       return this.training?.score >= this.training?.passingScore
@@ -210,6 +223,25 @@ export default {
       } catch (e) {
         return d
       }
+    },
+    formatDateYMD(d) {
+      if (!d) return '—'
+      try {
+        const dt = new Date(d)
+        if (Number.isNaN(dt.getTime())) return '—'
+        const y = dt.getFullYear()
+        const m = String(dt.getMonth() + 1).padStart(2, '0')
+        const day = String(dt.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+      } catch (e) {
+        return '—'
+      }
+    },
+    formatDateRange(start, end) {
+      if (!start && !end) return '—'
+      const startStr = start ? this.formatDateYMD(start) : '—'
+      const endStr = end ? this.formatDateYMD(end) : '—'
+      return `${startStr} ~ ${endStr}`
     },
     statusLabel(s) {
       if (!s) return '할당 전'
@@ -333,12 +365,12 @@ export default {
 
 .detail-modal {
   width: 720px;
-  max-width: calc(100% - 40px);
+  max-width: calc(100% - 60px);
   max-height: 90vh;
   overflow: auto;
   background: #fff;
   border-radius: 12px;
-  padding: 24px;
+  padding: 28px 36px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 40px rgba(3, 10, 18, 0.12);
@@ -348,7 +380,7 @@ export default {
 /* 헤더 */
 .modal-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   position: relative;
   height: 52px;
@@ -357,7 +389,7 @@ export default {
 
 .back-btn {
   position: absolute;
-  left: 0;
+  right: 0;
   top: 0;
   background: transparent;
   border: none;
@@ -482,7 +514,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 12px 0;
+  margin: 8px 0;
 }
 
 .certificate-flat {
@@ -502,7 +534,7 @@ export default {
   align-items: center;
   gap: 25px;
   flex-wrap: wrap;
-  padding-top: 6px;
+  padding: 8px 10px;
 }
 
 .cert-meta {
@@ -518,6 +550,8 @@ export default {
   flex: 0 0 auto;
   margin-left: auto;
   text-align: right;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .cert-meta-date .meta-val {
@@ -542,7 +576,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 12px 0;
+  margin: 8px 0;
   align-items: flex-start;
 }
 
@@ -744,7 +778,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 12px;
   background: #f8f9fa;
   border: 1px solid #eef3fb;
