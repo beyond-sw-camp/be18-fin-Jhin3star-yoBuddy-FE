@@ -21,33 +21,24 @@
     <div v-else-if="programs.length === 0" class="empty-state">
       등록된 온보딩 프로그램이 없습니다.
     </div>
-    <OnboardingProgramDetailPopup
-      :programId="selectedProgram ? (selectedProgram.programId || selectedProgram.id) : null"
-      :program="selectedProgram"
-      :visible="showDetailModal"
-      @close="closeProgramDetail"
-    />
   </div>
 </template>
 
 <script>
 import onboardingService from '@/services/onboardingService';
 import OnboardingProgramCard from '@/components/admin/onboarding/OnboardingProgramCard.vue';
-import OnboardingProgramDetailPopup from '@/pages/admin/onboarding/OnboardingProgramDetailPopup.vue';
 
 export default {
   name: "OnboardingProgramList",
   components: {
     OnboardingProgramCard,
-    OnboardingProgramDetailPopup,
   },
   data() {
     return {
       programs: [],
       loading: false,
       error: null,
-      showDetailModal: false,
-        selectedProgram: null,
+      // popup removed; navigation uses route params
     };
   },
   async mounted() {
@@ -64,14 +55,20 @@ export default {
   methods: {
     openProgramDetail(program) {
       console.log('openProgramDetail called with', program)
-      this.selectedProgram = program || null
-      this.showDetailModal = true
+        // navigate to detail page
+      const id = program ? (program.programId || program.id) : null
+      if (id) this.$router.push({ name: 'OnboardingProgramDetail', params: { programId: id } })
+    },
+    debugOpenFirst() {
+      if (this.programs && this.programs.length > 0) {
+        this.openProgramDetail(this.programs[0])
+      } else {
+        // open with a placeholder if no programs loaded
+        this.openProgramDetail({ name: '샘플 프로그램', department: '샘플 부서', startDate: '—', endDate: '—', participantCount: 0, progress: 0, status: 'UPCOMING' })
+      }
     },
     // removed openSample helper
-    closeProgramDetail() {
-      this.showDetailModal = false
-      this.selectedProgram = null
-    }
+      // removed openSample helper
   },
 };
 </script>

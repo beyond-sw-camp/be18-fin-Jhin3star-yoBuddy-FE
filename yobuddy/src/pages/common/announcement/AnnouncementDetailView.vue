@@ -219,7 +219,7 @@ export default {
   overflow: hidden;
   margin: 0 auto;
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 10px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   border: 1px solid #e5e7eb;
   padding: 24px 28px 28px 28px;
@@ -307,7 +307,8 @@ export default {
 }
 
 .ad-attachments {
-  margin-top: 16px;
+  width: 1100px;
+  margin: 40px auto 0;
   border: 1px solid #ffffff; /* 검은 선 */
   border-radius: 10px;
   padding: 12px 16px;

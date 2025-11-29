@@ -21,12 +21,18 @@
                 <img v-if="session.menteeProfileImageUrl" :src="getFullImageUrl(session.menteeProfileImageUrl)" alt="Mentee Profile" class="profile-image" />
                 <span v-else>{{ initials(session.menteeName) }}</span>
               </div>
-              <dl class="info-list">
-                <dt>이름</dt>
-                <dd>{{ session.menteeName }}</dd>
-                <dt>이메일</dt>
-                <dd>{{ session.menteeEmail }}</dd>
-              </dl>
+              <div>
+                <dl class="info-list">
+                  <dt>이름</dt>
+                  <dd>{{ session.menteeName }}</dd>
+                  <dt>이메일</dt>
+                  <dd>{{ session.menteeEmail }}</dd>
+                </dl>
+                <div class="training-stats" v-if="session.menteeCompletedTrainings !== undefined || session.menteePendingTrainings !== undefined">
+                  <span class="stat-item completed">완료: {{ session.menteeCompletedTrainings || 0 }}</span>
+                  <span class="stat-item pending">예정: {{ session.menteePendingTrainings || 0 }}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div class="info-group">
@@ -241,6 +247,9 @@ export default {
   height: 100%;
   object-fit: cover;
 }
+.info-list {
+  flex-grow: 1; /* Allow info-list to take available space */
+}
 .info-list dt {
   color: #7d93ad;
   font-size: 14px;
@@ -255,6 +264,25 @@ export default {
 }
 .info-list dd:last-of-type {
   margin-bottom: 0;
+}
+.training-stats {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.stat-item {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.stat-item.completed {
+  background-color: #d1fae5; /* Light green */
+  color: #059669; /* Darker green */
+}
+.stat-item.pending {
+  background-color: #fef3c7; /* Light yellow */
+  color: #92400e; /* Darker yellow */
 }
 .feedback-content {
   white-space: pre-wrap;

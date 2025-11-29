@@ -91,7 +91,8 @@ export default {
       '/mentoring': '멘토링',
       '/education': '교육',
       '/content': '콘텐츠',
-      '/organization/usermanagement': '유저 관리'
+      '/organization/usermanagement': '유저 관리',
+      '/tasks': '과제',
     }
 
     const pageTitle = computed(() => {
@@ -100,6 +101,16 @@ export default {
 
     // breadcrumb depth 표현
     const breadcrumbs = computed(() => {
+      // special-case certain routes to show a single friendly label
+      const singleLabelRoutes = {
+        '/admin/tasks': '과제',
+        '/admin/tasks/': '과제'
+      }
+
+      if (singleLabelRoutes[route.path]) {
+        return [singleLabelRoutes[route.path]]
+      }
+
       const segments = route.path.split('/').filter(Boolean)
       const crumbs = []
       if (segments.length === 0) {
