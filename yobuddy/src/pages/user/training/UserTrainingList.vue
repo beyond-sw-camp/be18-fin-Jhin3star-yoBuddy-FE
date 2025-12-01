@@ -25,6 +25,8 @@
     </div>
 
     <TrainingDetailPopup
+      v-if="showDetail && selected"
+      :key="selected?.id || 'training-detail'"
       :visible="showDetail"
       :training="selected"
       @close="closeDetail"
