@@ -7,7 +7,7 @@
         <h2 class="title">신입 온보딩 성과</h2>
 
         <div class="filters">
-          <select v-model="selectedMenteeId" @change="onFilterChange">
+          <select v-model.number="selectedMenteeId" @change="onFilterChange">
             <option disabled value="">담당 멘티 선택</option>
             <option v-for="m in mentees" :key="m.menteeId" :value="m.menteeId">
               {{ m.name }} ({{ m.department || '부서 미지정' }})
@@ -153,7 +153,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in data.weeklyReports" :key="r.reportId">
+              <tr v-for="r in data.weeklyReports" :key="r.reportId" @click="openReportPopup(r.reportId)">
                 <td>{{ r.authorName }}</td>
                 <td>{{ r.label }}</td>
                 <td>{{ formatDate(r.writtenDate) }}</td>
@@ -184,14 +184,27 @@
     <div v-if="isLoading" class="loading">
       불러오는 중...
     </div>
+
+    <weekly-report-detail-popup
+      :visible="isReportPopupVisible"
+      :mentor-id="mentorId"
+      :mentee-id="selectedMenteeId"
+      :report-id="selectedReportId"
+      @close="closeReportPopup"
+      @saved="handleReportSaved"
+    />
   </div>
 </template>
 
 <script>
-import mentoringService from "@/services/mentoringService"
+import mentoringService from "@/services/mentoringService";
+import WeeklyReportDetailPopup from './WeeklyReportDetailPopup.vue';
 
 export default {
   name: "MenteeOnboardingPerformance",
+  components: {
+    WeeklyReportDetailPopup,
+  },
   props: {
     mentorId: {
       type: Number,
@@ -214,6 +227,8 @@ export default {
       to: today.toISOString().slice(0, 10),
       data: null,
       isLoading: false,
+      isReportPopupVisible: false,
+      selectedReportId: null,
     }
   },
   watch: {
@@ -248,6 +263,18 @@ export default {
     },
     onFilterChange() {
       this.fetchData()
+    },
+    openReportPopup(reportId) {
+      this.selectedReportId = reportId;
+      this.isReportPopupVisible = true;
+    },
+    closeReportPopup() {
+      this.isReportPopupVisible = false;
+      this.selectedReportId = null;
+    },
+    handleReportSaved() {
+      this.closeReportPopup();
+      this.fetchData(); // Refresh data after saving
     },
     formatDate(dateStr) {
       if (!dateStr) return "-"
@@ -473,6 +500,11 @@ export default {
 .report-table th {
   color: #6b7280;
   font-weight: 600;
+}
+
+.report-table tbody tr:hover {
+  background-color: #f9fafb;
+  cursor: pointer;
 }
 
 .status-pill {

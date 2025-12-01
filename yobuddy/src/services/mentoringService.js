@@ -157,16 +157,70 @@ const mentoringService = {
     }
   },
     async getMenteeOnboardingPerformance(mentorId, menteeId, from, to) {
-    const resp = await http.get(
+    // Fetch performance data
+    const performancePromise = http.get(
       `/api/v1/mentors/${mentorId}/mentees/${menteeId}/onboarding-performance`,
       {
-        params: {
-          from,
-          to,
-        },
+        params: { from, to },
       }
-    )
-    return resp.data
+    );
+
+    // Fetch weekly reports
+    const weeklyReportsPromise = http.get(
+      `/api/v1/mentors/${mentorId}/mentees/${menteeId}/weekly-reports`,
+      {
+        params: { page: 0, size: 50 }, // As per instructions
+      }
+    );
+
+    // Fetch mentee list to get the name
+    const menteesPromise = this.getMenteesForMentor(mentorId);
+
+    const [performanceResp, weeklyReportsResp, mentees] = await Promise.all([
+      performancePromise,
+      weeklyReportsPromise,
+      menteesPromise,
+    ]);
+
+    const mentee = mentees.find(m => m.menteeId === menteeId);
+    const menteeName = mentee ? mentee.name : 'Mentee';
+
+    const mappedReports = weeklyReportsResp.data.content.map(r => ({
+      reportId: r.weeklyReportId,
+      authorName: menteeName,
+      label: `Week ${r.weekNumber} (${r.startDate} ~ ${r.endDate})`,
+      writtenDate: r.updatedAt ? r.updatedAt.substring(0, 10) : '-',
+      submitStatus: ['SUBMITTED', 'REVIEWED', 'FEEDBACK_OVERDUE'].includes(r.status) ? 'SUBMITTED' : 'MISSING',
+      feedbackStatus: r.status === 'REVIEWED' ? 'WRITTEN' : 'PENDING',
+    }));
+
+    return {
+      ...performanceResp.data,
+      weeklyReports: mappedReports,
+    };
+  },
+
+  /**
+   * 주간 리포트 상세 정보를 가져옵니다.
+   * @param {number} mentorId
+   * @param {number} menteeId
+   * @param {number} reportId
+   * @returns {Promise<any>}
+   */
+  async getWeeklyReportDetail(mentorId, menteeId, reportId) {
+    return http.get(`/api/v1/mentors/${mentorId}/mentees/${menteeId}/weekly-reports/${reportId}`);
+  },
+
+  /**
+   * 주간 리포트에 대한 멘토의 피드백을 제출(수정)합니다.
+   * @param {number} mentorId
+   * @param {number} menteeId
+   * @param {number} reportId
+   * @param {object} feedbackData - { feedback: "..." }
+   * @returns {Promise<any>}
+   */
+  async submitWeeklyReportFeedback(mentorId, menteeId, reportId, feedbackData) {
+    return http.patch(`/api/v1/mentors/${mentorId}/mentees/${menteeId}/weekly-reports/${reportId}/feedback`, feedbackData);
   },
 };
 
