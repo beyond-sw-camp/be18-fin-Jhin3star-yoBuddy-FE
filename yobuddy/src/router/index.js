@@ -151,7 +151,7 @@ const routes = [
   {
     path: '/mentor/tasks',
     component: () => import('@/pages/mentor/tasks/MentorTaskList.vue'),
-  meta: { requiresAuth: true, mentorOnly: true }
+    meta: { requiresAuth: true, mentorOnly: true }
   }
 ]
 

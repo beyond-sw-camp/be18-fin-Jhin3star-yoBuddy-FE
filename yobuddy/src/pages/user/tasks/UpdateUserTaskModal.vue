@@ -29,11 +29,9 @@
 
       <div class="modal-body" v-if="task">
 
-        <!-- 과제 설명 -->
         <label class="section-label">과제 설명:</label>
         <div class="plain-text">{{ task.description }}</div>
 
-        <!-- 과제 첨부파일 (관리자가 올린 파일) -->
         <label class="section-label">첨부파일:</label>
         <div class="attached-file">
           <input
@@ -51,7 +49,6 @@
           </button>
         </div>
 
-        <!-- 코멘트 -->
         <label class="section-label">코멘트:</label>
         <input
           v-model="form.comment"
@@ -60,7 +57,6 @@
           placeholder="예: 과제에 대한 코멘트나 추가 설명을 입력하세요."
         />
 
-        <!-- 파일 업로드 (제출 파일) -->
         <label class="section-label">제출파일:</label>
 
         <div
@@ -85,7 +81,6 @@
           </div>
         </div>
 
-        <!-- 기존 제출된 파일 목록 -->
         <div
           class="submitted-list"
           v-if="task?.submittedFiles?.length"
@@ -135,18 +130,15 @@ const auth = useAuthStore();
 
 const task = ref(null);
 
-// 제출폼
 const form = ref({ comment: "", file: null });
 const loading = ref(false);
 const error = ref("");
 
-// 날짜 포맷
 function formatDate(date) {
   if (!date) return "-";
   return new Date(date).toLocaleDateString();
 }
 
-// 상세조회 로딩
 async function loadTaskDetail() {
   try {
     if (!auth.user) {
@@ -162,7 +154,6 @@ async function loadTaskDetail() {
 
     const data = resp.data.data;
 
-    // 마감일 지났으면 상태 보정
     if (data?.dueDate && data?.status === "PENDING") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -227,11 +218,6 @@ const submitButtonLabel = computed(() =>
   task.value?.status === "SUBMITTED" ? "다시 제출" : "제출"
 );
 
-/**
- * 🔥 TaskSubmitRequest(comment, MultipartFile[] files)에 맞춘 제출 로직
- *   - multipart/form-data 로 바로 전송
- *   - 필드 이름은 comment / files
- */
 async function submit() {
   loading.value = true;
   error.value = "";
@@ -240,11 +226,8 @@ async function submit() {
     const fd = new FormData();
     fd.append("comment", form.value.comment || "");
 
-    // TaskSubmitRequest.files 에 맞게 이름을 "files" 로!
     if (form.value.file) {
       fd.append("files", form.value.file);
-      // 여러 개 지원하려면:
-      // selectedFiles.forEach(f => fd.append("files", f));
     }
 
     await tasksService.submitUserTask(
@@ -277,7 +260,6 @@ function statusLabel(s) {
 </script>
 
 <style scoped>
-/* 그대로 유지 (네가 쓰던 스타일) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -337,7 +319,6 @@ function statusLabel(s) {
   font-weight: 600;
 }
 
-/* 상태 색상 */
 .status.pending   { background: #d8d8d8; color: #6f6f6f; }
 .status.submitted { background: #e9f0ff; color: #294594; }
 .status.late      { background: #f8e3e2; color: #ae5e62; }
@@ -361,7 +342,6 @@ function statusLabel(s) {
   margin-top: 2px;
 }
 
-/* BODY */
 .section-label {
   display: block;
   margin-top: 18px;
@@ -409,7 +389,6 @@ function statusLabel(s) {
   background: #1e346c;
 }
 
-/* 제출한 파일 */
 .submitted-list {
   background: #f8fafc;
   border: 2px dashed #cbd5e1;
@@ -423,7 +402,6 @@ function statusLabel(s) {
   color: #94a3b8;
 }
 
-/* 코멘트 */
 .comment-input {
   width: 100%;
   padding: 12px;
@@ -432,7 +410,6 @@ function statusLabel(s) {
   background: #f1f5f9;
 }
 
-/* 업로드 영역 */
 .file-drop-wrapper {
   border: 2px dashed #cbd5e1;
   border-radius: 10px;
