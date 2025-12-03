@@ -33,7 +33,7 @@ const routes = [
 
   // --- 사용자 ---
   {
-    path: '/dashboard',
+    path: '/user/dashboard',
     component: () => import('@/pages/user/UserDashboard.vue'),
     meta: { requiresAuth: true, userOnly: true }
   },
