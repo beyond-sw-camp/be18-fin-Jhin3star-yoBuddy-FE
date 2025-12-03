@@ -6,8 +6,6 @@
     @mouseup.self="onOverlayClick"
   >
     <div class="modal">
-
-      <!-- HEADER -->
       <div class="modal-header">
         <h2>{{ task?.title }}</h2>
         <button class="close-btn" @click="close">×</button>
@@ -28,12 +26,9 @@
       </div>
 
       <div class="modal-body" v-if="task">
-
-        <!-- 과제 설명 -->
         <label class="section-label">과제 설명:</label>
         <div class="plain-text">{{ task.description }}</div>
 
-        <!-- 첨부파일 -->
         <label class="section-label">첨부파일:</label>
         <div class="attached-file">
           <input
@@ -45,13 +40,12 @@
           <button
             v-if="task.taskFiles?.length"
             class="download-btn"
-            @click="openFile(task.taskFiles[0].filePath)"
+            @click="openFile(task.taskFiles[0])"
           >
             다운로드
           </button>
         </div>
 
-        <!-- 제출한 파일 -->
         <label class="section-label">제출파일:</label>
         <div class="attached-file">
           <input
@@ -63,29 +57,26 @@
           <button
             v-if="task.submittedFiles?.length"
             class="download-btn"
-            @click="openFile(task.submittedFiles[0].filePath)"
+            @click="openFile(task.submittedFiles[0])"
           >
             다운로드
           </button>
         </div>
 
+        <template v-if="task.status === 'SUBMITTED' || task.status === 'LATE'">
+          <label class="section-label" style="margin-top: 22px;">작성한 코멘트:</label>
+          <div class="plain-text">{{ task.comment || '코멘트가 없습니다.' }}</div>
+        </template>
 
-        <!-- ============================= -->
-        <!--       ⭐  GRADED UI 블록       -->
-        <!-- ============================= -->
         <template v-if="task.status === 'GRADED'">
+          <label class="section-label" style="margin-top: 22px;">작성한 코멘트:</label>
+          <div class="plain-text">{{ task.comment || '코멘트가 없습니다.' }}</div>
 
-          <!-- 과제 설명(다시 노출됨: 이미지 기준) -->
-          <label class="section-label" style="margin-top: 22px;">과제 설명:</label>
-          <div class="plain-text">{{ task.description }}</div>
-
-          <!-- 과제 점수 -->
           <label class="section-label">과제 점수:</label>
           <div class="plain-text">
             <strong>{{ task.grade }}</strong> / 100
           </div>
 
-          <!-- 피드백 -->
           <label class="section-label">피드백:</label>
           <div class="plain-text">
             {{ task.feedback || '피드백 없음' }}
@@ -93,10 +84,7 @@
         </template>
       </div>
 
-      <!-- FOOTER -->
       <div class="modal-actions">
-
-        <!-- ⭐ 제출전 || 제출완료 && 아직 마감전 → 수정 가능 -->
         <button
           v-if="canEdit"
           class="submit-btn"
@@ -104,49 +92,60 @@
         >
           수정
         </button>
-
       </div>
     </div>
 
-    <!-- ⭐ 수정 모달 -->
     <UpdateUserTaskModal
-      v-if="showEditModal"
-      :show="showEditModal"
-      :userTaskId="userTaskId"
-      @close="showEditModal = false"
+     v-if="showEditModal"
+     :show="showEditModal"
+     :userTaskId="userTaskId"
+     :initialComment="task?.comment || ''"
+     :initialSubmittedFiles="task?.submittedFiles || []"
+     @updated="handleUpdated"
+     @submitted="handleSubmitted"
+     @close="showEditModal = false"
     />
   </div>
 </template>
-
 
 <script setup>
 import { ref, defineProps, defineEmits, watch, onMounted, computed } from "vue"
 import { useAuthStore } from "@/store/authStore"
 import tasksService from "@/services/tasksService"
 import UpdateUserTaskModal from "@/pages/user/tasks/UpdateUserTaskModal.vue"
+import fileService from "@/services/fileService"
 
 const props = defineProps({
   show: { type: Boolean, required: true },
   userTaskId: { type: Number, required: true }
 })
-const emit = defineEmits(["close"])
+const emit = defineEmits(["close", "submitted"])
 
 const auth = useAuthStore()
 const task = ref(null)
-
 const showEditModal = ref(false)
 
-/* ===========================
-      상세조회
-=========================== */
 async function loadTaskDetail() {
   try {
     if (!auth.user) await auth.loadUser()
     const resp = await tasksService.getUserTaskDetail(auth.user.userId, props.userTaskId)
-    task.value = resp.data.data
+    const data = resp.data.data
 
+    if (data?.dueDate && data?.status === "PENDING") {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const due = new Date(data.dueDate)
+      due.setHours(0, 0, 0, 0)
+
+      if (due < today) {
+        data.status = "MISSING"
+      }
+    }
+
+    task.value = data
   } catch (e) {
-    console.error("❌ 상세조회 실패:", e)
+    console.error("상세조회 실패:", e)
   }
 }
 
@@ -155,23 +154,40 @@ onMounted(() => {
 })
 watch(() => props.show, v => v && loadTaskDetail())
 
-
-/* ===========================
-      ⭐ 수정 가능 조건
-=========================== */
 const canEdit = computed(() => {
   if (!task.value) return false
-  if (task.value.status !== "SUBMITTED") return false
-  return new Date(task.value.dueDate) > new Date()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const due = new Date(task.value.dueDate)
+  due.setHours(0, 0, 0, 0)
+
+  if (task.value.status === "SUBMITTED") {
+    return due >= today
+  }
+
+  if (task.value.status === "MISSING") {
+    return true
+  }
+
+  return false
 })
 
 function openEdit() {
   showEditModal.value = true
 }
 
-/* ===========================
-      Helpers
-=========================== */
+function handleUpdated() {
+  loadTaskDetail()
+}
+
+function handleSubmitted() {
+  emit("submitted")
+  showEditModal.value = false
+  close()
+}
+
 function statusLabel(s) {
   return {
     PENDING: "제출 전",
@@ -186,8 +202,14 @@ function formatDate(d) {
   return new Date(d).toISOString().split("T")[0]
 }
 
-function openFile(url) {
-  window.open(url, "_blank")
+async function openFile(file) {
+  if (!file) return
+  try {
+    await fileService.downloadFiles(file.fileId, file.fileName)
+  } catch (e) {
+    console.error("파일 다운로드 실패:", e)
+    alert("파일 다운로드 중 오류가 발생했습니다.")
+  }
 }
 
 const isDragging = ref(false)
@@ -195,9 +217,7 @@ function onOverlayClick() { if (!isDragging.value) close() }
 function close() { emit("close") }
 </script>
 
-
 <style scoped>
-/* ⭐ 기존 스타일 그대로 — 절대 수정 없음 */
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -1,4 +1,4 @@
-  <template>
+<template>
   <div 
     class="modal-overlay"
     @mousedown="isDragging = false"
@@ -30,12 +30,11 @@
       <div class="modal-body" v-if="task">
 
         <!-- 과제 설명 -->
-         <label class="section-label">과제 설명:</label>
-         <div class="plain-text">{{ task.description }}</div>
+        <label class="section-label">과제 설명:</label>
+        <div class="plain-text">{{ task.description }}</div>
 
-        <!-- 첨부파일 -->
+        <!-- 과제 첨부파일 (관리자가 올린 파일) -->
         <label class="section-label">첨부파일:</label>
-
         <div class="attached-file">
           <input
             class="file-name-box"
@@ -46,7 +45,7 @@
           <button
             v-if="task.taskFiles?.length"
             class="download-btn"
-            :onclick="() => window.open(task.taskFiles[0].filePath, '_blank')"
+            @click="() => window.open(task.taskFiles[0].filePath, '_blank')"
           >
             다운로드
           </button>
@@ -61,7 +60,7 @@
           placeholder="예: 과제에 대한 코멘트나 추가 설명을 입력하세요."
         />
 
-        <!-- 파일 업로드 -->
+        <!-- 파일 업로드 (제출 파일) -->
         <label class="section-label">제출파일:</label>
 
         <div
@@ -86,155 +85,199 @@
           </div>
         </div>
 
+        <!-- 기존 제출된 파일 목록 -->
+        <div
+          class="submitted-list"
+          v-if="task?.submittedFiles?.length"
+        >
+          <div
+            v-for="file in task.submittedFiles"
+            :key="file.fileId"
+            class="submitted-item"
+          >
+            {{ file.fileName }}
+            <button
+              class="download-btn-inline"
+              @click.stop="openFile(file.filePath)"
+            >
+              다운로드
+            </button>
+          </div>
+        </div>
+        <div v-else class="no-file">
+          기존 제출된 파일이 없습니다.
+        </div>
+
         <div v-if="error" class="modal-error">{{ error }}</div>
       </div>
 
       <div class="modal-actions">
         <button class="submit-btn" @click="submit" :disabled="loading">
-          {{ loading ? "제출중..." : "제출" }}
+          {{ loading ? "제출중..." : submitButtonLabel }}
         </button>
       </div>
     </div>
   </div>
 </template>
 
-  <script setup>
-  import { ref, defineProps, defineEmits, watch, onMounted } from "vue";
-  import { useAuthStore } from "@/store/authStore";
-  import tasksService from "@/services/tasksService";
+<script setup>
+import { ref, defineProps, defineEmits, watch, onMounted, computed } from "vue";
+import { useAuthStore } from "@/store/authStore";
+import tasksService from "@/services/tasksService";
 
-  const props = defineProps({
-    show: { type: Boolean, required: true },
-    userTaskId: { type: Number, required: true }
-  });
+const props = defineProps({
+  show: { type: Boolean, required: true },
+  userTaskId: { type: Number, required: true }
+});
 
-  const emit = defineEmits(["close", "submitted"]);
-  const auth = useAuthStore();
+const emit = defineEmits(["close", "submitted"]);
+const auth = useAuthStore();
 
-  const task = ref(null);
+const task = ref(null);
 
+// 제출폼
+const form = ref({ comment: "", file: null });
+const loading = ref(false);
+const error = ref("");
 
-  // ⭐ 제출폼 (필수)
-  const form = ref({ comment: "", file: null });
-  const loading = ref(false);
-  const error = ref("");
+// 날짜 포맷
+function formatDate(date) {
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString();
+}
 
-  // 날짜 포맷
-  function formatDate(date) {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString();
-  }
+// 상세조회 로딩
+async function loadTaskDetail() {
+  try {
+    if (!auth.user) {
+      await auth.loadUser();
+    }
 
-  // 상세조회 로딩
-  async function loadTaskDetail() {
-    try {
-      console.log("📌 상세조회 시작됨");
+    const userId = auth.user.userId;
 
-      if (!auth.user) {
-        await auth.loadUser();
+    const resp = await tasksService.getUserTaskDetail(
+      userId, 
+      props.userTaskId
+    );
+
+    const data = resp.data.data;
+
+    // 마감일 지났으면 상태 보정
+    if (data?.dueDate && data?.status === "PENDING") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const due = new Date(data.dueDate);
+      due.setHours(0, 0, 0, 0);
+
+      if (due < today) {
+        data.status = "MISSING";
       }
+    }
 
-      const userId = auth.user.userId;
+    task.value = data;
 
-      console.log("📌 호출 URL →", `/api/v1/users/${userId}/tasks/${props.userTaskId}`);
+    form.value.comment = data.comment || "";
+    form.value.file = null;
 
-      const resp = await tasksService.getUserTaskDetail(
-        userId, 
-        props.userTaskId
-      );
+  } catch (e) {
+    console.error("상세조회 실패:", e);
+  }
+}
 
+onMounted(() => {
+  loadTaskDetail();
+});
 
-      console.log("📌 API 응답:", resp.data);
-
-      task.value = resp.data.data;
-
-    } catch (e) {
-      console.error("❌ 상세조회 실패:", e);
+watch(
+  () => props.show,
+  (val) => {
+    if (val) {
+      loadTaskDetail();
     }
   }
+);
 
-  // 모달 열릴 때
-  onMounted(() => {
-    console.log("🔥 onMounted → loadTaskDetail() 실행");
-    loadTaskDetail();
-  });
+const isDragging = ref(false);
+function onOverlayClick() { if (!isDragging.value) close(); }
+function close() { emit("close"); }
 
-  watch(
-    () => props.show,
-    (val) => {
-      console.log("🐛 watcher 실행됨, props.show =", val);
-      if (val) {
-        loadTaskDetail();
-      }
-    },
-    { immediate: true }
-  );
+const fileInput = ref(null);
+const dragging = ref(false);
 
-  // UI 이벤트
-  const isDragging = ref(false);
-  function onOverlayClick() { if (!isDragging.value) close(); }
-  function close() { emit("close"); }
+function triggerFileInput() {
+  fileInput.value?.click();
+}
 
-  // 파일 업로드
-  const fileInput = ref(null);
-  const dragging = ref(false);
+function onDrop(e) {
+  dragging.value = false;
+  const dropped = e.dataTransfer.files?.[0];
+  if (dropped) form.value.file = dropped;
+}
 
-  function triggerFileInput() {
-    fileInput.value?.click();
-  }
+function onFileChange(e) {
+  form.value.file = e.target.files?.[0] || null;
+}
 
-  function onDrop(e) {
-    dragging.value = false;
-    const dropped = e.dataTransfer.files?.[0];
-    if (dropped) form.value.file = dropped;
-  }
+function openFile(url) {
+  window.open(url, "_blank");
+}
 
-  function onFileChange(e) {
-    form.value.file = e.target.files?.[0] || null;
-  }
+const submitButtonLabel = computed(() =>
+  task.value?.status === "SUBMITTED" ? "다시 제출" : "제출"
+);
 
-  // 제출
-  async function submit() {
-    loading.value = true;
-    error.value = "";
+/**
+ * 🔥 TaskSubmitRequest(comment, MultipartFile[] files)에 맞춘 제출 로직
+ *   - multipart/form-data 로 바로 전송
+ *   - 필드 이름은 comment / files
+ */
+async function submit() {
+  loading.value = true;
+  error.value = "";
 
-    try {
-      const fd = new FormData();
-      fd.append("comment", form.value.comment || "");
+  try {
+    const fd = new FormData();
+    fd.append("comment", form.value.comment || "");
 
-      if (form.value.file) {
-        fd.append("file", form.value.file);
-      }
-
-      await tasksService.submitUserTask(auth.user.userId, props.userTaskId, fd);
-
-
-      emit("submitted");
-      close();
-
-    } catch (e) {
-      console.error("❌ 제출 실패:", e);
-      error.value = "제출 중 오류가 발생했습니다.";
-    } finally {
-      loading.value = false;
+    // TaskSubmitRequest.files 에 맞게 이름을 "files" 로!
+    if (form.value.file) {
+      fd.append("files", form.value.file);
+      // 여러 개 지원하려면:
+      // selectedFiles.forEach(f => fd.append("files", f));
     }
+
+    await tasksService.submitUserTask(
+      auth.user.userId,
+      props.userTaskId,
+      fd
+    );
+
+    emit("submitted");
+    close();
+
+  } catch (e) {
+    console.error("제출 실패:", e);
+    error.value = "제출 중 오류가 발생했습니다.";
+  } finally {
+    loading.value = false;
   }
+}
 
-  function statusLabel(s) {
-    const map = {
-      PENDING: "제출 전",
-      SUBMITTED: "제출 완료",
-      LATE: "지각 제출",
-      MISSING: "미제출",
-      GRADED: "채점 완료"
-    }
-    return map[s] || s
+function statusLabel(s) {
+  const map = {
+    PENDING: "제출 전",
+    SUBMITTED: "제출 완료",
+    LATE: "지각 제출",
+    MISSING: "미제출",
+    GRADED: "채점 완료"
   }
-  </script>
+  return map[s] || s
+}
+</script>
 
-
-
- <style scoped>
+<style scoped>
+/* 그대로 유지 (네가 쓰던 스타일) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -470,5 +513,10 @@
 
 .submitted-inline {
   margin-bottom: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

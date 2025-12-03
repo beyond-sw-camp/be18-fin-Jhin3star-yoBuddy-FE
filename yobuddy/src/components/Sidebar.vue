@@ -140,7 +140,7 @@ export default {
     /* User Info */
     const userName = computed(() => user.value?.name || "")
     const userRole = computed(() => user.value?.role || "")
-    const avatarUrl = computed(() => user.value?.profileImageUrl || null)
+    const avatarUrl = computed(() => user.value?.avatarUrl || null)
     const userEmail = computed(() => user.value?.email || "")
     const userDept = computed(() => user.value?.departmentName || "")
     const joinDate = computed(() =>
@@ -187,8 +187,15 @@ export default {
             label: "멘토링 관리",
             path: "/admin/mentoring/sessions",
           },
-          { id: 5, icon: assignmentIcon, label: "과제", path: "/admin/tasks" },
-          { id: 6, icon: eduIcon, label: "교육", path: '/admin/trainings' },
+          { id: 5, 
+            icon: assignmentIcon, 
+            label: "과제", 
+            path: "/admin/tasks" },
+          { 
+            id: 6, 
+            icon: eduIcon, 
+            label: "교육", 
+            path: '/admin/trainings' },
           {
             id: 7,
             icon: contentIcon,
@@ -206,7 +213,7 @@ export default {
         return [
           { id: 1, icon: dashboardIcon, label: "대시보드", path: "/mentor/dashboard" },
           { id: 2, icon: mentoringIcon, label: "멘토링", path: "/mentor/sessions" },
-          { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/assignments" },
+          { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/tasks" },
           { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content", 
             subItems: [
               { id: "4-1", label: "공지사항", path: "/content/announcement" },
