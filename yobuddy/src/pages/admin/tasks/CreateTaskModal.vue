@@ -106,8 +106,9 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import tasksService from "@/services/tasksService";
+import fileService from "@/services/fileService";
 
-// eslint-disable-next-line no-unused-vars, no-undef
+// eslint-disable-next-line no-undef
 const props = defineProps({
   show: { type: Boolean, default: true },
   departments: { type: Array, default: () => [] },
@@ -209,46 +210,50 @@ async function submit() {
   error.value = null;
 
   try {
-    let resp;
+    let fileIds = [];
 
     if (file.value) {
-      const fd = new FormData();
-      fd.append("title", form.value.title);
-      fd.append("description", form.value.description);
-      fd.append("points", "100");     // 🔥 항상 100
-      fd.append("fileIds", "1");      // 🔥 항상 1
-
-      form.value.departmentIds.forEach(id =>
-        fd.append("departmentIds", String(id))
+      const uploaded = await fileService.uploadFiles(
+        [file.value],
+        'TASK', 
+        null,  
+        null    
       );
 
-      fd.append("file", file.value);
-
-      resp = await tasksService.create(fd);
-
-    } else {
-      resp = await tasksService.create({
-        title: form.value.title,
-        description: form.value.description,
-        departmentIds: form.value.departmentIds,
-        points: 100,       // 🔥 항상 100
-        fileIds: [1],      // 🔥 항상 [1]
-      });
+      if (Array.isArray(uploaded)) {
+        fileIds = uploaded.map(f => f.fileId);
+      } else if (Array.isArray(uploaded.data)) {
+        fileIds = uploaded.data.map(f => f.fileId);
+      } else if (uploaded.fileId) {
+        fileIds = [uploaded.fileId];
+      }
     }
+
+    const body = {
+      title: form.value.title,
+      description: form.value.description,
+      departmentIds: form.value.departmentIds,
+      points: 100,  
+      fileIds,     
+    };
+
+    const resp = await tasksService.create(body);
 
     emit("created", resp.data);
 
     form.value = { title: "", departmentIds: [], description: "" };
     file.value = null;
 
-    close(); // 성공 시 모달 자동 닫기
+    close(); 
 
   } catch (e) {
+    console.error("과제 생성 실패:", e);
     error.value = e;
   } finally {
     loading.value = false;
   }
 }
+
 
 const isDragging = ref(false);
 
@@ -329,6 +334,13 @@ input:focus, textarea:focus {
 textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #999;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Pretendard', sans-serif;
 }
 
 label {

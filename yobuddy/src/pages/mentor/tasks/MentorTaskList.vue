@@ -2,7 +2,6 @@
   <div class="task-list-page">
     <div class="task-list-header">
       <div class="task-controls">
-
         <!-- 상태 필터 -->
         <select v-model="statusFilter" class="dept-select">
           <option value="">전체</option>
@@ -30,6 +29,7 @@
     <!-- 테이블 -->
     <div v-else class="task-table">
       <div class="table-head">
+        <div class="col mentee-col">이름</div>
         <div class="col name-col">과제명</div>
         <div class="col date-col">마감일</div>
         <div class="col status-col">상태</div>
@@ -42,6 +42,7 @@
           class="table-row"
           @click="openTask(task)"
         >
+          <div class="col mentee-col">{{ task.menteeName }}</div>
           <div class="col name-col">{{ task.title }}</div>
           <div class="col date-col">{{ formatDate(task.dueDate) }}</div>
           <div class="col status-col">
@@ -87,20 +88,22 @@
       </button>
     </div>
 
-    <UpdateUserTaskModal
-        v-if="showUpdateModal"
-        :show="showUpdateModal"
-        :userTaskId="selectedTask.userTaskId" 
-        @close="showUpdateModal = false"
-        @submitted="fetchUserTasks"
+    <!-- 모달 (멘토용 채점 모달이 따로 있으면 여기로 교체하면 됨) -->
+    <GradeMentorTaskModal
+    v-if="showGradeModal"
+    :show="showGradeModal"
+    :userTaskId="selectedTask.userTaskId"
+    @close="showGradeModal = false"
+    @graded="fetchMentorTasks"  
     />
 
-    <UserTaskDetailModal
-        v-if="showDetailModal"
-        :show="showDetailModal"
-        :userTaskId="selectedTask.userTaskId" 
-        @close="showDetailModal = false"
-        @submitted="fetchUserTasks"
+
+    <MentorTaskDetailModal
+      v-if="showDetailModal"
+      :show="showDetailModal"
+      :userTaskId="selectedTask.userTaskId"
+      @close="showDetailModal = false"
+      @submitted="fetchMentorTasks"
     />
   </div>
 </template>
@@ -108,59 +111,70 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue"
 import { useAuthStore } from "@/store/authStore"
-import tasksService from "@/services/tasksService"
+import tasksService from "@/services/tasksService" // 아래에서 메서드 추가 예시 줌
 import logoSearch from "@/assets/icon_search.svg"
-import UpdateUserTaskModal from "@/pages/user/tasks/UpdateUserTaskModal.vue"
-import UserTaskDetailModal from "@/pages/user/tasks/UserTaskDetailModal.vue"
+import GradeMentorTaskModal from '@/pages/mentor/tasks/GradeMentorTaskModal.vue'
+import MentorTaskDetailModal from "@/pages/mentor/tasks/MentorTaskDetailModal.vue"
+
 const auth = useAuthStore()
 
 const tasks = ref([])
 const q = ref("")
-const statusFilter = ref("")   
+const statusFilter = ref("")
 const loading = ref(true)
 
+const showGradeModal = ref(false)
 const selectedTask = ref(null)
-const showUpdateModal = ref(false)
 const showDetailModal = ref(false)
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 
-async function fetchUserTasks() {
+// ================================
+// API 호출 (멘토에게 배정된 멘티들의 과제)
+// GET /api/v1/mentors/{mentorId}/tasks
+// ================================
+async function fetchMentorTasks() {
   loading.value = true
 
   if (!auth.user) {
     await auth.loadUser()
   }
 
-  const userId = auth.user?.userId  
+  const mentorId = auth.user?.userId
 
-  if (!userId) {
-    console.warn("유저 정보가 없습니다.", auth.user)
+  if (!mentorId) {
+    console.warn("멘토 유저 정보가 없습니다.", auth.user)
     loading.value = false
     return
   }
 
   try {
-    const resp = await tasksService.getUserTasks(userId)
+    const resp = await tasksService.getMentorTasks(mentorId)
     const list = resp.data?.data?.tasks || []
 
+    // 백엔드 DTO(MenteeTaskInfo) 구조에 맞게 매핑
     tasks.value = list.map(t => ({
       userTaskId: t.userTaskId,
-      taskId: t.taskId,
-      title: t.title,
+      menteeId: t.menteeId,
+      menteeName: t.menteeName,
+      taskId: t.onboardingTaskId,
+      title: t.taskTitle,
       dueDate: t.dueDate,
-      status: t.status
+      status: t.status,
     }))
   } catch (e) {
-    console.error("과제 불러오기 실패:", e)
+    console.error("멘토 과제 목록 불러오기 실패:", e)
   }
 
   loading.value = false
 }
 
-onMounted(fetchUserTasks)
+onMounted(fetchMentorTasks)
 
+// ================================
+// 검색 + 상태 필터
+// ================================
 const filteredTasks = computed(() => {
   let list = tasks.value
 
@@ -170,12 +184,20 @@ const filteredTasks = computed(() => {
 
   if (q.value) {
     const query = q.value.toLowerCase()
-    list = list.filter(t => t.title.toLowerCase().includes(query))
+    list = list.filter(
+      t =>
+        (t.title && t.title.toLowerCase().includes(query)) ||
+        (t.menteeName && t.menteeName.toLowerCase().includes(query))
+    )
   }
 
-  return list.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+  // 마감일 오름차순
+  return list.slice().sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
 })
 
+// ================================
+// 페이징
+// ================================
 const totalPages = computed(() =>
   Math.ceil(filteredTasks.value.length / pageSize.value)
 )
@@ -185,6 +207,9 @@ const paginatedTasks = computed(() => {
   return filteredTasks.value.slice(start, start + pageSize.value)
 })
 
+// ================================
+// 숫자 페이지네이션 계산
+// ================================
 const visiblePages = computed(() => {
   const pages = []
   const total = totalPages.value
@@ -203,10 +228,10 @@ const visiblePages = computed(() => {
   let start = Math.max(current - 2, 2)
   let end = Math.min(current + 2, total - 1)
 
-  pages.push({ key: 'first', number: first, label: first, isEllipsis: false })
+  pages.push({ key: "first", number: first, label: first, isEllipsis: false })
 
   if (start > 2) {
-    pages.push({ key: 'ellipsis1', label: '...', isEllipsis: true })
+    pages.push({ key: "ellipsis1", label: "...", isEllipsis: true })
   }
 
   for (let i = start; i <= end; i++) {
@@ -214,18 +239,22 @@ const visiblePages = computed(() => {
   }
 
   if (end < total - 1) {
-    pages.push({ key: 'ellipsis2', label: '...', isEllipsis: true })
+    pages.push({ key: "ellipsis2", label: "...", isEllipsis: true })
   }
 
-  pages.push({ key: 'last', number: last, label: last, isEllipsis: false })
+  pages.push({ key: "last", number: last, label: last, isEllipsis: false })
 
   return pages
 })
 
+// 검색 / 상태 변경 시 페이지 리셋
 watch([q, statusFilter], () => {
   currentPage.value = 1
 })
 
+// ================================
+// Helper
+// ================================
 function formatDate(iso) {
   if (!iso) return "-"
   return new Date(iso).toLocaleDateString()
@@ -234,13 +263,13 @@ function formatDate(iso) {
 function openTask(task) {
   selectedTask.value = task
 
-  if (task.status === "PENDING" || task.status === 'MISSING') {
-    showUpdateModal.value = true
+  // 일단은 기존 로직 그대로 사용 (나중에 멘토용 채점 모달로 교체해도 됨)
+  if (task.status === "SUBMITTED" || task.status === "LATE" || task.status === "GRADED") {
+    showGradeModal.value = true
   } else {
     showDetailModal.value = true
   }
 }
-
 
 function statusLabel(s) {
   const map = {
@@ -248,7 +277,7 @@ function statusLabel(s) {
     SUBMITTED: "제출 완료",
     LATE: "지각 제출",
     MISSING: "미제출",
-    GRADED: "채점 완료"
+    GRADED: "채점 완료",
   }
   return map[s] || s
 }
@@ -304,7 +333,7 @@ function statusLabel(s) {
 .task-table {
   background: white;
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   margin-top: 10px;
 }
@@ -337,6 +366,18 @@ function statusLabel(s) {
   flex: 1;
   text-align: center;
 }
+.mentee-col {
+  flex: 0.8;
+}
+.name-col {
+  flex: 1.6;
+}
+.date-col {
+  flex: 1;
+}
+.status-col {
+  flex: 1;
+}
 .empty {
   padding: 18px;
   color: #64748b;
@@ -351,57 +392,10 @@ function statusLabel(s) {
   font-size: 12px;
   color: white;
 }
-
-.status.pending { background: #D8D8D8; color: #6F6F6F; }
-.status.submitted { background: #E9F0FF; color: #294594; }
-.status.late { background: #F8E3E2; color: #AE5E62; }
-.status.missing { background: #F8E3E2; color: #AE5E62; }
-.status.graded { background: #E3F7E9; color: #0A9A52; }
-
-/* 숫자 페이지네이션 */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-top: 28px;
-}
-
-.page-btn,
-.nav-btn {
-  min-width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 14px;
-  color: #4b5563;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s;
-}
-
-.page-btn:hover:not(.active):not(:disabled),
-.nav-btn:hover:not(:disabled) {
-  background: #e5e7eb;
-}
-
-.page-btn.active {
-  background: #294594;
-  color: white;
-  font-weight: bold;
-}
-
-.page-btn:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.nav-btn {
-  font-size: 18px;
-}
+.status.pending { background: #d8d8d8; color: #6f6f6f;}
+.status.submitted { background: #e9f0ff;  color: #294594;}
+.status.late,.status.missing { background: #f8e3e2; color: #ae5e62;}
+.status.graded { background: #e3f7e9; color: #0a9a52;}
 
 /* 페이지네이션 */
 .pagination {
