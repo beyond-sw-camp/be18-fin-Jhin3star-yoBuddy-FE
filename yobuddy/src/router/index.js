@@ -148,6 +148,11 @@ const routes = [
     component: () => import('@/pages/mentor/MentorSessionDetailPage.vue'),
     meta: { requiresAuth: true, mentorOnly: true }
   },
+  {
+    path: '/mentor/tasks',
+    component: () => import('@/pages/mentor/tasks/MentorTaskList.vue'),
+  meta: { requiresAuth: true, mentorOnly: true }
+  }
 ]
 
 const router = createRouter({

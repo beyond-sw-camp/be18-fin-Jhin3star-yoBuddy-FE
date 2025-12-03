@@ -47,6 +47,27 @@ const tasksService = {
     return http.post(`/api/v1/users/${userId}/tasks/${userTaskId}/submit`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
+  },
+
+  // **********************
+  // Mentor APIs
+  // **********************
+  getMentorTasks(mentorId) {
+    return http.get(`/api/v1/mentors/${mentorId}/tasks`)
+  },
+
+  getMentorTaskDetail(mentorId, userTaskId) {
+    return http.get(`/api/v1/mentors/${mentorId}/tasks/${userTaskId}`)
+  },
+
+  gradeUserTask(mentorId, userTaskId, body) {
+    return http.patch(
+      `/api/v1/mentors/${mentorId}/tasks/${userTaskId}/grade`,
+      body,
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   }
 }
 

@@ -1,9 +1,9 @@
 <template>
   <div 
-  class="modal-overlay"
-  @mousedown="isDragging = false"
-  @mousemove="isDragging = true"
-  @mouseup.self="onOverlayClick"
+    class="modal-overlay"
+    @mousedown="isDragging = false"
+    @mousemove="isDragging = true"
+    @mouseup.self="onOverlayClick"
   >
     <div class="modal" :class="{ 'edit-mode': isEditMode }" @click.stop>
 
@@ -104,7 +104,9 @@
 
         <!-- 첨부파일 -->
         <label>첨부파일:</label>
-        <div class="file-box">
+
+        <!-- 조회 모드: 기존 파일만 -->
+        <div v-if="!isEditMode" class="file-box">
           <div class="file-name">
             {{ task.fileName ?? "첨부파일 없음" }}
           </div>
@@ -116,6 +118,48 @@
           >
             다운로드
           </button>
+        </div>
+
+        <!-- 수정 모드: 기존 파일 + 새 업로드 UI -->
+        <div v-else>
+          <!-- 현재 연결된 파일 표시 -->
+          <div class="file-box" style="margin-bottom: 8px;">
+            <div class="file-name">
+              {{ task.fileName ?? "첨부파일 없음" }}
+            </div>
+
+            <button
+              v-if="task.fileUrl"
+              class="download-btn"
+              @click="openFile(task.fileUrl)"
+            >
+              다운로드
+            </button>
+          </div>
+
+          <!-- 새 파일 업로드 드롭존 -->
+          <div
+            class="file-drop-wrapper"
+            @click="triggerFileInput"
+            @dragenter.prevent="onDragEnter"
+            @dragover.prevent="onDragOver"
+            @dragleave="onDragLeave"
+            @drop.prevent="onDrop"
+            :class="{ 'drag-active': dragging }"
+          >
+            <input ref="fileInput" type="file" @change="onFileChange" hidden />
+
+            <div class="file-drop-inner">
+              <div class="upload-icon">⬆</div>
+
+              <p>업로드를 위해 클릭하거나 파일을 끌어다 놓으세요.</p>
+              <span class="sub-text">*.zip, *.pdf 파일만 가능합니다.</span>
+
+              <div v-if="newFile" class="selected-file">
+                선택됨: {{ newFile.name }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div v-if="error" class="modal-error">{{ errorMessage }}</div>
@@ -152,13 +196,14 @@ import {
   defineEmits
 } from "vue";
 import tasksService from "@/services/tasksService";
+import fileService from "@/services/fileService";
 import iconDept from "@/assets/icon_department.svg";
 
 const props = defineProps({
   taskId: { type: [String, Number], required: true },
   departments: { type: Array, default: () => [] },
 });
-const emit = defineEmits(["close", "edited", "deleted"]);
+const emit = defineEmits(["close", "edited", "deleted", "updated"]);
 
 const task = ref(null);
 const loading = ref(true);
@@ -172,6 +217,17 @@ const editForm = ref({
   description: "",
   departmentIds: [],
 });
+
+/* 기존 첨부파일들의 fileId 목록 (attachedFiles 기반) */
+const attachedFileIds = computed(() =>
+  (task.value?.attachedFiles || []).map(f => f.fileId)
+);
+
+/* 수정 모드에서 새로 올릴 파일 */
+const newFile = ref(null);
+const fileInput = ref(null);
+const dragging = ref(false);     // 드롭존 하이라이트
+const isDragging = ref(false);   // 모달 외부 드래그 판단용 (닫힘 방지)
 
 /* Fetch task */
 async function fetchTask() {
@@ -223,6 +279,22 @@ function removeDept(id) {
   editForm.value.departmentIds = editForm.value.departmentIds.filter(x => x !== id);
 }
 
+/* 파일 드롭/선택 핸들러 */
+function triggerFileInput() {
+  fileInput.value?.click();
+}
+function onDragEnter() { dragging.value = true; }
+function onDragOver() { dragging.value = true; }
+function onDragLeave() { dragging.value = false; }
+function onDrop(e) {
+  dragging.value = false;
+  const dropped = e.dataTransfer.files?.[0];
+  if (dropped) newFile.value = dropped;
+}
+function onFileChange(e) {
+  newFile.value = e.target.files?.[0] || null;
+}
+
 /* Buttons */
 function close() { emit("close"); }
 
@@ -237,26 +309,57 @@ function cancelEdit() {
     description: task.value.description,
     departmentIds: [...task.value.departmentIds],
   };
+  newFile.value = null;
+  dragging.value = false;
 }
 
 /* PATCH 저장 */
 async function saveTask() {
   try {
-    const resp = await tasksService.update(props.taskId, {
+    const payload = {
       title: editForm.value.title,
       description: editForm.value.description,
       departmentIds: editForm.value.departmentIds,
-      points: 100,   
-      fileIds: [12],   
-    });
+      // points, fileIds, removeFileIds 는 여기서 조건부로 추가
+    };
+
+    // 새 파일이 선택된 경우에만 파일 교체 로직 실행
+    if (newFile.value) {
+      let fileIds = [];
+
+      const uploaded = await fileService.uploadFiles(
+        [newFile.value],
+        "TASK",
+        null,
+        null
+      );
+
+      if (Array.isArray(uploaded)) {
+        fileIds = uploaded.map(f => f.fileId);
+      } else if (Array.isArray(uploaded.data)) {
+        fileIds = uploaded.data.map(f => f.fileId);
+      } else if (uploaded.fileId) {
+        fileIds = [uploaded.fileId];
+      }
+
+      if (fileIds.length > 0) {
+        payload.fileIds = fileIds; // 새로 붙일 파일
+      }
+
+      if (attachedFileIds.value.length > 0) {
+        payload.removeFileIds = attachedFileIds.value; // 기존 파일 해제
+      }
+    }
+
+    const resp = await tasksService.update(props.taskId, payload);
 
     task.value = resp.data.data;
     isEditMode.value = false;
-    emit("updated", task.value);
-    
-    // 수정 성공 시 팝업 닫기
-    close();
+    newFile.value = null;
+    dragging.value = false;
 
+    emit("updated", task.value);
+    close();
   } catch (e) {
     console.error(e);
     alert("수정 중 오류 발생!");
@@ -288,8 +391,6 @@ function formatDepartments(ids) {
     .join(", ");
 }
 
-const isDragging = ref(false);
-
 function onOverlayClick() {
   if (!isDragging.value) {
     close();
@@ -308,6 +409,8 @@ function onOverlayClick() {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
+  z-index: 999;
 }
 
 .modal {
@@ -317,6 +420,10 @@ function onOverlayClick() {
   border-radius: 10px;
   padding: 26px 32px;
   animation: fadeIn .25s ease-out;
+  max-height: calc(100vh - 40px); 
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;   
 }
 
 .modal-header {
@@ -346,6 +453,9 @@ label {
 }
 
 .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -424,13 +534,9 @@ label {
   color: white;
 }
 
-/* ========================================= */
-/* ===== 수정 모드 전용 스타일 추가분 ===== */
-/* ========================================= */
-
 .modal.edit-mode {
-  margin-top: 50px;
-  min-height: 500px;
+  margin-top: 0px;
+  min-height: auto;
 }
 
 .modal.edit-mode .modal-body {
@@ -461,8 +567,6 @@ label {
   line-height: 1.4;
   resize: none;
 }
-
-/* ===== Dropdown (CreateModal 복붙) ===== */
 
 .dropdown-wrapper { position: relative; }
 
@@ -527,6 +631,54 @@ label {
   right: 12px;
   font-size: 16px;
   color: #475569;
+}
+
+.file-drop-wrapper {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-top: 8px;
+}
+
+.file-drop-wrapper.drag-active {
+  background: #edf2ff;
+  border-color: #294594;
+}
+
+.file-drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-icon {
+  font-size: 32px;
+  color: #294594;
+}
+
+.sub-text {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.selected-file {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+
+/* Error */
+.modal-error {
+  background: #ffe2e2;
+  color: #b00020;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
 @keyframes fadeIn {
