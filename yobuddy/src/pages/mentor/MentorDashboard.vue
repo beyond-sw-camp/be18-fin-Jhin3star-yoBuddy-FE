@@ -19,8 +19,8 @@
         :class="['tab-item', { active: activeTab === 'performance' }]" 
         @click="setActiveTab('performance')"
       >
-      온보딩 성과
-    </button>
+        온보딩 성과
+      </button>
     </div>
 
     <!-- Tab Content: Assigned Mentees -->
@@ -52,15 +52,16 @@
 
     <!-- Tab Content: Mentor Schedule -->
     <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
-      <MentorSchedule />
+      <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
     </div>
 
+    <!-- Tab Content: Performance -->
     <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
-          <MenteeOnboardingPerformance
-      v-if="mentees.length && mentorId"
-      :mentor-id="mentorId"
-      :mentees="mentees"
-    />
+      <MenteeOnboardingPerformance
+        v-if="mentees.length && mentorId"
+        :mentor-id="mentorId"
+        :mentees="mentees"
+      />
     </div>
   </div>
 
@@ -72,7 +73,7 @@
     @registered="fetchMentees"
   />
 
-  <!-- 멘티 상세 팝업 (조회 + 배정 해제) -->
+  <!-- 멘티 상세 팝업 -->
   <MenteeDetailPopup
     :show="showMenteeDetail"
     :user="selectedMentee"
@@ -82,14 +83,13 @@
   />
 </template>
 
-
 <script>
 import http from "@/services/http"
 import mentoringService from "@/services/mentoringService"
 import MenteeSummaryCard from "@/components/mentor/MenteeSummaryCard.vue"
 import MenteeRegisterPopup from "@/pages/mentor/MenteeRegisterPopup.vue"
 import MenteeDetailPopup from "@/pages/mentor/MenteeDetailPopup.vue"
-import MentorSchedule from "@/components/mentor/MentorSchedule.vue";
+import MentorSchedule from "@/components/mentor/MentorSchedule.vue"
 import MenteeOnboardingPerformance from "@/components/mentor/MenteeOnboardingPerformance.vue"
 import { useAuthStore } from "@/store/authStore"
 import { watch } from "vue"
@@ -114,7 +114,7 @@ export default {
       selectedMentee: null,
 
       showRegister: false,
-      activeTab: 'mentees' // Default active tab
+      activeTab: 'mentees', 
     }
   },
 
@@ -147,12 +147,12 @@ export default {
     },
 
     async fetchMentorSummary() {
-      if (!this.mentorId) return;
+      if (!this.mentorId) return
       try {
         this.mentorSummary = await mentoringService.getMentorSummary(this.mentorId);
       } catch (e) {
-        console.error("멘토 요약 정보 조회 실패", e);
-        this.mentorSummary = {};
+        console.error("멘토 요약 정보 조회 실패", e)
+        this.mentorSummary = {}
       }
     },
 
@@ -162,10 +162,7 @@ export default {
 
     async openMenteeDetail(mentee) {
       try {
-        const resp = await http.get(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
-
+        const resp = await http.get(`/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`)
         this.selectedMentee = resp.data
         this.showMenteeDetail = true
       } catch (e) {
@@ -182,13 +179,14 @@ export default {
         console.error("멘티 배정 해제 실패", e)
       }
     },
+
     setActiveTab(tabName) {
-      this.activeTab = tabName;
-      // Optionally re-fetch mentees if switching back to mentees tab
-      if (tabName === 'mentees') {
-        this.fetchMentees();
-      }
-      // MentorSchedule component handles its own fetching when rendered
+      this.activeTab = tabName
+      if (tabName === 'mentees') this.fetchMentees()
+    },
+
+    handleOpenSessionDetail(sessionId) {
+      this.$router.push(`/mentor/sessions/${sessionId}`)
     }
   }
 }
@@ -196,17 +194,16 @@ export default {
 
 <style scoped>
 .org-page {
-  padding: 28px 24px;
+  padding: 0px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  max-width: 1440px; /* Page Safe Width */
+  max-width: 1200px; /* Page Safe Width - Adjusted to match UserDashboard */
   margin: 0 auto; /* Center the entire dashboard content */
 }
 
 .mentor-summary-panel {
-  width: 1100px;
+  width: 1200px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
@@ -240,10 +237,11 @@ export default {
 
 /* Tab Navigation Styles */
 .tab-navigation {
-  width: 1100px; /* Match content card width */
+  width: 100%; /* Match content card width */
+  max-width: 1200px; /* Adjusted to match UserDashboard */
   display: flex;
   border-bottom: 1px solid #eef2f7;
-  margin-bottom: 16px; /* Space between tabs and content */
+  margin-bottom: 1px; /* Space between tabs and content */
 }
 
 .tab-item {
@@ -276,7 +274,8 @@ export default {
 }
 
 .content-card {
-  width: 1100px;
+  width: 100%;
+  max-width: 1200px; /* Adjusted to match UserDashboard */
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(9,30,66,0.08);
@@ -284,7 +283,8 @@ export default {
 }
 
 .mentor-schedule-tab-content {
-  width: 1100px; /* Ensure schedule component also takes full width */
+  width: 100%; /* Ensure schedule component also takes full width */
+  max-width: 1200px; /* Adjusted to match UserDashboard */
 }
 
 .card-header {

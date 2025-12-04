@@ -90,77 +90,93 @@ export default {
       '/onboarding': '온보딩',
       '/mentoring': '멘토링',
       '/education': '교육',
+      '/dashboard': '대시보드',
       '/content': '콘텐츠',
-      '/organization/usermanagement': '유저 관리',
       '/tasks': '과제',
+      '/trainings': '교육',
+      '/content/announcement': '공지사항',
+      '/content/wiki': '위키',
+      '/organization/usermanagement': '유저 관리',
+      '/organization/department': '부서 관리',
+      '/sessions': '세션 목록',
+      '/sessions/create': '세션 생성',
     }
 
-    const pageTitle = computed(() => {
-      return pageTitleMap[route.path] || 'YoBuddy'
-    })
+    const pageTitle = computed(() => pageTitleMap[route.path] || 'YoBuddy')
 
-    // breadcrumb depth 표현
-    const breadcrumbs = computed(() => {
-      // special-case certain routes to show a single friendly label
-      const singleLabelRoutes = {
-        '/admin/tasks': '과제',
-        '/admin/tasks/': '과제'
-      }
 
-      if (singleLabelRoutes[route.path]) {
-        return [singleLabelRoutes[route.path]]
-      }
+const breadcrumbs = computed(() => {
+  let segments = route.path.split('/').filter(Boolean)
 
-      const segments = route.path.split('/').filter(Boolean)
-      const crumbs = []
-      if (segments.length === 0) {
-        crumbs.push(pageTitleMap['/'])
-      } else {
-        for (let i = 0; i < segments.length; i++) {
-          const path = '/' + segments.slice(0, i + 1).join('/')
-          crumbs.push(pageTitleMap[path] || segments[i])
-        }
-      }
-      return crumbs
-    })
+  const hiddenSegments = ["user", "admin", "mentor"]
+  segments = segments.filter(seg => !hiddenSegments.includes(seg))
+
+  const crumbs = []
+  let accumulatedPath = ""
+
+  segments.forEach((seg, idx) => {
+    accumulatedPath += "/" + seg
+
+    // 마지막 segment가 PK(숫자)면 → 상세보기
+    if (idx === segments.length - 1 && /^\d+$/.test(seg)) {
+      crumbs.push("상세보기")
+    }
+    // 누적 path로 pageTitleMap에서 찾기
+    else if (pageTitleMap[accumulatedPath]) {
+      crumbs.push(pageTitleMap[accumulatedPath])
+    }
+    // 없으면 segment 그대로
+    else {
+      crumbs.push(seg)
+    }
+  })
+
+  return crumbs
+})
+const breadcrumbLinks = computed(() => {
+  const segments = route.path.split('/').filter(Boolean)
+  const hiddenRoot = ["user", "admin", "mentor"]
+
+  const links = []
+  let path = ""
+
+  segments.forEach((seg, idx) => {
+    path += "/" + seg
+
+    if (idx === 0 && hiddenRoot.includes(seg)) {
+      return
+    }
+
+    links.push(path)
+  })
+
+  return links
+})
 
     const toggleMenu = () => {
       showChatbotCard.value = !showChatbotCard.value
       showNotificationCard.value = false
       emit('toggle-menu')
     }
+
     const toggleNotifications = () => {
       showNotificationCard.value = !showNotificationCard.value
       showChatbotCard.value = false
     }
-    // 외부 클릭 시 카드 닫기
+
     const handleClickOutside = (e) => {
       if (!e.target.closest('.dropdown-wrapper')) {
         showNotificationCard.value = false
         showChatbotCard.value = false
       }
     }
+
     onMounted(() => {
       window.addEventListener('click', handleClickOutside)
     })
+
     onBeforeUnmount(() => {
       window.removeEventListener('click', handleClickOutside)
-    })
-
-    // 각 breadcrumb depth별 링크 경로 생성
-    const breadcrumbLinks = computed(() => {
-      const segments = route.path.split('/').filter(Boolean)
-      const links = []
-      if (segments.length === 0) {
-        links.push('/')
-      } else {
-        let path = ''
-        for (let i = 0; i < segments.length; i++) {
-          path += '/' + segments[i]
-          links.push(path)
-        }
-      }
-      return links
     })
 
     return {
@@ -168,15 +184,18 @@ export default {
       notificationCount,
       toggleMenu,
       toggleNotifications,
+
       breadcrumbs,
       breadcrumbLinks,
+
       showNotificationCard,
       showChatbotCard,
-      notificationStore // Expose notificationStore to template for notices
+      notificationStore
     }
   }
 }
 </script>
+
 
 <style scoped>
 .header-bar {

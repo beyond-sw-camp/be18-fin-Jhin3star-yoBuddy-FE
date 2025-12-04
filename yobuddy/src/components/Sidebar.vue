@@ -140,7 +140,7 @@ export default {
     /* User Info */
     const userName = computed(() => user.value?.name || "")
     const userRole = computed(() => user.value?.role || "")
-    const avatarUrl = computed(() => user.value?.avatarUrl || null)
+    const avatarUrl = computed(() => user.value?.profileImageUrl || null)
     const userEmail = computed(() => user.value?.email || "")
     const userDept = computed(() => user.value?.departmentName || "")
     const joinDate = computed(() =>
@@ -185,7 +185,7 @@ export default {
             id: 4,
             icon: mentoringIcon,
             label: "멘토링 관리",
-            path: "/admin/mentoring/sessions",
+            path: "/admin/sessions",
           },
           { id: 5, 
             icon: assignmentIcon, 
@@ -200,10 +200,10 @@ export default {
             id: 7,
             icon: contentIcon,
             label: "콘텐츠",
-            path: "/content",
+            path: "/content/announcement",
             subItems: [
               { id: "7-1", label: "공지사항", path: "/content/announcement" },
-              { id: "7-2", label: "위키", path: "/content/library" }
+              { id: "7-2", label: "위키", path: "/content/wiki" }
             ]
           }
         ]
@@ -214,10 +214,10 @@ export default {
           { id: 1, icon: dashboardIcon, label: "대시보드", path: "/mentor/dashboard" },
           { id: 2, icon: mentoringIcon, label: "멘토링", path: "/mentor/sessions" },
           { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/tasks" },
-          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content", 
+          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content/announcement", 
             subItems: [
               { id: "4-1", label: "공지사항", path: "/content/announcement" },
-              { id: "4-2", label: "위키", path: "/content/library" }
+              { id: "4-2", label: "위키", path: "/content/wiki" }
             ]
           }
         ]
@@ -230,9 +230,13 @@ export default {
           { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/tasks' },
           { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings', subItems: [
             { id: 'u-3-1', label: '교육 목록', path: '/user/trainings' },
-            { id: 'u-3-2', label: '수강 결과', path: '/user/trainings/results' }
           ] },
-          { id: 'u-4', icon: contentIcon, label: '콘텐츠', path: '/content' }
+          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content/announcement", 
+            subItems: [
+              { id: "4-1", label: "공지사항", path: "/content/announcement" },
+              { id: "4-2", label: "위키", path: "/content/wiki" }
+            ]
+          }
         ]
       }
 
