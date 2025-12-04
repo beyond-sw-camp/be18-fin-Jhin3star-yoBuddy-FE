@@ -1,18 +1,24 @@
 <template>
   <div class="schedule-wrapper">
-    <div class="calendar-container">
-      <div class="month-navigator">
+    <div class="custom-calendar">
+      <div class="calendar-header">
         <button @click="goToPreviousMonth" class="nav-btn">‹</button>
         <h3 class="current-month-year">{{ currentMonthYearDisplay }}</h3>
         <button @click="goToNextMonth" class="nav-btn">›</button>
       </div>
-
       <div class="calendar-grid">
         <div class="day-header" v-for="day in dayNames" :key="day">{{ day }}</div>
         <div
           v-for="(day, index) in calendarDays"
           :key="index"
-          :class="['day-cell', { 'other-month': !day.isCurrentMonth, 'has-sessions': day.hasSessions, 'is-today': isToday(day.date), 'is-selected': isSelected(day.date) }]"
+          :class="[
+            'day-cell',
+            {
+              'other-month': !day.isCurrentMonth,
+              'is-today': isToday(day.date),
+              'selected': isSelected(day.date)
+            }
+          ]"
           @click="selectDate(day.date)"
         >
           <span class="day-number">{{ day.dayOfMonth }}</span>
@@ -24,7 +30,7 @@
     <div class="schedule-pane">
       <h3 class="schedule-header">{{ selectedDateDisplay }} 일정</h3>
       <div v-if="dailyAgenda.length" class="schedule-list">
-        <div v-for="item in dailyAgenda" :key="item.sessionId" class="schedule-item">
+        <div v-for="item in dailyAgenda" :key="item.sessionId" class="schedule-item" @click="openSessionDetail(item.sessionId)">
           <span class="schedule-time">{{ item.time }}</span>
           <span class="schedule-mentee">{{ item.menteeName }}</span>
           <span :class="['schedule-status', getStatusClass(item.status)]">{{ getStatusText(item.status) }}</span>
@@ -42,6 +48,7 @@ import { watch } from "vue";
 
 export default {
   name: "MentorSchedule",
+  emits: ['open-session-detail'], // Declare emitted event
   data() {
     return {
       mentorId: null,
@@ -90,6 +97,12 @@ export default {
     calendarDays() {
       const year = this.currentMonth.getFullYear();
       const month = this.currentMonth.getMonth();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize today to start of day
+
+      const selDate = new Date(this.selectedDate);
+      selDate.setHours(0, 0, 0, 0); // Normalize selectedDate to start of day
+
       const firstDayOfMonth = new Date(year, month, 1);
       const lastDayOfMonth = new Date(year, month + 1, 0);
       const daysInMonth = lastDayOfMonth.getDate();
@@ -107,6 +120,8 @@ export default {
           isCurrentMonth: false,
           hasSessions: false,
           sessionCount: 0,
+          isToday: prevMonthDay.getTime() === today.getTime(),
+          isSelected: prevMonthDay.getTime() === selDate.getTime(),
         });
       }
 
@@ -121,6 +136,8 @@ export default {
           isCurrentMonth: true,
           hasSessions: sessions.length > 0,
           sessionCount: sessions.length,
+          isToday: date.getTime() === today.getTime(),
+          isSelected: date.getTime() === selDate.getTime(),
         });
       }
 
@@ -135,6 +152,8 @@ export default {
           isCurrentMonth: false,
           hasSessions: false,
           sessionCount: 0,
+          isToday: nextMonthDay.getTime() === today.getTime(),
+          isSelected: nextMonthDay.getTime() === selDate.getTime(),
         });
       }
 
@@ -227,6 +246,9 @@ export default {
         NO_SHOW: '불참'
       };
       return statusMap[status] || status;
+    },
+    openSessionDetail(sessionId) {
+      this.$emit('open-session-detail', sessionId);
     }
   },
 };
@@ -236,125 +258,126 @@ export default {
 .schedule-wrapper {
   display: flex;
   gap: 24px;
-  width: 1100px; /* Fixed width to match other content cards */
+  width: 1200px; /* Fixed width to match other content cards */
   max-width: 100%; /* Ensure responsiveness on smaller screens */
   margin: 0 auto; /* Center the component */
   /* Removed padding from here, as it's now handled by parent org-page */
 }
 
-.calendar-container {
+.custom-calendar { /* Renamed from .calendar-container */
   flex: 3 1 0; /* Roughly 60% */
   min-height: 540px; /* Min height for 16:9 screens */
   flex-shrink: 0; /* Prevent shrinking */
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(9,30,66,0.08);
-  padding: 20px 12px; /* Reduced horizontal padding */
-  display: flex; /* Use flex to stack month navigator and grid */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Updated shadow */
+  padding: 20px; /* Updated padding */
+  display: flex;
   flex-direction: column;
 }
 
-.month-navigator {
+.calendar-header { /* Renamed from .month-navigator */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 0 4px 15px; /* Updated padding */
 }
 
 .nav-btn {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background: none; /* Updated background */
+  border: none; /* Updated border */
   color: #374151;
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 4px 8px; /* Updated padding */
+  border-radius: 6px; /* Updated border-radius */
   cursor: pointer;
-  font-size: 16px;
+  font-size: 22px; /* Updated font-size */
   font-weight: 600;
+  transition: background-color 0.2s; /* Added transition */
+}
+.nav-btn:hover { /* Added hover effect */
+  background-color: #f3f4f6;
 }
 
 .current-month-year {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px; /* Updated font-size */
+  font-weight: 600; /* Updated font-weight */
   color: #10243b;
-  text-align: center; /* Center month header text */
-  flex-grow: 1; /* Allow it to take available space */
+  text-align: center;
+  flex-grow: 1;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  flex-grow: 1; /* Allow grid to take remaining vertical space */
+  border: 1px solid #eef2f7; /* Updated border */
+  border-radius: 8px; /* Updated border-radius */
+  overflow: hidden; /* Added overflow */
+  flex-grow: 1;
 }
 
 .day-header {
   text-align: center;
+  padding: 8px 0; /* Updated padding */
   font-weight: 600;
   color: #6b7280;
-  padding: 10px 0;
+  background-color: #f8fafc; /* Added background-color */
   font-size: 14px;
 }
 
 .day-cell {
-  position: relative;
-  height: 78px; /* Height: 78px */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px;
-  border-radius: 8px;
-  background-color: #f8fafc;
+  min-height: 80px; /* Updated min-height */
+  padding: 6px; /* Updated padding */
+  border-top: 1px solid #eef2f7; /* Updated border */
+  border-right: 1px solid #eef2f7; /* Updated border */
   cursor: pointer;
   transition: background-color 0.2s;
-  border: 1px solid #eef2f7;
+  position: relative;
+  display: flex; /* Ensure flex for content alignment */
+  flex-direction: column; /* Stack day number and indicator */
+  align-items: center; /* Center content horizontally */
 }
-
+.day-cell:nth-child(7n) { /* Added for grid styling */
+  border-right: none;
+}
 .day-cell:hover {
-  background-color: #eef2f7;
+  background-color: #f9fafb; /* Updated hover background */
 }
 
 .day-cell.other-month {
   color: #a0a7b5;
-  background-color: #f0f2f5;
+  background-color: transparent; /* Removed specific background */
   cursor: default;
 }
-
+.day-cell.other-month .day-number { /* Specific styling for day number in other month */
+  color: #a0a7b5;
+}
 .day-cell.other-month:hover {
-  background-color: #f0f2f5;
+  background-color: transparent; /* Removed specific background */
 }
 
 .day-number {
-  font-size: 16px;
-  font-weight: 700;
-  color: #10243b;
+  font-size: 14px; /* Updated font-size */
+  font-weight: 500; /* Updated font-weight */
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 /* Visible Today Marker */
-.day-cell.is-today {
-  border: 2px solid #294594; /* Bold border */
-  background: #e0e7ff; /* Light background */
-}
-.day-cell.is-today .day-number {
+.day-cell.is-today .day-number { /* Updated class name and styling */
+  background-color: #eef2ff;
   color: #294594;
-  background-color: transparent; /* Remove inner background */
-  border-radius: 0; /* Remove inner border-radius */
-  width: auto;
-  height: auto;
 }
 
-
-.day-cell.is-selected {
+.day-cell.selected .day-number { /* Updated class name and styling */
   background-color: #294594;
-  border-color: #294594;
-}
-
-.day-cell.is-selected .day-number {
   color: white;
-}
-
-.day-cell.is-selected.is-today .day-number {
-  background-color: white;
-  color: #294594;
+  font-weight: 700;
 }
 
 .session-indicator {
@@ -425,6 +448,7 @@ export default {
   padding: 10px 0; /* Reduced padding for compactness */
   min-height: 48px; /* Compact list height */
   border-bottom: 1px solid #f0f2f5;
+  cursor: pointer; /* Added cursor for clickable items */
 }
 
 .schedule-item:last-child {

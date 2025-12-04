@@ -104,7 +104,7 @@ export default {
 
 <style scoped>
 .report-list-card {
-  width: 1100px;
+  width: 1200px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(9,30,66,0.08);

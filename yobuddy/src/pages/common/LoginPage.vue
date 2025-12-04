@@ -66,7 +66,7 @@ async function onSubmit() {
 
     if (auth.isMentor) router.push('/mentor/dashboard')
     else if (auth.isAdmin) router.push('/kpi')
-    else if (auth.isUser) router.push('/user/trainings')
+    else if (auth.isUser) router.push('/user/dashboard')
     else router.push('/')
 
   } catch (e) {

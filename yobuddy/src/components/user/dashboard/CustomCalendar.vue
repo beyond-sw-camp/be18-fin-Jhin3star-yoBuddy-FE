@@ -10,17 +10,25 @@
       <div
         v-for="day in calendarDays"
         :key="day.date.toISOString()"
-        :class="['day-cell', { 'other-month': !day.isCurrentMonth, 'is-today': day.isToday, 'selected': day.isSelected }]"
+        :class="[
+          'day-cell',
+          {
+            'other-month': !day.isCurrentMonth,
+            'is-today': day.isToday,
+            'selected': day.isSelected
+          }
+        ]"
         @click="selectDate(day.date)"
       >
         <span class="day-number">{{ day.dayOfMonth }}</span>
-        <div v-if="day.events.length" class="events-list-calendar">
-          <div
-            v-for="(event, index) in day.events.slice(0, 3)"
-            :key="index"
-            :class="['event-dot', `event-${event.type.toLowerCase()}`]"
-          ></div>
-        </div>
+
+        <!-- 일정 있을 때 초록색 카운트 뱃지 (클릭 동작 없음) -->
+        <span
+          v-if="day.events.length > 0"
+          class="session-indicator"
+        >
+          {{ day.events.length }}
+        </span>
       </div>
     </div>
   </div>
@@ -39,8 +47,9 @@ export default {
     selectedDate: {
       type: Date,
       required: true,
-    }
+    },
   },
+  // 클릭 동작 제거 → 'open-event-detail' emit 도 제거
   emits: ['select-date', 'changed-month'],
   setup(props, { emit }) {
     const currentMonthDate = ref(new Date());
@@ -67,14 +76,15 @@ export default {
       today.setHours(0, 0, 0, 0);
 
       const selDate = new Date(props.selectedDate);
-      selDate.setHours(0,0,0,0);
+      selDate.setHours(0, 0, 0, 0);
 
       const firstDayOfMonth = new Date(year, month, 1);
       const lastDayOfMonth = new Date(year, month + 1, 0);
-      
+
       const days = [];
       const startDayOfWeek = firstDayOfMonth.getDay();
 
+      // 이전 달 패딩
       for (let i = 0; i < startDayOfWeek; i++) {
         const date = new Date(year, month, i - startDayOfWeek + 1);
         days.push({
@@ -87,6 +97,7 @@ export default {
         });
       }
 
+      // 이번 달
       for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
         const date = new Date(year, month, i);
         days.push({
@@ -99,6 +110,7 @@ export default {
         });
       }
 
+      // 다음 달 패딩 (6주, 42칸 맞추기)
       const remainingCells = 42 - days.length;
       for (let i = 1; i <= remainingCells; i++) {
         const date = new Date(year, month + 1, i);
@@ -111,7 +123,7 @@ export default {
           events: props.eventsByDate[formatDateToYYYYMMDD(date)] || [],
         });
       }
-      
+
       return days;
     });
 
@@ -131,6 +143,7 @@ export default {
       emit('select-date', date);
     };
 
+    // 초기 렌더 시 현재 월 전달
     emit('changed-month', currentMonthDate.value);
 
     return {
@@ -232,18 +245,21 @@ export default {
   justify-content: center;
   transition: all 0.2s;
 }
-.events-list-calendar {
-  margin-top: 4px;
+
+/* 일정 카운트 뱃지 (클릭 X, 커서 기본) */
+.session-indicator {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: #059669; /* 초록색 */
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
   display: flex;
-  gap: 4px;
+  align-items: center;
   justify-content: center;
 }
-.event-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.event-mentoring { background-color: #294594; }
-.event-task { background-color: #b36b00; }
-.event-training { background-color: #006622; }
 </style>

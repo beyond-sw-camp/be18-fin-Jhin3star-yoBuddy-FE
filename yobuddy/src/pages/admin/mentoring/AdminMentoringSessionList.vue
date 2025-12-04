@@ -130,7 +130,7 @@ export default {
       }
     },
     openDetail(session) {
-      this.$router.push(`/admin/mentoring/sessions/${session.id}`);
+      this.$router.push(`/admin/sessions/${session.id}`);
     },
     statusLabel(status) {
       const statusMap = {

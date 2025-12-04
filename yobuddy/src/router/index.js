@@ -3,6 +3,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/content',
+    redirect: '/content/announcement'
+  },
+  {
+    path: '/organization',
+    redirect: '/organization/usermanagement'
+  },
+  {
+    path: '/admin/onboarding',
+    redirect: '/admin/onboarding/programs'
+  },
+
+  {
     path: '/login',
     component: () => import('@/pages/common/LoginPage.vue'),
     meta: { hideHeader: true, hideSidebar: true }
@@ -26,7 +39,7 @@ const routes = [
 
   // Wiki 페이지
   {
-    path: '/wiki',
+    path: '/content/wiki',
     name: 'Wiki',
     component: () => import('@/pages/common/wiki.vue')
   },
@@ -93,12 +106,12 @@ const routes = [
   },
   // --- 멘토 기능 ---
   {
-    path: '/admin/mentoring/sessions',
+    path: '/admin/sessions',
     component: () => import('@/pages/admin/mentoring/AdminMentoringSessionList.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
   {
-    path: '/admin/mentoring/sessions/:sessionId',
+    path: '/admin/sessions/:sessionId',
     component: () => import('@/pages/admin/mentoring/AdminMentoringSessionDetail.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
@@ -140,6 +153,13 @@ const routes = [
       component: () => import('@/pages/user/tasks/UserTaskList.vue'),
       meta: { requiresAuth: true, userOnly: true }
     },
+    {
+      path: '/user/mentoring/sessions',
+      name: 'UserMentoringSessionList',
+      component: () => import('@/pages/user/mentoring/UserMentoringSessionList.vue'),
+      meta: { requiresAuth: true, userOnly: true }
+    },
+    
 
   // --- 멘토 기능 ---
   {

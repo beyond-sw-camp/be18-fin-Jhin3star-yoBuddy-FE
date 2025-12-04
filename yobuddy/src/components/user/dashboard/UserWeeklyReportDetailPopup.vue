@@ -80,10 +80,11 @@ export default {
   name: 'UserWeeklyReportDetailPopup',
   props: {
     visible: Boolean,
-    report: Object, // The summary report object from the list
+    report: Object,
     userId: Number,
   },
   emits: ['close', 'saved'],
+
   setup(props, { emit }) {
     const loading = ref(false);
     const error = ref(null);
@@ -96,38 +97,52 @@ export default {
       learnings: '',
     });
 
+    /* -------------------------
+       수정 가능 여부 계산
+    ------------------------- */
     const canEdit = computed(() => {
-      return reportDetail.value && reportDetail.value.status !== 'SUBMITTED' && reportDetail.value.status !== 'REVIEWED';
+      if (!reportDetail.value) return false;
+      return !['SUBMITTED', 'REVIEWED'].includes(reportDetail.value.status);
     });
 
+    /* -------------------------
+       상세 데이터 조회
+    ------------------------- */
     const fetchReportDetails = async () => {
-      if (!props.report || !props.userId) {
-        console.error('Cannot fetch details: report or userId is missing.');
-        return;
-      }
+      if (!props.visible) return;
+      if (!props.report) return;
+      if (!props.userId) return;
+
       loading.value = true;
       error.value = null;
+
       try {
         const response = await dashboardService.getWeeklyReportDetail(
           props.userId,
           props.report.weeklyReportId
         );
+
         reportDetail.value = response.data;
-        // Initialize form for editing
+
         form.value.accomplishments = response.data.accomplishments;
         form.value.challenges = response.data.challenges;
         form.value.learnings = response.data.learnings;
+
       } catch (e) {
         console.error(e);
-        error.value = '리포트 상세 정보를 불러오지 못했습니다.';
+        error.value = '리포트를 불러오지 못했습니다.';
       } finally {
         loading.value = false;
       }
     };
 
+    /* -------------------------
+       저장
+    ------------------------- */
     const saveReport = async () => {
+      if (!props.userId) return;
+
       loading.value = true;
-      error.value = null;
       try {
         await dashboardService.updateWeeklyReport(
           props.userId,
@@ -151,32 +166,31 @@ export default {
 
     const toggleEdit = (editing) => {
       isEditing.value = editing;
-      if (editing) {
-        // Reset form to current details if user cancels and re-edits
+      if (editing && reportDetail.value) {
         form.value.accomplishments = reportDetail.value.accomplishments;
         form.value.challenges = reportDetail.value.challenges;
         form.value.learnings = reportDetail.value.learnings;
       }
     };
 
-    const formatTimestamp = (ts) => {
-      if (!ts) return '';
-      return new Date(ts).toLocaleString('ko-KR');
-    };
+    const formatTimestamp = (ts) =>
+      ts ? new Date(ts).toLocaleString('ko-KR') : '';
 
-    watchEffect(async () => {
-      if (props.visible && props.report && props.userId) {
-        // Fetch only if the report ID changes, to avoid re-fetching on minor prop updates
-        if (reportDetail.value?.weeklyReportId !== props.report.weeklyReportId) {
-          await fetchReportDetails();
-        }
-      } else {
-        // Reset state when the modal is not visible
-        reportDetail.value = null;
-        isEditing.value = false;
-        error.value = null;
-      }
-    });
+    /* -------------------------
+        핵심: 변화 감지
+    ------------------------- */
+watchEffect(async () => {
+  console.log("UserWeeklyReportDetailPopup watchEffect triggered.");
+  console.log("props.visible:", props.visible);
+  console.log("props.report:", props.report);
+  console.log("props.userId:", props.userId);
+  if (props.visible && props.report && props.userId) {
+    console.log("All props are truthy, fetching report details...");
+    await fetchReportDetails();
+  } else {
+    console.log("One or more props are falsy, not fetching report details.");
+  }
+});
 
     return {
       loading,
@@ -193,6 +207,8 @@ export default {
   },
 };
 </script>
+
+
 
 <style scoped>
 /* Styles are copied and adapted from Mentor's popup for consistency */

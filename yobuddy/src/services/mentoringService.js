@@ -122,6 +122,16 @@ const mentoringService = {
   },
 
   /**
+   * 특정 사용자의 멘토링 세션 상세 정보를 조회합니다.
+   * @param {string|number} userId
+   * @param {string|number} sessionId
+   * @returns {Promise<any>}
+   */
+  async getUserSessionDetails(userId, sessionId) {
+    return http.get(`/api/v1/users/${userId}/mentoring/sessions/${sessionId}`);
+  },
+
+  /**
    * 멘토링 세션에 대한 피드백을 제출(수정)합니다.
    * @param {string|number} mentorId
    * @param {string|number} sessionId

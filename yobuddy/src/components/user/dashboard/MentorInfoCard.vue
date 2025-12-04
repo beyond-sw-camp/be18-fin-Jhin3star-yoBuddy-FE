@@ -44,7 +44,6 @@ export default {
 
 <style scoped>
 .content-card {
-  width: 1100px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(9,30,66,0.08);
