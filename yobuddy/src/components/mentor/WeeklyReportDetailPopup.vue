@@ -177,7 +177,7 @@ export default {
           this.mentorId,
           this.menteeId,
           this.reportId,
-          { feedback: this.form.feedback }
+          { mentorFeedback: this.form.feedback }
         );
         this.$emit('saved');
         this.close();

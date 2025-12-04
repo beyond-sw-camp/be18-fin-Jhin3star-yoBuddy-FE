@@ -72,6 +72,30 @@ const userService = {
 		}
 	})
 	return resp && resp.data ? resp.data : resp
+	},
+
+	async getMentorForUser(userId) {
+		const resp = await http.get(`/api/v1/users/${userId}/mentor`);
+		return resp && resp.data ? resp.data : null;
+	},
+
+	async getUserSchedule(userId, month) {
+		const resp = await http.get(`/api/v1/users/${userId}/schedule`, { params: { month } });
+		return extractArray(resp);
+	},
+
+	async getUserWeeklySchedule(userId) {
+		const resp = await http.get(`/api/v1/users/${userId}/weekly`);
+		return extractArray(resp);
+	},
+
+	async getOnboardingPerformance(userId, mentorId, dateRange) {
+		const params = {
+			from: dateRange.from,
+			to: dateRange.to,
+		};
+		const resp = await http.get(`/api/v1/users/${userId}/mentors/${mentorId}/onboarding-performance`, { params });
+		return resp && resp.data ? resp.data : null;
 	}
 }
 
