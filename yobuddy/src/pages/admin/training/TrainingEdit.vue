@@ -180,7 +180,7 @@ export default {
 /* reuse modal styles from UserCreatePopup */
 .detail-modal { --main-color: #294594; background:#fff; border-radius:12px; padding:20px 22px; width:720px; max-width:calc(100% - 48px); margin:0 auto; }
 .modal-top{ position:relative; height:52px; display:flex; align-items:center; justify-content:center }
-.back-btn{ position:absolute; left:12px; top:8px; border:none; background:transparent; font-size:18px; cursor:pointer }
+.back-btn{ position:absolute; right:12px; top:8px; border:none; background:transparent; font-size:18px; cursor:pointer }
 .modal-title{ font-weight:700; color:var(--main-color) }
 .center-area{ display:none }
 .form-grid{ display:block }
@@ -203,7 +203,7 @@ export default {
 .desc-box{ background:#f8fbff; border:1px solid #eef3fb; padding:12px; border-radius:8px; max-height:140px; overflow:auto; color:#10243b }
 .desc-input{ width:100%; height:120px; border:none; resize:none; background:transparent }
 .desc-input.small{ height:64px }
-.modal-actions{ display:flex; justify-content:flex-end; gap:10px }
+.modal-actions{ display:flex; justify-content:center; gap:10px }
 .btn-outline{ background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 12px; border-radius:8px }
 .btn-primary{ background:#294594; color:#fff; padding:8px 12px; border-radius:8px; border:none }
 .btn-primary.small{ padding:6px 10px; font-size:13px }

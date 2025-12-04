@@ -60,19 +60,31 @@
     </div>
 
     <!-- 페이지네이션 -->
-    <div class="pagination" v-if="totalPages > 1">
-      <button @click="changePage(currentPage - 1)">&lt;</button>
+    <div class="pagination numeric" v-if="totalPages > 1">
+      <button
+        class="page-nav"
+        :disabled="currentPage <= 1"
+        @click="changePage(currentPage - 1)"
+      >
+        &lt;
+      </button>
 
       <button
-        v-for="page in totalPages"
+        v-for="page in pageList"
         :key="page"
-        :class="{ active: currentPage === page }"
+        :class="['page-num', { active: currentPage === page }]"
         @click="changePage(page)"
       >
         {{ page }}
       </button>
 
-      <button @click="changePage(currentPage + 1)">&gt;</button>
+      <button
+        class="page-nav"
+        :disabled="currentPage >= totalPages"
+        @click="changePage(currentPage + 1)"
+      >
+        &gt;
+      </button>
     </div>
   </div>
 </template>
@@ -106,6 +118,18 @@ export default {
     auth() {
       return useAuthStore();
     },
+    pageList() {
+      const total = this.totalPages || 0;
+      const maxVisible = 5;
+      if (total < 1) return [];
+      const start = Math.max(1, Math.min(this.currentPage, total - maxVisible + 1));
+      const end = Math.min(total, start + maxVisible - 1);
+      const pages = [];
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
   },
 
   watch: {
@@ -409,33 +433,40 @@ export default {
   white-space: nowrap;
 }
 
-/* 페이지네이션 */
-.pagination {
+.pagination.numeric {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   margin-top: 25px;
 }
-
-.pagination button {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: white;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.pagination button.active {
-  background: #2a62f4;
-  color: white;
+.page-nav {
+  background: transparent;
   border: none;
+  color: #4b5563;
+  font-size: 18px;
+  padding: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
-
-.pagination span {
-  padding: 0 5px;
-  color: #888;
+.page-nav:disabled {
+  color: #c5c9d6;
+  opacity: 0.7;
+  cursor: default;
+}
+.page-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page-num.active {
+  background: #3b4aa0;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(59,74,160,0.18);
 }
 </style>

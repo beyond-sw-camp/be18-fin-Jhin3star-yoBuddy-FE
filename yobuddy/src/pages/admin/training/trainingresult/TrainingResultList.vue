@@ -78,12 +78,16 @@
 
       <div class="card-footer">
         <div class="pagination numeric">
-          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">‹</button>
-          <template v-for="p in pageList" :key="p.key">
-            <button v-if="p.type==='page'" :class="['page-num', { active: p.num === page }]" @click="setPage(p.num)">{{ p.num + 1 }}</button>
-            <span v-else class="ellipsis">···</span>
-          </template>
-          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">›</button>
+          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">&lt;</button>
+          <button
+            v-for="p in pageList"
+            :key="p"
+            :class="['page-num', { active: p === page }]"
+            @click="setPage(p)"
+          >
+            {{ p + 1 }}
+          </button>
+          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">&gt;</button>
         </div>
       </div>
     </div>
@@ -102,7 +106,7 @@ export default {
       pageList: [],
       trainingresults: [],
       loading: false,
-      totalPages: 0,
+      totalPages: 1,
       error: null,
       isDeleteMode: false,
       selectedIds: [],
@@ -127,7 +131,7 @@ export default {
         // ⚠️ 백엔드 응답 형식에 따라 여기 필드 이름만 맞춰주면 됨
         // 예: Spring Data Page 기준
         this.trainingresults = pageData.content || [];
-        this.totalPages = pageData.totalPages ?? 0;
+        this.totalPages = Math.max(1, pageData.totalPages ?? 0);
         this.page = pageData.number ?? this.page;
 
         this.buildPageList();
@@ -162,41 +166,20 @@ export default {
 
     // 페이지네이션 버튼들 계산
     buildPageList() {
-      const pages = [];
-      const total = this.totalPages;
-      const current = this.page;
-      const maxButtons = 5; // 최대 페이지 버튼 수
-
-      if (total <= maxButtons) {
-        // 전체 페이지 수가 적은 경우: 그냥 다 보여줌
-        for (let i = 0; i < total; i++) {
-          pages.push({ type: 'page', num: i, key: `p-${i}` });
-        }
-      } else {
-        // 많은 경우: 앞/뒤 ... 처리
-        let start = Math.max(0, current - 2);
-        let end = Math.min(total - 1, current + 2);
-
-        if (start > 0) {
-          pages.push({ type: 'page', num: 0, key: 'p-0' });
-          if (start > 1) {
-            pages.push({ type: 'ellipsis', key: 'e-start' });
-          }
-        }
-
-        for (let i = start; i <= end; i++) {
-          pages.push({ type: 'page', num: i, key: `p-${i}` });
-        }
-
-        if (end < total - 1) {
-          if (end < total - 2) {
-            pages.push({ type: 'ellipsis', key: 'e-end' });
-          }
-          pages.push({ type: 'page', num: total - 1, key: `p-${total - 1}` });
-        }
+      const total = this.totalPages || 0
+      const current = this.page || 0
+      const maxVisible = 5
+      const pages = []
+      if (total <= 0) {
+        this.pageList = pages
+        return
       }
-
-      this.pageList = pages;
+      const start = Math.max(0, Math.min(current, total - maxVisible))
+      const end = Math.min(total, start + maxVisible)
+      for (let i = start; i < end; i++) {
+        pages.push(i)
+      }
+      this.pageList = pages
     },
 
     statusClass(status) {

@@ -159,7 +159,7 @@ export default {
 <style scoped>
 .detail-modal { --main-color: #294594; background:#fff; border-radius:12px; padding:20px 22px; width:720px; max-width:calc(100% - 48px); }
 .modal-top { position:relative; height:52px; display:flex; align-items:center; justify-content:center }
-.back-btn{ position:absolute; left:12px; top:8px; border:none; background:transparent; font-size:18px; cursor:pointer }
+.back-btn{ position:absolute; right:12px; top:8px; border:none; background:transparent; font-size:18px; cursor:pointer }
 .modal-title{ font-weight:700; color:var(--main-color) }
 .center-area{ text-align:center; padding:10px 0 18px }
 .avatar-fallback-large{ display:inline-block; width:100px; height:100px; line-height:100px; border-radius:50%; background: linear-gradient(180deg,#f7f9fc,#eef4ff); color:var(--main-color); font-size:36px }
@@ -168,7 +168,7 @@ export default {
 .form-row{ display:flex; flex-direction:column }
 .form-row .label{ font-size:12px; color:#64748b; font-weight:600; margin-bottom:8px }
 input, select{ padding:8px 10px; height:38px; border:1px solid #eef3fb; border-radius:10px }
-.modal-actions{ display:flex; justify-content:space-between; padding-top:18px }
+.modal-actions{ display:flex; justify-content:center; gap:12px; padding-top:18px }
 .btn-outline{ background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px }
 .btn-primary{ background:linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px }
 
