@@ -2,10 +2,14 @@
   <div class="chatbot-popup-card">
     <div class="chatbot-header">
       <div class="chatbot-header-left">
-        <img src='@/assets/logo_chatbot.svg' class="chatbot-avatar" alt="icon" />
+        <img src="@/assets/logo_chatbot.svg" class="chatbot-avatar" alt="BuddyBot" />
         <div>
           <div class="chatbot-title">{{ title || 'BuddyBot' }}</div>
-          <div class="chatbot-status"><span class="online-dot"></span> Online</div>
+          <div class="chatbot-status">
+            <span class="online-dot"></span>
+            <span v-if="!loading">Online</span>
+            <span v-else>답변 생성 중...</span>
+          </div>
         </div>
       </div>
       <button class="chatbot-close" @click="$emit('close')">×</button>
@@ -29,10 +33,29 @@
 
       <transition name="fade">
         <div v-if="hasStarted" class="chatbot-chat-area" ref="chatArea">
-          <div v-for="(msg, i) in messages" :key="i" :class="['chatbot-bubble', msg.sender]">
-            <img v-if="msg.sender === 'bot'" src="@/assets/logo_chatbot.svg" class="bubble-avatar" alt="봇" />
+          <div
+            v-for="(msg, i) in messages"
+            :key="i"
+            :class="['chatbot-bubble', msg.sender]"
+          >
+            <img
+              v-if="msg.sender === 'bot'"
+              src="@/assets/logo_chatbot.svg"
+              class="bubble-avatar"
+              alt="봇"
+            />
             <span class="bubble-text">{{ msg.text }}</span>
           </div>
+        </div>
+      </transition>
+
+      <!-- 답변 생성 중 안내문 -->
+      <transition name="fade">
+        <div v-if="loading" class="chatbot-loading-text">
+          <span class="loading-dots">
+            <span></span><span></span><span></span>
+          </span>
+          <span>답변을 생성 중입니다...</span>
         </div>
       </transition>
 
@@ -42,10 +65,19 @@
           type="text"
           v-model="inputText"
           @keyup.enter="sendMessage"
+          :disabled="loading"
           placeholder="메시지를 입력하세요."
         />
-        <button class="chatbot-send-btn" @click="sendMessage" aria-label="send">
-          <svg width="22" height="22" fill="none" viewBox="0 0 22 22">
+        <button
+          class="chatbot-send-btn"
+          @click="sendMessage"
+          :disabled="loading || !(inputText && inputText.trim())"
+          aria-label="send"
+        >
+          <span v-if="loading" class="loading-dots" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+          <svg v-else width="22" height="22" fill="none" viewBox="0 0 22 22">
             <path d="M3 19L19 11L3 3V8.5L14 11L3 13.5V19Z" fill="#fff" />
           </svg>
         </button>
@@ -55,18 +87,17 @@
 </template>
 
 <script>
+import { askChatbot } from '@/services/chatbotService'
+
 export default {
   name: 'ChatbotPopupCard',
-  props: {
-    title: String,
-    icon: {
-      type: String,
-      default: () => require('@/assets/logo_chatbot.svg')
-    }
+   props: {
+    title: String
   },
   data() {
     return {
       inputText: '',
+      loading: false,
       messages: [
         { sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }
       ],
@@ -81,22 +112,36 @@ export default {
     }
   },
   methods: {
-    sendMessage() {
-      const text = this.inputText && this.inputText.trim()
-      if (!text) return
+    async sendMessage() {
+      const text = (this.inputText || '').trim()
+      if (!text || this.loading) return
+
+      // 사용자 메시지 추가
       this.messages.push({ sender: 'user', text })
       this.inputText = ''
       if (!this.hasStarted) this.hasStarted = true
       this.$nextTick(this.scrollToBottom)
 
-      // fake bot reply for UI demo
-      setTimeout(() => {
-        this.messages.push({ sender: 'bot', text: '질문에 대한 답변을 준비 중입니다!' })
+      this.loading = true
+
+      try {
+        const res = await askChatbot(text)
+        const answer = res?.data?.answer || '죄송합니다. 응답을 읽지 못했어요.'
+
+        await this.typeBotMessage(answer)
+      } catch (e) {
+        console.error(e)
+        this.messages.push({
+          sender: 'bot',
+          text: '죄송합니다. 서버와 통신 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+        })
         this.$nextTick(this.scrollToBottom)
-      }, 600)
+      } finally {
+        this.loading = false
+      }
     },
+
     animateQuestion(q) {
-      // insert question into input and start chat when sent
       this.inputText = ''
       setTimeout(() => {
         this.inputText = q
@@ -105,25 +150,56 @@ export default {
         })
       }, 120)
     },
+
     scrollToBottom() {
       const area = this.$refs.chatArea
       if (area) {
         area.scrollTop = area.scrollHeight
       }
+    },
+    
+    typeBotMessage(text) {
+      return new Promise((resolve) => {
+        const index = this.messages.length
+        this.messages.push({
+          sender: 'bot',
+          text: ''
+        })
+    
+        let i = 0    
+        const interval = setInterval(() => {      
+          const msg = this.messages[index]      
+          if (!msg) {        
+            clearInterval(interval)        
+            resolve()        
+            return      
+          }
+    
+          msg.text += text[i]
+      
+          this.$nextTick(this.scrollToBottom)
+
+      
+          i += 1 
+          if (i >= text.length) {
+            clearInterval(interval)
+            resolve()
+          }
+        }, 40) 
+      })
     }
   }
 }
 </script>
 
 <style scoped>
-/* Unified, polished styles for Chatbot popup */
 .chatbot-popup-card {
   min-width: 320px;
   max-width: 420px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   color: #213048;
   border-radius: 14px;
-  box-shadow: 0 12px 30px rgba(21,34,80,0.12);
+  box-shadow: 0 12px 30px rgba(21, 34, 80, 0.12);
   position: absolute;
   top: 110%;
   right: 0;
@@ -135,7 +211,7 @@ export default {
 }
 
 .chatbot-header {
-  background: linear-gradient(90deg,#294594 0%, #2b57a0 100%);
+  background: linear-gradient(90deg, #294594 0%, #2b57a0 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -163,24 +239,114 @@ export default {
 .question-avatar{ width:20px; height:20px; border-radius:6px; }
 .question-text{ font-size:0.95rem }
 
-.chatbot-chat-area{ display:flex; flex-direction:column; gap:10px; margin-bottom:6px; min-height:160px; max-height:300px; overflow-y:auto; background:transparent; padding:8px }
+.chatbot-chat-area{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:6px;
+  min-height:160px;
+  max-height:300px;
+  overflow-y:auto;
+  background:transparent;
+  padding:8px;
+}
 .chatbot-bubble{ display:flex; align-items:flex-end; gap:8px; width:100% }
 .chatbot-bubble.bot{ justify-content:flex-start }
 .chatbot-bubble.user{ justify-content:flex-end }
 
 .bubble-avatar{ width:28px; height:28px; border-radius:8px }
-.bubble-text{ display:inline-block; padding:10px 14px; border-radius:16px; max-width:78%; box-shadow:0 6px 18px rgba(33,48,72,0.06); color:#213048; background:#fff; word-break:break-word; white-space:pre-wrap }
+.bubble-text{
+  display:inline-block;
+  padding:10px 14px;
+  border-radius:16px;
+  max-width:78%;
+  box-shadow:0 6px 18px rgba(33,48,72,0.06);
+  color:#213048;
+  background:#fff;
+  word-break:break-word;
+  white-space:pre-wrap;
+}
 
 .chatbot-bubble.bot .bubble-text{ margin-left:6px }
-.chatbot-bubble.user .bubble-text{ background:#294594; color:#fff; margin-right:6px; position:relative }
-.chatbot-bubble.user .bubble-text::after{ content:''; position:absolute; right:10px; bottom:6px; width:10px; height:10px; background:#294594; transform:rotate(45deg); border-bottom-right-radius:2px }
+.chatbot-bubble.user .bubble-text{
+  background:#294594;
+  color:#fff;
+  margin-right:6px;
+  position:relative;
+}
+.chatbot-bubble.user .bubble-text::after{
+  content:'';
+  position:absolute;
+  right:10px;
+  bottom:6px;
+  width:10px;
+  height:10px;
+  background:#294594;
+  transform:rotate(45deg);
+  border-bottom-right-radius:2px;
+}
 
 .chatbot-input-row{ display:flex; gap:8px; align-items:center }
-.chatbot-input{ flex:1; padding:10px 14px; border-radius:12px; border:1px solid rgba(33,48,72,0.06); background:#fbfdff }
-.chatbot-send-btn{ background:#294594; border:none; color:#fff; padding:8px 10px; border-radius:10px; display:flex; align-items:center; cursor:pointer }
-.chatbot-send-btn:hover{ filter:brightness(0.98) }
+.chatbot-input{
+  flex:1;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid rgba(33,48,72,0.06);
+  background:#fbfdff;
+}
+.chatbot-send-btn{
+  background:#294594;
+  border:none;
+  color:#fff;
+  padding:8px 10px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.chatbot-send-btn:disabled{ opacity:0.5; cursor:default }
+.chatbot-send-btn:hover:not(:disabled){ filter:brightness(0.98) }
 
-/* subtle fade animation for chat appear */
+.chatbot-loading-text{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:0.85rem;
+  color:#6b7280;
+  padding:0 4px 4px;
+}
+
+.loading-dots{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+}
+.loading-dots span{
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:#ffffff;
+  animation: loading-bounce 0.9s infinite;
+}
+.chatbot-loading-text .loading-dots span{
+  background:#6b7280; 
+}
+.loading-dots span:nth-child(2){ animation-delay:0.15s }
+.loading-dots span:nth-child(3){ animation-delay:0.3s }
+
+@keyframes loading-bounce{
+  0%, 80%, 100%{
+    transform:scale(0.4);
+    opacity:0.4;
+  }
+  40%{
+    transform:scale(1);
+    opacity:1;
+  }
+}
+
 .fade-enter-active, .fade-leave-active{ transition:opacity 220ms ease, transform 220ms ease }
 .fade-enter-from, .fade-leave-to{ opacity:0; transform:translateY(8px) }
 .fade-enter-to, .fade-leave-from{ opacity:1; transform:translateY(0) }
