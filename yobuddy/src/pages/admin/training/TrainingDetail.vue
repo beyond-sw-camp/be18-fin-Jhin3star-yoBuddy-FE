@@ -203,7 +203,7 @@ export default {
 .detail-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(3, 10, 18, 0.48); z-index: 1400; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); padding: 20px; }
 .detail-modal { width: 720px; max-width: calc(100% - 48px); max-height: 92vh; overflow: auto; background: #fff; border: 1px solid rgba(16,36,59,0.04); border-radius: 12px; padding: 20px 22px; box-shadow: 0 12px 40px rgba(3, 10, 18, 0.12); position: relative; display:flex; flex-direction:column; }
 .modal-top { position: relative; height: 52px; display:flex; align-items:center; justify-content:center }
-.back-btn { position: absolute; left: 12px; top: 8px; border: none; background: transparent; font-size: 18px; cursor: pointer; padding: 6px; color: #4b5563; }
+.back-btn { position: absolute; right: 12px; top: 8px; border: none; background: transparent; font-size: 18px; cursor: pointer; padding: 6px; color: #4b5563; }
 .modal-title { font-size:18px; font-weight:700; color: var(--main-color); }
 .center-area { text-align:center; padding: 10px 0 18px 0 }
 .avatar-large img { width: 100px; height:100px; border-radius:50%; object-fit:cover }
@@ -219,7 +219,7 @@ export default {
 .description-block .desc-val { color:#10243b; font-size:15px; line-height:1.6; margin-top:8px }
 .assigned-programs ul { margin:0; padding:0; list-style:none }
 .assigned-programs li { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.modal-actions { display:flex; justify-content:flex-end; gap:12px; padding-top:18px }
+.modal-actions { display:flex; justify-content:center; gap:12px; padding-top:18px }
 
 /* 리디자인 레이아웃 */
 .content-top { padding: 16px 16px; display:flex; flex-direction:column; gap:12px; align-items:stretch }

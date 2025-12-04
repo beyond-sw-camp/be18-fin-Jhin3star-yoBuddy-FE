@@ -61,12 +61,16 @@
 
       <div class="card-footer">
         <div class="pagination numeric">
-          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">‹</button>
-          <template v-for="p in pageList" :key="p.key">
-            <button v-if="p.type==='page'" :class="['page-num', { active: p.num === page }]" @click="setPage(p.num)">{{ p.num + 1 }}</button>
-            <span v-else class="ellipsis">···</span>
-          </template>
-          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">›</button>
+          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">&lt;</button>
+          <button
+            v-for="p in pageList"
+            :key="p"
+            :class="['page-num', { active: p === page }]"
+            @click="setPage(p)"
+          >
+            {{ p + 1 }}
+          </button>
+          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">&gt;</button>
         </div>
       </div>
 
@@ -102,11 +106,7 @@ export default {
   },
   computed: {
     pageList() {
-      const raw = this.pageRange()
-      return raw.map((p, idx) => {
-        if (p === 'left-ellipsis' || p === 'right-ellipsis') return { type: 'ellipsis', key: `e-${idx}` }
-        return { type: 'page', num: p, key: `p-${p}` }
-      })
+      return this.pageRange()
     }
   },
   methods: {
@@ -214,18 +214,14 @@ export default {
       this.fetchTrainings()
     },
     pageRange() {
-      const total = this.totalPages
-      const current = this.page
-      const delta = 2
-      const range = []
-      for (let i = Math.max(0, current - delta); i <= Math.min(total - 1, current + delta); i++) range.push(i)
+      const total = this.totalPages || 0
+      const current = this.page || 0
+      const maxVisible = 5
+      if (total <= 0) return []
+      const start = Math.max(0, Math.min(current, total - maxVisible))
+      const end = Math.min(total, start + maxVisible)
       const pages = []
-      if (range.length === 0) return pages
-      if (range[0] > 0) pages.push(0)
-      if (range[0] > 1) pages.push('left-ellipsis')
-      for (const p of range) pages.push(p)
-      if (range[range.length - 1] < total - 2) pages.push('right-ellipsis')
-      if (range[range.length - 1] < total - 1) pages.push(total - 1)
+      for (let i = start; i < end; i++) pages.push(i)
       return pages
     },
     handleToastQuery() {
