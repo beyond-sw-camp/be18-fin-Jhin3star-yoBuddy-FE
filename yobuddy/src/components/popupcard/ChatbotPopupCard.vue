@@ -49,7 +49,6 @@
         </div>
       </transition>
 
-      <!-- 답변 생성 중 안내문 -->
       <transition name="fade">
         <div v-if="loading" class="chatbot-loading-text">
           <span class="loading-dots">
@@ -116,7 +115,6 @@ export default {
       const text = (this.inputText || '').trim()
       if (!text || this.loading) return
 
-      // 사용자 메시지 추가
       this.messages.push({ sender: 'user', text })
       this.inputText = ''
       if (!this.hasStarted) this.hasStarted = true
