@@ -16,7 +16,7 @@
 
       <form class="login-form" @submit.prevent="onSubmit">
         <label class="field">
-          <span class="label-text">아이디 (이메일)</span>
+          <span class="label-text">아이디 (이메일) </span>
           <input type="email" v-model.trim="email" required placeholder="example@company.com" />
         </label>
 
@@ -75,11 +75,13 @@ export default {
       loading.value = true
       try {
         const result = await auth.login(email.value, password.value)
+        console.log('Login result:', result); // 디버깅용 로그
 
         // If login returned tokens (normalized in auth service), persist them
         if (result && (result.accessToken || result.token || result.refreshToken)) {
-          // persist tokens and user info (stored to both session/local by auth.setToken)
-          auth.setToken(result)
+          // persist tokens and user info
+          // If user checked "remember", persist to localStorage as well; otherwise keep only in sessionStorage
+          auth.setToken(result, { persistLocal: remember.value })
           if (remember.value) {
             localStorage.setItem('yb_remember', 'true')
             localStorage.setItem('yb_saved_email', email.value)
@@ -87,6 +89,7 @@ export default {
             localStorage.removeItem('yb_remember')
             localStorage.removeItem('yb_saved_email')
           }
+          console.log('Redirecting to /kpi...'); // 디버깅용 로그
           router.push({ path: '/kpi' })
           return
         }

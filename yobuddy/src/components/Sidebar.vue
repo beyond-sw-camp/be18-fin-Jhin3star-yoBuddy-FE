@@ -14,7 +14,6 @@
               :class="['nav-link', { active: isActive(item.path) || isSubmenuActive(item) }]"
               :title="item.label"
             >
-              <!-- Use CSS mask technique so we can color the icon exactly with CSS (works well with SVGs) -->
               <span
                 v-if="item.icon"
                 class="nav-icon icon-mask"
@@ -23,250 +22,274 @@
                 :aria-label="item.label + ' icon'"
               ></span>
               <span v-else class="nav-icon">-</span>
+
               <span class="nav-label">{{ item.label }}</span>
               <span v-if="item.subItems" class="chev">›</span>
             </router-link>
 
-            <!-- Submenu shown on hover/focus -->
-            <div v-if="item.subItems" :class="['submenu', { visible: shouldShowSubmenu(item) }]">
+            <!-- Submenu -->
+            <div 
+              v-if="item.subItems" 
+              :class="['submenu', { visible: shouldShowSubmenu(item) }]"
+            >
               <ul>
                 <li v-for="sub in item.subItems" :key="sub.id">
                   <router-link :to="sub.path" class="sub-link">{{ sub.label }}</router-link>
                 </li>
               </ul>
             </div>
+
           </div>
         </li>
       </ul>
     </nav>
 
-    <!-- Footer - User Info -->
-    <transition name="user-detail-slide">
-      <div v-if="showUserDetail" class="user-detail-card glass-card">
-        <div class="user-detail-avatar glass-avatar">
-          <span class="avatar-ring">
-            <img v-if="avatarUrl" :src="avatarUrl" alt="user avatar" />
-            <span v-else>👤</span>
-          </span>
-        </div>
-        <div class="user-detail-info glass-info">
-          <p class="glass-name">{{ userName }}</p>
-          <p class="glass-role">{{ userRole }}</p>
-          <div class="glass-divider"></div>
+    <div class="sidebar-footer">
+      <!-- User Detail Card -->
+      <transition name="user-detail-slide">
+        <div v-if="showUserDetail" class="user-detail-card glass-card">
+          
+          <div class="user-detail-avatar glass-avatar">
+            <span class="avatar-ring">
+              <img v-if="avatarUrl" :src="avatarUrl" alt="user avatar" />
+              <span v-else>👤</span>
+            </span>
+          </div>
+
+          <div class="user-detail-info glass-info">
+            <p class="glass-name">{{ userName }}</p>
+            <p class="glass-role">{{ userRole }}</p>
+
+            <div class="glass-divider"></div>
+
             <div class="user-details-list">
               <div class="detail-row">
-                <span class="detail-label">이메일</span>
-                <br/>
-                <span class="detail-value">{{ user?.email || '' }}</span>
+                <span class="detail-label">이메일</span><br/>
+                <span class="detail-value">{{ userEmail }}</span>
               </div>
+
               <div class="detail-row">
-                <span class="detail-label">부서</span>
-                <br/>
-                <span class="detail-value">{{ user?.department || '' }}</span>
+                <span class="detail-label">부서</span><br/>
+                <span class="detail-value">{{ userDept }}</span>
               </div>
+
               <div class="detail-row">
-                <span class="detail-label">입사일</span>
-                <br/>
-                <span class="detail-value">{{ user?.joinDate || '' }}</span>
+                <span class="detail-label">입사일</span><br/>
+                <span class="detail-value">{{ joinDate }}</span>
               </div>
             </div>
+          </div>
+
+          <button class="user-detail-btn glass-btn" @click.stop="editProfile">
+            <span class="edit-label">프로필 수정</span>
+          </button>
+
         </div>
-        <button class="user-detail-btn glass-btn" @click.stop="editProfile">
-          <span class="edit-icon" aria-label="프로필 수정">
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="11" fill="#FFEA7E"/><path d="M8 14L14 8M14 8L12.5 6.5M14 8L15.5 9.5" stroke="#294594" stroke-width="1.5" stroke-linecap="round"/></svg>
-          </span>
-          <span class="edit-label">프로필 수정</span>
-        </button>
-      </div>
-    </transition>
-    <div class="sidebar-footer" @click="toggleUserDetail" style="cursor:pointer; flex-direction: column; align-items: stretch; gap: 0;">
-      <div class="user-section" style="min-height:unset; display:flex; align-items:center; gap:10px;">
+      </transition>
+      
+      <div class="user-section" @click="toggleUserDetail" style="cursor:pointer;">
         <div class="user-avatar">
-          <!-- Support optional avatar image; fallback to emoji -->
-          <img v-if="avatarUrl" :src="avatarUrl" alt="user avatar" />
+          <img v-if="avatarUrl" :src="avatarUrl" alt="" />
           <span v-else>👤</span>
         </div>
-        <div class="user-info" style="display:flex; align-items:center; gap:8px;">
-          <div style="flex:1;">
-            <p class="user-name" style="margin-bottom:0;">{{ userName }}</p>
-            <p class="user-role" style="margin-top:4px;">{{ userRole }}</p>
-          </div>
-          <button class="logout-btn action-btn" @click="logout()" title="로그아웃" style="margin-left:auto;">
-            <span class="action-icon"><img src="@/assets/logo_logout.svg" alt="" srcset=""></span>
-          </button>
+
+        <div class="user-info">
+          <p class="user-name">{{ userName }}</p>
+          <p class="user-role">{{ userRole }}</p>
         </div>
+
+        <button class="logout-btn action-btn" @click.stop="logout()" title="로그아웃">
+          <span class="action-icon">
+            <img src="@/assets/logo_logout.svg" width="80%" height="80%">
+          </span>
+        </button>
       </div>
     </div>
+    <my-info-modal v-if="showMyInfoModal" @close="showMyInfoModal = false" />
   </aside>
 </template>
 
 <script>
-import { useRoute } from 'vue-router';
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import auth from '@/services/auth'
+import { useAuthStore } from "@/store/authStore"
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import MyInfoModal from './popupcard/MyInfoModal.vue'
 
-import kpiIcon from '@/assets/logo_kpi.svg'
-import orgIcon from '@/assets/logo_org.svg'
-import onboadingIcon from '@/assets/logo_onboading.svg'
-import eduIcon from '@/assets/logo_edu.svg'
+import assignmentIcon from '@/assets/icon_assigment.svg'
+import dashboardIcon from '@/assets/icon_dashboard.svg'
 import contentIcon from '@/assets/logo_content.svg'
-import assignmentIcon from '@/assets/icon_assigment.svg';
+import eduIcon from '@/assets/logo_edu.svg'
+import kpiIcon from '@/assets/logo_kpi.svg'
+import mentoringIcon from '@/assets/logo_mentoring.svg'
+import onboadingIcon from '@/assets/logo_onboading.svg'
+import orgIcon from '@/assets/logo_org.svg'
 
 export default {
-  name: 'SidebarMenu',
-  setup() {
-    const route = useRoute();
-    const userName = ref('홍길동');
-    const userRole = ref('개발자');
-    const avatarUrl = ref(null); // set to image path if available
-    const activeSubmenu = ref(null);
-    const showUserDetail = ref(false);
-    const user = ref({ email: '', department: '', joinDate: '' });
+  name: "SidebarMenu",
+  components: {
+    MyInfoModal
+  },
 
-    const loadUserFromAuth = () => {
-      const u = auth.getUser()
-      // Prefer an explicitly saved display name, then server-provided name, then id
-      const savedName = sessionStorage.getItem('yb_user_name') || localStorage.getItem('yb_user_name')
-      if (savedName) {
-        userName.value = savedName
-      } else if (u && u.name) {
-        userName.value = String(u.name)
-      } else if (u && u.id) {
-        userName.value = String(u.id)
+  setup() {
+    const route = useRoute()
+    const router = useRouter()
+    const auth = useAuthStore()
+
+    const user = computed(() => auth.user)
+
+    /* User Info */
+    const userName = computed(() => user.value?.name || "")
+    const userRole = computed(() => user.value?.role || "")
+    const avatarUrl = computed(() => user.value?.profileImageUrl || null)
+    const userEmail = computed(() => user.value?.email || "")
+    const userDept = computed(() => user.value?.departmentName || "")
+    const joinDate = computed(() =>
+      user.value?.joinedAt ? user.value.joinedAt.split("T")[0] : ""
+    )
+
+    
+
+    const menuItems = computed(() => {
+      const role = user.value?.role
+
+      if (role === "ADMIN") {
+        return [
+          {
+            id: 1,
+            icon: kpiIcon,
+            label: "KPI",
+            path: "/kpi",
+            subItems: [
+              { id: "1-1", label: "KPI 성과 지표", path: "/kpi/monthly" },
+              { id: "1-2", label: "신입 성과 조회", path: "/kpi/annual" },
+              { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
+            ]
+          },
+          {
+            id: 2,
+            icon: orgIcon,
+            label: "조직 관리",
+            path: "/organization/usermanagement",
+            subItems: [
+              { id: "2-1", label: "유저 관리", path: "/organization/usermanagement" },
+              { id: "2-2", label: "부서 관리", path: "/organization/department" }
+            ]
+          },
+          {
+            id: 3,
+            icon: onboadingIcon,
+            label: "온보딩 관리",
+            path: "/admin/onboarding/programs",
+          },
+          {
+            id: 4,
+            icon: mentoringIcon,
+            label: "멘토링 관리",
+            path: "/admin/sessions",
+          },
+          { id: 5, 
+            icon: assignmentIcon, 
+            label: "과제", 
+            path: "/admin/tasks" },
+          { 
+            id: 6, 
+            icon: eduIcon, 
+            label: "교육", 
+            path: '/admin/trainings' },
+          {
+            id: 7,
+            icon: contentIcon,
+            label: "콘텐츠",
+            path: "/content/announcement",
+            subItems: [
+              { id: "7-1", label: "공지사항", path: "/content/announcement" },
+              { id: "7-2", label: "위키", path: "/content/wiki" }
+            ]
+          }
+        ]
       }
 
-      if (u && u.role) userRole.value = String(u.role)
+      if (role === "MENTOR") {
+        return [
+          { id: 1, icon: dashboardIcon, label: "대시보드", path: "/mentor/dashboard" },
+          { id: 2, icon: mentoringIcon, label: "멘토링", path: "/mentor/sessions" },
+          { id: 3, icon: assignmentIcon, label: "과제", path: "/mentor/tasks" },
+          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content/announcement", 
+            subItems: [
+              { id: "4-1", label: "공지사항", path: "/content/announcement" },
+              { id: "4-2", label: "위키", path: "/content/wiki" }
+            ]
+          }
+        ]
+      }
 
-      // email: prefer saved email from login remember flow
-      const savedEmail = localStorage.getItem('yb_saved_email') || sessionStorage.getItem('yb_saved_email')
-      if (savedEmail) user.value.email = savedEmail
-      else if (u && u.email) user.value.email = String(u.email)
+      // regular user menu
+      if (userRole.value === 'USER') {
+        return [
+          { id: 'u-1', icon: dashboardIcon, label: '대시보드', path: '/user/dashboard' },
+          { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/tasks' },
+          { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings', subItems: [
+            { id: 'u-3-1', label: '교육 목록', path: '/user/trainings' },
+          ] },
+          { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content/announcement", 
+            subItems: [
+              { id: "4-1", label: "공지사항", path: "/content/announcement" },
+              { id: "4-2", label: "위키", path: "/content/wiki" }
+            ]
+          }
+        ]
+      }
 
-      // department and joinDate: optional fields stored at login if backend provides them
-      const savedDept = sessionStorage.getItem('yb_user_department') || localStorage.getItem('yb_user_department')
-      if (savedDept) user.value.department = savedDept
-      else if (u && u.department) user.value.department = String(u.department)
+      return []
+    })
 
-      const savedJoin = sessionStorage.getItem('yb_user_joinDate') || localStorage.getItem('yb_user_joinDate')
-      if (savedJoin) user.value.joinDate = savedJoin
-      else if (u && u.joinDate) user.value.joinDate = String(u.joinDate)
+    /* submenu behaviors */
+    const activeSubmenu = ref(null)
+    const showSubmenu = id => (activeSubmenu.value = id)
+    const hideSubmenu = () => (activeSubmenu.value = null)
+    const isActive = path => route.path === path
+    const isSubmenuActive = item =>
+      item.subItems?.some(sub => route.path.startsWith(sub.path))
 
-      // avatar: optional stored key
-      const avatar = sessionStorage.getItem('yb_user_avatar') || localStorage.getItem('yb_user_avatar')
-      if (avatar) avatarUrl.value = avatar
+    const shouldShowSubmenu = item =>
+      activeSubmenu.value === item.id || isSubmenuActive(item)
+
+    /* user detail panel */
+    const showUserDetail = ref(false)
+    const toggleUserDetail = () => (showUserDetail.value = !showUserDetail.value)
+
+    const showMyInfoModal = ref(false);
+    const editProfile = () => {
+      showMyInfoModal.value = true;
     }
 
-    // update on mount and when storage changes (in another tab)
-    onMounted(() => {
-      loadUserFromAuth()
-      window.addEventListener('storage', loadUserFromAuth)
-    })
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('storage', loadUserFromAuth)
-    })
-
-    const menuItems = ref([
-      {
-        id: 1,
-        icon: kpiIcon,
-        label: 'KPI',
-        path: '/kpi',
-        subItems: [
-          { id: '1-1', label: 'KPI 성과 지표', path: '/kpi/monthly' },
-          { id: '1-2', label: '신입 성과 조회', path: '/kpi/annual' }
-        ]
-      },
-      {
-        id: 2,
-        icon: orgIcon,
-        label: '조직 관리',
-        path: '/organization',
-        subItems: [
-          { id: '2-1', label: '유저 관리', path: '/organization/criteria' },
-          { id: '2-2', label: '부서 관리', path: '/organization/final' }
-        ]
-      },
-      {
-        id: 3,
-        icon: onboadingIcon,
-        label: '온보딩',
-        path: '/onboarding'
-      },
-      {
-        id: 4,
-        icon: assignmentIcon,
-        label: '과제',
-        path: '/assignment'
-      },
-      {
-        id: 5,
-        icon: eduIcon,
-        label: '교육',
-        path: '/education'
-      },
-      {
-        id: 6,
-        icon: contentIcon,
-        label: '콘텐츠',
-        path: '/content',
-        subItems: [
-          { id: '6-1', label: '공지사항', path: '/content/posts' },
-          { id: '6-2', label: '위키', path: '/content/library' }
-        ]
-      }
-    ]);
-
-    const isActive = (path) => {
-      return route.path === path;
-    };
-
-    const isSubmenuActive = (item) => {
-      if (!item.subItems) return false;
-      return item.subItems.some(sub => route.path.startsWith(sub.path));
-    };
-
-    const shouldShowSubmenu = (item) => {
-      return activeSubmenu.value === item.id || isSubmenuActive(item);
-    };
-
-    const openSettings = () => {
-      console.log('Settings clicked');
-    };
-    const toggleUserDetail = () => {
-      showUserDetail.value = !showUserDetail.value;
-    };
-    const editProfile = () => {
-      alert('프로필 수정 기능은 준비 중입니다.');
-    };
-
-    const showSubmenu = (id) => {
-      activeSubmenu.value = id;
-    };
-
-    const hideSubmenu = () => {
-      activeSubmenu.value = null;
-    };
+    /* logout */
+    const logout = () => {
+      auth.logout()
+      router.push("/login")
+    }
 
     return {
-      menuItems,
-      userName,
-      avatarUrl,
-      userRole,
       user,
+      userName, userRole, avatarUrl,
+      userEmail, userDept, joinDate,
+
+      menuItems,
+
       isActive,
       isSubmenuActive,
-      openSettings,
-      activeSubmenu,
+      shouldShowSubmenu,
       showSubmenu,
       hideSubmenu,
-      shouldShowSubmenu,
+
       showUserDetail,
       toggleUserDetail,
-      editProfile
-    };
+      logout,
+      editProfile,
+      showMyInfoModal
+    }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -308,7 +331,7 @@ export default {
   opacity: 0;
 }
 .user-detail-slide-enter-to, .user-detail-slide-leave-from {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
 }
 
@@ -763,7 +786,7 @@ export default {
 
 .user-name {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
@@ -774,7 +797,7 @@ export default {
 
 .user-role {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255,255,255,0.85);
   opacity: 0.98;
   white-space: nowrap;
@@ -811,6 +834,7 @@ export default {
 
 .action-icon {
   font-size: 18px;
+  margin-top: 30%;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -839,7 +863,7 @@ export default {
   opacity: 0;
 }
 .user-detail-slide-enter-to, .user-detail-slide-leave-from {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
 }
 .user-detail-card {

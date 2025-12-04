@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="logo-section">
         <div class="logo">
-            <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
+          <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
         </div>
       </div>
       <div class="breadcrumb">
@@ -16,9 +16,9 @@
             <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
           </span>
           <router-link
-            :to="breadcrumbLinks[idx]"
-            class="page-name"
-            style="cursor:pointer; text-decoration:none; color:inherit;"
+              :to="breadcrumbLinks[idx]"
+              class="page-name"
+              style="cursor:pointer; text-decoration:none; color:inherit;"
           >
             {{ crumb }}
           </router-link>
@@ -34,10 +34,9 @@
           <span v-if="notificationCount > 0" class="badge">{{ notificationCount }}</span>
         </button>
         <NoiticePopupCard
-          v-if="showNotificationCard"
-          :notices="notices"
-          @close="showNotificationCard = false"
-          @read="markNoticeRead"
+            v-if="showNotificationCard"
+            :notices="notificationStore.notifications"
+            @close="showNotificationCard = false"
         />
       </div>
       <div class="dropdown-wrapper">
@@ -47,11 +46,11 @@
           </span>
         </button>
         <ChatbotPopupCard
-          v-if="showChatbotCard"
-          title="YoBuddy 챗봇"
-          subtitle="무엇을 도와드릴까요?"
-          icon="/default-profile.png"
-          @close="showChatbotCard = false"
+            v-if="showChatbotCard"
+            title="YoBuddy 챗봇"
+            subtitle="무엇을 도와드릴까요?"
+            icon="/default-profile.png"
+            @close="showChatbotCard = false"
         >
           <template #default>
             <div style="margin-bottom:10px;">챗봇 기능은 여기에 구현됩니다.</div>
@@ -68,6 +67,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
+import { useNotificationStore } from '@/store/notificationStore'
 
 export default {
   name: 'HeaderBar',
@@ -76,113 +76,126 @@ export default {
     ChatbotPopupCard
   },
   setup(props, { emit }) {
-    // ...existing code...
-    function markNoticeRead(idx) {
-      if (notices.value[idx]) {
-        notices.value[idx].read = true;
-      }
-    }
     const route = useRoute()
+    const notificationStore = useNotificationStore()
+
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-    const notices = ref([
-      { message: '새로운 공지사항이 있습니다.', time: '10:32', read: false },
-      { message: '팀 미팅이 곧 시작됩니다.', time: '09:50', read: true },
-      { message: '점심시간 안내', time: '08:30', read: false },
-      { message: '사내 이벤트가 있습니다.', time: '어제', read: true },
-      { message: '연차 신청이 승인되었습니다.', time: '2일 전', read: false },
-      { message: '보안 업데이트 안내', time: '3일 전', read: true }
-    ])
-    const notificationCount = computed(() => notices.value.filter(notice => !notice.read).length)
+
+    const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
-      '/': 'KPI',
       '/kpi': 'KPI',
       '/organization': '조직 관리',
       '/onboarding': '온보딩',
       '/mentoring': '멘토링',
       '/education': '교육',
-      '/content': '콘텐츠'
+      '/dashboard': '대시보드',
+      '/content': '콘텐츠',
+      '/tasks': '과제',
+      '/trainings': '교육',
+      '/content/announcement': '공지사항',
+      '/content/wiki': '위키',
+      '/organization/usermanagement': '유저 관리',
+      '/organization/department': '부서 관리',
+      '/sessions': '세션 목록',
+      '/sessions/create': '세션 생성',
     }
 
-    const pageTitle = computed(() => {
-      return pageTitleMap[route.path] || 'YoBuddy'
-    })
+    const pageTitle = computed(() => pageTitleMap[route.path] || 'YoBuddy')
 
-    // breadcrumb depth 표현
-    const breadcrumbs = computed(() => {
-      // route.path 예시: /organization/submenu1/submenu2
-      const segments = route.path.split('/').filter(Boolean)
-      // 첫 depth는 항상 pageTitleMap에서 가져옴
-      const crumbs = []
-      if (segments.length === 0) {
-        crumbs.push(pageTitleMap['/'])
-      } else {
-        // 첫 depth
-        const first = '/' + segments[0]
-        crumbs.push(pageTitleMap[first] || segments[0])
-        // 그 이후 depth는 그대로 표시
-        for (let i = 1; i < segments.length; i++) {
-          crumbs.push(segments[i])
-        }
-      }
-      return crumbs
-    })
+
+const breadcrumbs = computed(() => {
+  let segments = route.path.split('/').filter(Boolean)
+
+  const hiddenSegments = ["user", "admin", "mentor"]
+  segments = segments.filter(seg => !hiddenSegments.includes(seg))
+
+  const crumbs = []
+  let accumulatedPath = ""
+
+  segments.forEach((seg, idx) => {
+    accumulatedPath += "/" + seg
+
+    // 마지막 segment가 PK(숫자)면 → 상세보기
+    if (idx === segments.length - 1 && /^\d+$/.test(seg)) {
+      crumbs.push("상세보기")
+    }
+    // 누적 path로 pageTitleMap에서 찾기
+    else if (pageTitleMap[accumulatedPath]) {
+      crumbs.push(pageTitleMap[accumulatedPath])
+    }
+    // 없으면 segment 그대로
+    else {
+      crumbs.push(seg)
+    }
+  })
+
+  return crumbs
+})
+const breadcrumbLinks = computed(() => {
+  const segments = route.path.split('/').filter(Boolean)
+  const hiddenRoot = ["user", "admin", "mentor"]
+
+  const links = []
+  let path = ""
+
+  segments.forEach((seg, idx) => {
+    path += "/" + seg
+
+    if (idx === 0 && hiddenRoot.includes(seg)) {
+      return
+    }
+
+    links.push(path)
+  })
+
+  return links
+})
 
     const toggleMenu = () => {
       showChatbotCard.value = !showChatbotCard.value
       showNotificationCard.value = false
       emit('toggle-menu')
     }
+
     const toggleNotifications = () => {
       showNotificationCard.value = !showNotificationCard.value
       showChatbotCard.value = false
     }
-    // 외부 클릭 시 카드 닫기
+
     const handleClickOutside = (e) => {
       if (!e.target.closest('.dropdown-wrapper')) {
         showNotificationCard.value = false
         showChatbotCard.value = false
       }
     }
+
     onMounted(() => {
       window.addEventListener('click', handleClickOutside)
     })
+
     onBeforeUnmount(() => {
       window.removeEventListener('click', handleClickOutside)
     })
 
-    // 각 breadcrumb depth별 링크 경로 생성
-    const breadcrumbLinks = computed(() => {
-      const segments = route.path.split('/').filter(Boolean)
-      const links = []
-      if (segments.length === 0) {
-        links.push('/')
-      } else {
-        let path = ''
-        for (let i = 0; i < segments.length; i++) {
-          path += '/' + segments[i]
-          links.push(path)
-        }
-      }
-      return links
-    })
-
     return {
-  pageTitle,
-  notificationCount,
-  toggleMenu,
-  toggleNotifications,
-  breadcrumbs,
-  breadcrumbLinks,
-  showNotificationCard,
-  showChatbotCard,
-  notices,
-  markNoticeRead
+      pageTitle,
+      notificationCount,
+      toggleMenu,
+      toggleNotifications,
+
+      breadcrumbs,
+      breadcrumbLinks,
+
+      showNotificationCard,
+      showChatbotCard,
+      notificationStore
     }
   }
 }
 </script>
+
 
 <style scoped>
 .header-bar {

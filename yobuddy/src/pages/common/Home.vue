@@ -50,13 +50,14 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import auth from '@/services/auth'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { useAuthStore } from '@/store/authStore'
 
 export default {
   name: 'HomePage',
   setup() {
-    const isAuth = ref(auth.isAuthenticated())
+    const authStore = useAuthStore()
+    const isAuth = computed(() => authStore.isAuthenticated)
     const root = ref(null)
 
     let _onWheel = null
