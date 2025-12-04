@@ -78,6 +78,11 @@ const routes = [
     meta: { requiresAuth: true, adminOnly: true }
   },
   {
+    path: '/content/announcement/create',
+    component: () => import('@/pages/admin/content/announcement/AdminAnnouncementCreateView.vue'),
+    meta: { requiresAuth: true, adminOnly: true }
+  },
+  {
     path: '/content/announcement/edit/:id',
     component: () => import('@/pages/admin/content/announcement/AdminAnnouncementEditView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
