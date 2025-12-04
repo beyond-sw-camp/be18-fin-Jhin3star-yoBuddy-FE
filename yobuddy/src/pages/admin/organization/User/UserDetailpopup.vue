@@ -309,7 +309,7 @@ export default {
 .modal-top::after { content: ''; position: absolute; right: 12px; width: 36px; height: 36px; }
 .back-btn {
   position: absolute;
-  left: 12px;
+  right: 12px;
   top: 8px;
   border: none;
   background: transparent;
@@ -379,7 +379,7 @@ input[type="text"], input[type="date"], select {
 .mentor-left img { width:40px; height:40px; border-radius:50%; object-fit:cover }
 .mentor-right { flex:1 }
 
-.modal-actions { display:flex; justify-content:flex-end; gap:12px; padding-top:18px }
+.modal-actions { display:flex; justify-content:center; gap:12px; padding-top:18px }
 .btn-outline { background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px; color:var(--main-color); font-weight:600 }
 .btn-outline:hover { background: rgba(41,69,148,0.06) }
 .btn-primary { background: linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px; border:none; box-shadow: 0 12px 30px rgba(41,69,148,0.14); font-weight:800; letter-spacing:0.2px }

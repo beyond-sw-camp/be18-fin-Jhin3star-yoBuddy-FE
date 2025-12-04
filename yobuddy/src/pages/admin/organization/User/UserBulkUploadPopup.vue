@@ -308,7 +308,7 @@ export default {
 /* header */
 .modal-top{ display:flex; align-items:center; justify-content:space-between; gap:12px }
 .modal-title{ font-size:18px; font-weight:700; color:#10243b }
-.back-btn{ background:transparent; border:1px solid rgba(16,36,59,0.06); padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:600 }
+.back-btn{ position:absolute; right:12px; top:8px; background:transparent; border:1px solid rgba(16,36,59,0.06); padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:600 }
 .back-btn:hover{ background:rgba(41,69,148,0.06) }
 .upload-area{ text-align:center; padding:20px 0 }
 .dropbox{ border:2px dashed rgba(16,36,59,0.12); background:#fafcff; padding:28px; border-radius:10px; cursor:pointer }
@@ -319,7 +319,7 @@ export default {
 .file-info{ margin-top:12px; color:#10243b }
 .result{ margin-top:8px; color:green }
 .form-error{ margin-top:8px; color:#b91c1c }
-.modal-actions{ display:flex; justify-content:space-between; padding-top:18px }
+.modal-actions{ display:flex; justify-content:center; gap:12px; padding-top:18px }
 .btn-outline{ background:transparent; border:1px solid rgba(41,69,148,0.12); padding:8px 14px; border-radius:10px }
 .btn-primary{ background:linear-gradient(90deg,var(--main-color),#2b57a0); color:#fff; padding:10px 16px; border-radius:12px }
 

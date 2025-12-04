@@ -228,9 +228,7 @@ export default {
         return [
           { id: 'u-1', icon: dashboardIcon, label: '대시보드', path: '/user/dashboard' },
           { id: 'u-2', icon: assignmentIcon, label: '과제', path: '/user/tasks' },
-          { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings', subItems: [
-            { id: 'u-3-1', label: '교육 목록', path: '/user/trainings' },
-          ] },
+          { id: 'u-3', icon: eduIcon, label: '교육', path: '/user/trainings' },
           { id: 4, icon: contentIcon, label: "콘텐츠", path: "/content/announcement", 
             subItems: [
               { id: "4-1", label: "공지사항", path: "/content/announcement" },
