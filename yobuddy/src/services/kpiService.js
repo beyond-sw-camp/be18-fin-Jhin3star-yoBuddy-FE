@@ -41,6 +41,12 @@ const kpiService = {
 
   deleteCategory(id) {
     return http.delete(`/api/v1/admin/kpi/category/${id}`)
+  },
+
+  // fetch KPI results (optionally filtered by departmentId)
+  getResults(params) {
+    // params: { departmentId }
+    return http.get('/api/v1/admin/kpi/results', { params })
   }
 }
 
