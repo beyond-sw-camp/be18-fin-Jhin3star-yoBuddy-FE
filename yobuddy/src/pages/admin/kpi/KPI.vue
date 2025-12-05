@@ -5,7 +5,8 @@
       <p>성과 지표 관리</p>
     </div>
     <div class="empty-state">
-      <p>KPI 콘텐츠가 여기에 표시됩니다.</p>
+        <p>KPI 콘텐츠가 여기에 표시됩니다.</p>
+        <router-link class="btn" to="/kpi/view">성과 지표 보기</router-link>
     </div>
   </div>
 </template>

@@ -62,6 +62,11 @@ const routes = [
       component: () => import('@/pages/admin/kpi/KpiEdit.vue'),
       meta: { requiresAuth: true, adminOnly: true }
     },
+    {
+      path: '/kpi/view',
+      component: () => import('@/pages/admin/kpi/KPIView.vue'),
+      meta: { requiresAuth: true, adminOnly: true }
+    },
   {
     path: '/organization/usermanagement',
     component: () => import('@/pages/admin/organization/User/UserManagement.vue'),
