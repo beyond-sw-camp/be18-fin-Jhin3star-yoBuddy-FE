@@ -115,7 +115,6 @@ export default {
       ],
       hasStarted: false,
 
-      // 드래그용 상태: CSS top/right는 그대로 두고 translate만 바꿈
       dragOffset: { x: 0, y: 0 },
       isDragging: false,
       dragStartMouse: { x: 0, y: 0 },
@@ -211,9 +210,9 @@ export default {
       })
     },
 
-    // === 드래그 관련 ===
+
     startDrag(e) {
-      if (e.button !== 0) return // 왼쪽 버튼만
+      if (e.button !== 0) return 
       this.isDragging = true
       this.dragStartMouse = { x: e.clientX, y: e.clientY }
       this.dragStartOffset = { ...this.dragOffset }
@@ -246,9 +245,7 @@ export default {
   color: #213048;
   border-radius: 14px;
   box-shadow: 0 12px 30px rgba(21, 34, 80, 0.12);
-  position: absolute;   /* 🔹원래대로 */
-  top: 110%;            /* 🔹원래대로 */
-  right: 0;             /* 🔹원래대로 */
+
   z-index: 999;
   display: flex;
   flex-direction: column;
