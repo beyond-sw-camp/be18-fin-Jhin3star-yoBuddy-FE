@@ -28,13 +28,21 @@ export default {
   },
   computed: {
     fullProfileImageUrl() {
-      if (this.mentee?.profileImageUrl) {
-        const base = http.defaults.baseURL.replace(/\/$/, '');
-        const path = this.mentee.profileImageUrl.replace(/^\//, '');
-        return `${base}/${path}`;
-      }
-      return null;
-    }
+  const url = this.mentee?.profileImageUrl;
+
+  // 1) 값이 없으면 null 반환 → v-else fallback으로 이니셜 표시
+  if (!url) return null;
+
+  const base = http.defaults.baseURL?.replace(/\/$/, '') || '';
+
+  // "/api/v1/files/80" 같은 형태일 때 prefix 붙임
+  if (url.startsWith('/')) {
+    return `${base}${url}`;
+  }
+
+  // 이미 절대 URL인 경우 그대로 반환
+  return url;
+}
   }
 }
 </script>

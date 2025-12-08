@@ -207,45 +207,38 @@ const routes = [
   }
 ]
 
+
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
-  routes
+  routes,
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
-  // 1) 새로고침 후 user가 없으면 loadUser()로 복구
-  if (!auth.user) {
-    await auth.loadUser()
-
-    // 2) user 복구 성공하면 SSE & 알림 불러오기
-    if (auth.user) {
+  // 인증 필요한 페이지면 user 없을 때만 /me 호출
+  if (to.meta.requiresAuth && !auth.user) {
+    try {
+      await auth.fetchMe()
       auth.initSSEAndNotifications()
+    } catch(e) {
+      return next('/login')
     }
   }
 
-  const redirectForRole = () => {
-    if (auth.isAdmin) return '/admin/trainings'
-    if (auth.isMentor) return '/mentor/dashboard'
-    if (auth.isUser) return '/user/trainings'
-    return null
+  // 이미 로그인한 사람이 public 페이지로 접근할 때 redirect
+  if (!to.meta.requiresAuth && auth.user) {
+    if (auth.isAdmin) return next('/kpi')
+    if (auth.isMentor) return next('/mentor/dashboard')
+    if (auth.isUser) return next('/user/dashboard')
   }
 
-  // if already logged in and user info is available, keep them off public home/login and send to role home
-  if ((to.path === '/' || to.path === '/login') && auth.isAuthenticated && auth.user) {
-    const dest = redirectForRole()
-    if (dest && dest !== to.path) return dest
-  }
+  // 역할 제한
+  if (to.meta.adminOnly && !auth.isAdmin) return next('/login')
+  if (to.meta.mentorOnly && !auth.isMentor) return next('/login')
+  if (to.meta.userOnly && !auth.isUser) return next('/login')
 
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return '/login'
-  }
-
-  // 4) 권한별 접근 체크
-  if (to.meta.adminOnly && !auth.isAdmin) return '/login'
-  if (to.meta.mentorOnly && !auth.isMentor) return '/login'
-  if (to.meta.userOnly && !auth.isUser) return '/login'
+  next()
 })
 
 export default router

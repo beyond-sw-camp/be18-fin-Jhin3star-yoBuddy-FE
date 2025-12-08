@@ -39,8 +39,8 @@ export const useNotificationStore = defineStore('notification', {
         return
       }
 
-      const base = process.env.VUE_APP_API_BASE || 'http://localhost:8080/'
-      const url = `${base}api/v1/notifications/stream`
+      const base = http.defaults.baseURL.replace(/\/$/, '')
+      const url = `${base}/api/v1/notifications/stream`
 
       this.es = new EventSource(url, { withCredentials: true })
 

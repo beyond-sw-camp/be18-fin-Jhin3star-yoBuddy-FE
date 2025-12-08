@@ -83,13 +83,22 @@ setup(props, { emit }) {
   const user = computed(() => authStore.user);
 
   const currentProfileImage = computed(() => {
-    if (user.value?.profileImageUrl) {
-      const base = http.defaults.baseURL.replace(/\/$/, '')
-      const path = user.value.profileImageUrl.replace(/^\//, '')
-      return `${base}/${path}`
-    }
-    return null
-  })
+  const url = user.value?.profileImageUrl;
+
+  // URL이 null/undefined/빈문자/문자 아니면 모두 안전하게 null 반환
+  if (!url || typeof url !== "string") return null;
+
+  // baseURL이 없으면 "" 처리해서 replace() 오류 방지
+  const base = (http.defaults.baseURL || "").replace(/\/$/, "");
+
+  // 절대 URL이면 그대로 반환
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // 상대 경로면 baseURL + 슬래시 자동 처리
+  return `${base}${url.startsWith("/") ? url : "/" + url}`;
+});
 
   const form = ref({
     phoneNumber: user.value ? user.value.phoneNumber : "",
