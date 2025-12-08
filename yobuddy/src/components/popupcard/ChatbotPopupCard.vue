@@ -1,6 +1,12 @@
 <template>
-  <div class="chatbot-popup-card">
-    <div class="chatbot-header">
+  <div
+    class="chatbot-popup-card"
+    :style="cardStyle"
+  >
+    <div
+      class="chatbot-header"
+      @mousedown.stop="startDrag"
+    >
       <div class="chatbot-header-left">
         <img src="@/assets/logo_chatbot.svg" class="chatbot-avatar" alt="BuddyBot" />
         <div>
@@ -90,7 +96,7 @@ import { askChatbot } from '@/services/chatbotService'
 
 export default {
   name: 'ChatbotPopupCard',
-   props: {
+  props: {
     title: String
   },
   data() {
@@ -101,14 +107,35 @@ export default {
         { sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }
       ],
       questions: [
-        '점심시간은 몇 시부터 몇 시까지인가요?',
-        '커피나 간식은 어디에 비치되어 있나요?',
+        '노트북을 처음 받으면 무엇을 설정해야 하나요?',
         '연차/반차 등 휴가를 쓰려면 어떻게 해야 하나요?',
-        '사무실 복장 규정은 어떻게 되나요?',
-        '내선 전화나 사내 메신저 사용법은 어떻게 되나요?'
+        '무선 인터넷(Wi-Fi) 비밀번호는 어디서 확인하나요?',
+        '점심시간은 몇 시부터 몇 시까지인가요?',
+        '회사 복장 규정은 어떻게 되나요?'
       ],
-      hasStarted: false
+      hasStarted: false,
+
+      // 드래그용 상태: CSS top/right는 그대로 두고 translate만 바꿈
+      dragOffset: { x: 0, y: 0 },
+      isDragging: false,
+      dragStartMouse: { x: 0, y: 0 },
+      dragStartOffset: { x: 0, y: 0 }
     }
+  },
+  computed: {
+    cardStyle() {
+      return {
+        transform: `translate(${this.dragOffset.x}px, ${this.dragOffset.y}px)`
+      }
+    }
+  },
+  mounted() {
+    window.addEventListener('mousemove', this.onDragMove)
+    window.addEventListener('mouseup', this.stopDrag)
+  },
+  beforeUnmount() {
+    window.removeEventListener('mousemove', this.onDragMove)
+    window.removeEventListener('mouseup', this.stopDrag)
   },
   methods: {
     async sendMessage() {
@@ -125,7 +152,6 @@ export default {
       try {
         const res = await askChatbot(text)
         const answer = res?.data?.answer || '죄송합니다. 응답을 읽지 못했어요.'
-
         await this.typeBotMessage(answer)
       } catch (e) {
         console.error(e)
@@ -174,9 +200,7 @@ export default {
           }
     
           msg.text += text[i]
-      
           this.$nextTick(this.scrollToBottom)
-
       
           i += 1 
           if (i >= text.length) {
@@ -185,6 +209,30 @@ export default {
           }
         }, 40) 
       })
+    },
+
+    // === 드래그 관련 ===
+    startDrag(e) {
+      if (e.button !== 0) return // 왼쪽 버튼만
+      this.isDragging = true
+      this.dragStartMouse = { x: e.clientX, y: e.clientY }
+      this.dragStartOffset = { ...this.dragOffset }
+    },
+
+    onDragMove(e) {
+      if (!this.isDragging) return
+
+      const dx = e.clientX - this.dragStartMouse.x
+      const dy = e.clientY - this.dragStartMouse.y
+
+      this.dragOffset = {
+        x: this.dragStartOffset.x + dx,
+        y: this.dragStartOffset.y + dy
+      }
+    },
+
+    stopDrag() {
+      this.isDragging = false
     }
   }
 }
@@ -198,9 +246,9 @@ export default {
   color: #213048;
   border-radius: 14px;
   box-shadow: 0 12px 30px rgba(21, 34, 80, 0.12);
-  position: absolute;
-  top: 110%;
-  right: 0;
+  position: absolute;   /* 🔹원래대로 */
+  top: 110%;            /* 🔹원래대로 */
+  right: 0;             /* 🔹원래대로 */
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -208,6 +256,7 @@ export default {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Helvetica Neue', Arial;
 }
 
+/* 드래그 가능 표시 */
 .chatbot-header {
   background: linear-gradient(90deg, #294594 0%, #2b57a0 100%);
   color: #fff;
@@ -215,8 +264,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
+  cursor: move;
 }
 
+/* 이하 스타일은 기존 그대로 */
 .chatbot-header-left { display:flex; align-items:center; gap:12px }
 .chatbot-avatar{ width:40px; height:40px; border-radius:8px; box-shadow:0 4px 12px rgba(33,48,72,0.12) }
 .chatbot-title{ font-size:1.02rem; font-weight:700 }
