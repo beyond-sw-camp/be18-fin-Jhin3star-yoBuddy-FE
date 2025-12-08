@@ -9,16 +9,20 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isLoggedIn: state => !!state.user,
-    isAdmin: state => state.user?.role === 'ADMIN',
-    isMentor: state => state.user?.role === 'MENTOR',
-    isUser: state => state.user?.role === 'USER',
+    isLoggedIn: (state) => !!state.user,
+    isAdmin: (state) => state.user?.role === 'ADMIN',
+    isMentor: (state) => state.user?.role === 'MENTOR',
+    isUser: (state) => state.user?.role === 'USER',
   },
 
   actions: {
     async login(email, password) {
       await http.post('/api/v1/auth/login', { email, password })
+
+      // 사용자 로드
       await this.fetchMe()
+
+      // SSE & 알림 로드
       this.initSSEAndNotifications()
     },
 
@@ -35,29 +39,34 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    initSSEAndNotifications() {
+      const noti = useNotificationStore()
+
+      // 기존 SSE 제거
+      noti.disconnectSSE()
+
+      // 알림 목록 먼저 불러옴
+      noti.fetchNotifications().then(() => {
+        // SSE 연결은 user가 정상 로드된 상태에서만
+        if (this.user) {
+          noti.connectSSE()
+        }
+      })
+    },
+
     async logout() {
       try {
         await http.post('/api/v1/auth/logout')
       } catch (err) {
-        console.warn('Logout failed:', err)
+        console.warn("Logout failed but ignored:", err)
       }
 
-      this.user = null
-      this.closeSSEAndNotifications()
-      window.location.href = '/login'
-    },
-
-    initSSEAndNotifications() {
-      if (!this.user) return
-      const ns = useNotificationStore()
-      ns.fetchNotifications()
-      ns.connectSSE()
-    },
-
-    closeSSEAndNotifications() {
       const ns = useNotificationStore()
       ns.disconnectSSE()
       ns.$reset()
-    }
-  }
+
+      this.user = null
+      window.location.href = '/login'
+    },
+  },
 })
