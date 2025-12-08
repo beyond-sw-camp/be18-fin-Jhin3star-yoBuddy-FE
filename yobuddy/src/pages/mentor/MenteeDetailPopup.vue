@@ -156,7 +156,7 @@ export default {
 
 .back-btn {
   position: absolute;
-  left: 0;
+  right: 0;
   top: 0;
   background: transparent;
   border: none;
@@ -221,7 +221,7 @@ export default {
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
   margin-top: 24px;
 }

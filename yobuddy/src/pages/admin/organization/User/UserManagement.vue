@@ -54,10 +54,17 @@
       </div>
 
       <div class="card-footer">
-        <div class="pagination">
-          <button class="page-btn" @click="prevPage" :disabled="page===0">◀</button>
-          <div class="pages">{{ page + 1 }}</div>
-          <button class="page-btn" @click="nextPage">▶</button>
+        <div class="pagination numeric">
+          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">&lt;</button>
+          <button
+            v-for="p in pageList"
+            :key="p"
+            :class="['page-num', { active: p === page }]"
+            @click="setPage(p)"
+          >
+            {{ p + 1 }}
+          </button>
+          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">&gt;</button>
         </div>
       </div>
     </div>
@@ -104,6 +111,8 @@ export default {
       page: 0,
       size: 10,
       sort: 'userId,desc',
+      totalPages: 1,
+      totalElements: 0,
 
       // data / state
       users: [],
@@ -124,7 +133,39 @@ export default {
   mounted() {
     this.fetchUsers()
   },
+  computed: {
+    pageList() {
+      const total = this.totalPages || 0
+      const current = this.page || 0
+      const maxVisible = 5
+      if (total <= 0) return []
+      const start = Math.max(0, Math.min(current, total - maxVisible))
+      const end = Math.min(total, start + maxVisible)
+      const pages = []
+      for (let i = start; i < end; i++) pages.push(i)
+      return pages
+    }
+  },
   methods: {
+    applyPaginationMeta(rawData, listLength) {
+      if (rawData && typeof rawData.totalPages === 'number') {
+        this.totalPages = Math.max(1, rawData.totalPages)
+      } else if (rawData && typeof rawData.totalElements === 'number') {
+        this.totalPages = Math.max(1, Math.ceil(rawData.totalElements / this.size))
+      } else {
+        this.totalPages = Math.max(1, Math.ceil(listLength / this.size))
+      }
+
+      if (rawData && typeof rawData.totalElements === 'number') {
+        this.totalElements = rawData.totalElements
+      } else {
+        this.totalElements = listLength
+      }
+
+      if (this.page > this.totalPages - 1) {
+        this.page = Math.max(0, this.totalPages - 1)
+      }
+    },
     // escape helper for building regex from wildcard
     escapeRegExp(s) {
       return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -195,6 +236,7 @@ export default {
         }
 
         this.users = mapped
+        this.applyPaginationMeta(data, this.users.length)
       } catch (err) {
         console.error('Failed to fetch users', err)
         const status = err && err.response && err.response.status
@@ -227,6 +269,7 @@ export default {
             }
 
             this.users = mapped2
+            this.applyPaginationMeta(data2, this.users.length)
             this.error = null
             return
           } catch (err2) {
@@ -363,15 +406,13 @@ export default {
       this.fetchUsers()
     },
 
-    prevPage() {
-      if (this.page > 0) {
-        this.page -= 1
-        this.fetchUsers()
-      }
-    },
-
-    nextPage() {
-      this.page += 1
+    setPage(n) {
+      const maxPage = Math.max(0, this.totalPages - 1)
+      let next = n
+      if (next < 0) next = 0
+      if (next > maxPage) next = maxPage
+      if (next === this.page) return
+      this.page = next
       this.fetchUsers()
     }
   }
@@ -408,9 +449,12 @@ export default {
 .tag-mentor { background:#f6f8d1; color:#b0b900 }
 .tag-newbie { background:#f0fff6; color:#0a9a52 }
 
-.card-footer { padding: 16px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:flex-end }
-.pagination { display:flex; gap:12px; align-items:center }
-.page-btn { background:transparent; border:1px solid #e6eef8; padding:8px 10px; border-radius:8px; cursor:pointer }
+.card-footer { padding: 16px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:center }
+.pagination.numeric { display:flex; gap:10px; align-items:center }
+.page-nav { background:transparent; border:none; color:#4b5563; font-size:18px; padding:8px; cursor:pointer; transition: color 0.15s ease, opacity 0.15s ease }
+.page-nav:disabled { color: #c5c9d6; opacity: 0.7; cursor: default }
+.page-num { width:36px; height:36px; border-radius:50%; border:none; background:transparent; color:#4b5563; font-weight:700; cursor:pointer }
+.page-num.active { background:#3b4aa0; color:#fff; box-shadow: 0 6px 18px rgba(59,74,160,0.18) }
 
 @media (max-width: 980px) {
   .content-card { width: 100%; margin: 0 16px }

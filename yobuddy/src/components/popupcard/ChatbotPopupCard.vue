@@ -210,6 +210,7 @@ export default {
       })
     },
 
+
     startDrag(e) {
       if (e.button !== 0) return 
       this.isDragging = true
@@ -244,9 +245,7 @@ export default {
   color: #213048;
   border-radius: 14px;
   box-shadow: 0 12px 30px rgba(21, 34, 80, 0.12);
-  position: absolute;  
-  top: 110%;      
-  right: 0;            
+
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -254,6 +253,7 @@ export default {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Helvetica Neue', Arial;
 }
 
+/* 드래그 가능 표시 */
 .chatbot-header {
   background: linear-gradient(90deg, #294594 0%, #2b57a0 100%);
   color: #fff;
@@ -264,6 +264,7 @@ export default {
   cursor: move;
 }
 
+/* 이하 스타일은 기존 그대로 */
 .chatbot-header-left { display:flex; align-items:center; gap:12px }
 .chatbot-avatar{ width:40px; height:40px; border-radius:8px; box-shadow:0 4px 12px rgba(33,48,72,0.12) }
 .chatbot-title{ font-size:1.02rem; font-weight:700 }
