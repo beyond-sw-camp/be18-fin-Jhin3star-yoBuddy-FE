@@ -2,6 +2,7 @@
   <div class="user-kpi-page page-container">
     <div class="header-row">
       <h2>개인 성과 조회</h2>
+      <button class="pdf-btn" @click="exportPdf" :disabled="exporting" :aria-busy="exporting">{{ exporting ? '내보내는 중...' : 'PDF' }}</button>
     </div>
     <div>
       <!-- user header card -->
@@ -151,6 +152,7 @@ const kpiGoals = ref([])
 const totalScoreUser = ref({}) // weighted total scores per user
 const userKpiResults = ref({}) // all users' KPI results by department
 const weeklyreport = ref([])
+const exporting = ref(false)
 
 // modal state for showing a single weekly report
 const reportModalVisible = ref(false)
@@ -638,6 +640,33 @@ const trainingsmallDonutOptions = computed(() => ({
   tooltip: { y: { formatter: (val) => `${val} 개` } },
   responsive: [{ breakpoint: 480, options: { legend: { show: false } } }]
 }))
+
+async function exportPdf() {
+  const el = document.querySelector('.user-kpi-page')
+  if (!el) {
+    alert('PDF로 내보낼 영역을 찾을 수 없습니다.')
+    return
+  }
+  exporting.value = true
+  try {
+    const mod = await import('html2pdf.js')
+    const html2pdf = (mod && (mod.default || mod))
+    const filename = `yobuddy-user-${userId || 'unknown'}-${new Date().toISOString().slice(0,10)}.pdf`
+    const opt = {
+      margin: 8,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+    await html2pdf().set(opt).from(el).save()
+  } catch (e) {
+    console.error('UserKPIDetail export failed', e)
+    alert('PDF 내보내기 실패: ' + (e && e.message ? e.message : String(e)))
+  } finally {
+    exporting.value = false
+  }
+}
 
 </script>
 
