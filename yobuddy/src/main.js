@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import VueApexCharts from 'vue3-apexcharts'
+import { useAuthStore } from '@/store/authStore'
 
 const app = createApp(App)
 app.use(createPinia())
