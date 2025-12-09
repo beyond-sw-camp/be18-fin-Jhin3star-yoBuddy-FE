@@ -8,11 +8,11 @@
       <section class="wdp-body">
         <label class="field">
           <div class="label">제목</div>
-          <input v-model="form.title" placeholder="제목을 입력하세요" />
+          <input class="form-input" type="text" v-model="form.title" placeholder="제목을 입력하세요" />
         </label>
         <label class="field">
           <div class="label">내용</div>
-          <textarea v-model="form.content" rows="6" placeholder="내용을 입력하세요"></textarea>
+          <textarea class="form-textarea" v-model="form.content" rows="6" placeholder="내용을 입력하세요"></textarea>
         </label>
         <div class="parent-info">상위문서: <strong>{{ parent ? parent.title : '루트' }}</strong></div>
         <div v-if="error" class="error">{{ error }}</div>
@@ -136,7 +136,14 @@ export default {
 .wdp-body{ padding:18px 20px }
 .field{ margin-bottom:12px }
 .label{ font-size:13px; color:#475569; margin-bottom:6px }
-input[type="text"], textarea{ width:100%; padding:10px 12px; border:1px solid #e6eef8; border-radius:8px; font-size:14px }
+/* Form field controls */
+.form-input, .form-textarea { width:100%; padding:12px 14px; border:1px solid #e6eef8; border-radius:10px; font-size:14px; background: #ffffff; color: #071031; box-shadow: 0 6px 18px rgba(2,6,23,0.03); transition: box-shadow .18s ease, border-color .12s ease, transform .08s ease }
+.form-input::placeholder, .form-textarea::placeholder { color: #9AA6B2 }
+.form-input:focus, .form-textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 8px 28px rgba(37,99,235,0.08); transform: translateY(-1px) }
+.form-textarea { min-height:120px; resize:vertical; line-height:1.6 }
+
+.field { display:flex; flex-direction:column; margin-bottom:14px }
+.label { font-size:13px; color:#475569; margin-bottom:8px; font-weight:600 }
 .parent-info{ margin-top:8px; color:#64748b; font-size:13px }
 .error{ margin-top:8px; color:#b00020 }
 .wdp-footer{ padding:12px 20px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #f1f5f9 }

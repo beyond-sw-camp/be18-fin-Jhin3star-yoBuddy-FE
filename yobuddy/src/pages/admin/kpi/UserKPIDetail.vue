@@ -671,49 +671,50 @@ async function exportPdf() {
 </script>
 
 <style scoped>
-.user-kpi-page { padding:18px; max-width:1100px; margin:0 auto }
+/* Align styles with KPIView for consistent dashboard look */
+.user-kpi-page { padding:18px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; max-width:1100px; margin:0 auto }
 .header-row { display:flex; align-items:center; gap:12px; margin-bottom:12px }
-.back-btn { padding:6px 10px; border-radius:8px; border:1px solid #e6eef9; background:#fff }
-.user-info { display:flex; gap:12px; padding:12px; align-items:center; margin-bottom:12px }
-.avatar { width:48px; height:48px; border-radius:50%; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:800 }
-.meta .name { font-weight:800 }
-.kpi-summary { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap }
-.total-card, .results-card { flex:1 1 360px; }
-.total-value { font-size:28px; font-weight:800; margin-bottom:8px }
-.progress { background:#f2f6fb; height:10px; border-radius:6px; width:100% }
-.progress .bar { height:10px; background:#2563eb; border-radius:6px }
-.kpi-table { width:100%; border-collapse:collapse }
-.kpi-table th, .kpi-table td { padding:8px; border-bottom:1px solid #f3f6fb; text-align:left }
+.header-row h2 { margin:0; font-size:20px }
 
-/* New dashboard styles */
-.section-block { background:#fff; border:1px solid #eef4ff; border-radius:12px; padding:14px; margin-bottom:16px; box-shadow:0 6px 18px rgba(2,6,23,0.04) }
+/* PDF button (same look as KPIView) */
+.pdf-btn { margin-left:12px; padding:8px 12px; border-radius:10px; border:1px solid #e6eef9; background:linear-gradient(180deg,#ffffff,#f6f9ff); cursor:pointer; font-weight:700; color:#0b5fff }
+.pdf-btn:hover { box-shadow:0 6px 18px rgba(11,95,255,0.08); transform:translateY(-2px) }
+.pdf-btn[disabled], .pdf-btn[aria-busy="true"] { opacity:0.6; cursor:default; transform:none }
+
+/* Card base (match KPIView) */
+.section-block { background:#fff; border:1px solid #f0f4ff; padding:14px; border-radius:12px; margin-bottom:16px; box-shadow:0 4px 12px rgba(2,6,23,0.04) }
+.card-title { font-weight:700; margin-bottom:8px }
+.card { background:#fff; border:1px solid #f0f4ff; padding:12px; border-radius:12px; width:auto; box-shadow:0 4px 12px rgba(2,6,23,0.04); transition:transform .12s ease, box-shadow .12s ease }
+.card:hover { transform:translateY(-4px); box-shadow:0 18px 40px rgba(2,6,23,0.08) }
+
 .user-card { display:flex; align-items:center; gap:16px; padding:12px; margin-bottom:16px }
 .user-card .left { flex:0 0 auto }
-.user-card .center { flex:1; }
+.user-card .center { flex:1 }
 .user-card .center .name { font-size:18px; font-weight:800 }
 .user-card .center .subtitle { color:#64748b; font-size:13px; margin-top:4px }
 .user-card .right { flex:0 0 220px; display:flex; gap:12px; align-items:center; justify-content:flex-end }
 .user-card .stat { text-align:right }
 .user-card .stat .label { font-size:12px; color:#64748b }
 .user-card .stat .value { font-size:16px; font-weight:800 }
-.progress.small { height:8px; border-radius:6px; margin-top:8px }
+
+.avatar { width:48px; height:48px; border-radius:50%; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:800 }
+
 .charts-row { display:flex; gap:16px; margin-bottom:16px }
 .radar-wrap { flex:1 1 50%; min-width:320px }
 .radar-wrap .card-body { height:100%; display:flex; align-items:center; justify-content:center }
+
 .summary-row { display:flex; gap:16px; margin-bottom:16px }
-.small-card { flex:1 1 320px; }
+.small-card { flex:1 1 320px }
 .small-body { display:flex; gap:12px; align-items:center; justify-content:space-between }
 .small-chart { width:160px }
-.reports-card { margin-top:12px }
-.reports-list { display:flex; flex-direction:column; gap:12px }
-.report-item { padding:12px; border:1px solid #eef4ff; border-radius:8px }
-.report-item .week { font-weight:800; margin-bottom:6px }
-.report-item .text { color:#334155 }
-.report-item .meta { color:#94a3b8; font-size:13px; margin-top:8px }
-.report-item { cursor: pointer; transition: background .12s ease, transform .06s ease }
-.report-item:hover { background:#fbfdff; transform: translateY(-2px) }
-.report-item .small-preview { color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70% }
 
+.reports-list { display:flex; flex-direction:column; gap:12px }
+.report-item { padding:12px; border:1px solid #eef2ff; border-radius:8px; cursor:pointer; transition: background .12s ease, transform .06s ease }
+.report-item:hover { background:#fbfdff; transform: translateY(-2px) }
+.report-item .week { font-weight:800; margin-bottom:6px }
+.report-item .meta { color:#94a3b8; font-size:13px; margin-top:8px }
+
+/* Modal styles aligned with KPIView */
 .modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.45); display:flex; align-items:center; justify-content:center; z-index:1200 }
 .modal { width:860px; max-width:96%; background:#fff; border-radius:14px; padding:20px; box-shadow:0 18px 48px rgba(2,6,23,0.22); position:relative }
 .modal-header { display:flex; align-items:center; gap:16px; border-bottom:1px solid #eef4ff; padding-bottom:14px }
