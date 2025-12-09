@@ -482,7 +482,8 @@ export default {
                 String(enrollErr);
               alert(
                 "프로그램은 생성되었지만 멘티 등록에 실패했습니다.\n\n" + msg
-              );
+              )
+              console.error('Mentee enrollment failed', msg);
             }
           }
         }
