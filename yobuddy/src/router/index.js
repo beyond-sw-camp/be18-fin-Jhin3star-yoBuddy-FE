@@ -54,7 +54,7 @@ const routes = [
   // --- 관리자 ---
   {
     path: '/kpi',
-    component: () => import('@/pages/admin/kpi/KPI.vue'),
+    component: () => import('@/pages/admin/kpi/KPIView.vue'),
     meta: { requiresAuth: true, adminOnly: true }
   },
     {
@@ -63,9 +63,10 @@ const routes = [
       meta: { requiresAuth: true, adminOnly: true }
     },
     {
-      path: '/kpi/view',
-      component: () => import('@/pages/admin/kpi/KPIView.vue'),
-      meta: { requiresAuth: true, adminOnly: true }
+      path: '/kpi/user/:userId',
+      component: () => import('@/pages/admin/kpi/UserKPIDetail.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
+      props: true
     },
   {
     path: '/organization/usermanagement',

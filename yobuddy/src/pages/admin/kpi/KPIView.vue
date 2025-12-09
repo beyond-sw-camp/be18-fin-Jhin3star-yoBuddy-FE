@@ -7,7 +7,6 @@
           <button class="dd-toggle" @click="toggleDropdown" :aria-expanded="dropdownOpen">
             <span class="dd-label">{{ selectedLabel }}</span>
             <span class="dd-actions">
-              <button v-if="selectedDepartmentId" class="clear-btn" @click.stop="clearSelection" title="선택 해제">✕</button>
               <svg class="dd-caret" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
             </span>
           </button>
@@ -70,7 +69,16 @@
             <VueApexCharts type="bar" :options="computedChartOptions" :series="computedChartSeries" height="460" />
           </div>
         </section>
-
+        <section class="kpi-passfail">
+          <div class="card passfail-card">
+            <div class="card-title">KPI 위험도</div>
+            <div class="card-body">
+              <div class="passfail-chart-wrap">
+                <VueApexCharts type="donut" :options="kpiPassFailOptions" :series="kpiPassFailSeries" height="220" />
+              </div>
+            </div>
+          </div>
+        </section>
         <section class="radar-section">
             <div class="card radar-card">
               <div class="card-title-row">
@@ -86,7 +94,21 @@
                 <VueApexCharts type="radar" :options="radarOptions" :series="computedRadarSeries" height="520" />
               </div>
             </div>
-        </section>
+            <div class="card mentoring-card">
+          <div class="card-title">멘토링 세션 요약</div>
+          <div class="card-body">
+            <div class="mentoring-chart-wrap">
+              <VueApexCharts type="donut" :options="mentoringDonutOptions" :series="mentoringDonutSeries" height="260" />
+            </div>
+            <div class="mentoring-legend">
+              <div class="legend-item"><span class="dot dot-completed"></span>완료 <strong>{{ mentoringSessions && mentoringSessions.completed != null ? mentoringSessions.completed : 0 }}</strong></div>
+              <div class="legend-item"><span class="dot dot-scheduled"></span>예정 <strong>{{ mentoringSessions && mentoringSessions.scheduled != null ? mentoringSessions.scheduled : 0 }}</strong></div>
+              <div class="legend-item"><span class="dot dot-cancelled"></span>취소 <strong>{{ mentoringSessions && mentoringSessions.cancelled != null ? mentoringSessions.cancelled : 0 }}</strong></div>
+              <div class="legend-item"><span class="dot dot-noshow"></span>노쇼 <strong>{{ mentoringSessions && mentoringSessions.noShow != null ? mentoringSessions.noShow : 0 }}</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
       </div>
 
       <!-- Right: user list (sidebar-like but in-page) -->
@@ -97,7 +119,7 @@
             <ul class="user-list">
               <li v-if="usersLoading" class="empty">로딩 중...</li>
               <li v-else-if="!users || users.length===0" class="empty">사용자 없음</li>
-              <li v-else v-for="u in users" :key="u.userId || u.id || u._id" class="user-item">
+              <li v-else v-for="u in users" :key="u.userId || u.id || u._id" class="user-item" @click="goToUser(u)">
                 <div class="avatar">{{ (u.name||u.username||u.fullName||'유저').slice(0,1) }}</div>
                 <div class="meta">
                   <div class="name">{{ u.name || u.username || u.fullName || '무명' }}</div>
@@ -115,6 +137,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
 import { getDepartments } from '@/services/departmentService'
 import kpiService from '@/services/kpiService'
@@ -134,6 +157,8 @@ const kpiGoals = ref([])
 const goalsModalVisible = ref(false)
 const userKpiResults = ref({})
 const totalScoreUser = ref({})
+const mentoringSessions = ref([])
+const router = useRouter()
 
 function onKeyDown(e) {
   if (e.key === 'Escape') closeGoalsModal()
@@ -340,6 +365,45 @@ watch(yearsList, (ys) => {
   }
 })
 
+// Mentoring donut: series derived from `mentoringSessions` counts
+const mentoringDonutSeries = computed(() => {
+  const s = mentoringSessions.value || {}
+  const completed = Number.isFinite(Number(s.completed)) ? Number(s.completed) : 0
+  const scheduled = Number.isFinite(Number(s.scheduled)) ? Number(s.scheduled) : 0
+  const cancelled = Number.isFinite(Number(s.cancelled)) ? Number(s.cancelled) : 0
+  const noShow = Number.isFinite(Number(s.noShow)) ? Number(s.noShow) : 0
+  return [completed, scheduled, cancelled, noShow]
+})
+
+const mentoringDonutOptions = computed(() => ({
+  chart: { toolbar: { show: false }, type: 'donut' },
+  labels: ['완료', '예정', '취소', '노쇼'],
+  colors: ['#10b981', '#2563eb', '#f97316', '#ef4444'],
+  legend: { position: 'bottom' },
+  tooltip: { y: { formatter: (v) => `${v}` } },
+}))
+// KPI pass/fail based on totalScoreUser: >60 pass, else fail
+const kpiPassFailSeries = computed(() => {
+  const totals = Object.values(totalScoreUser.value || {})
+  if (!totals || totals.length === 0) return [0, 0]
+  let pass = 0
+  let fail = 0
+  for (const v of totals) {
+    const n = Number(v)
+    if (!Number.isFinite(n)) { fail += 1; continue }
+    if (n > 60) pass += 1
+    else fail += 1
+  }
+  return [pass, fail]
+})
+
+const kpiPassFailOptions = computed(() => ({
+  chart: { toolbar: { show: false }, type: 'donut' },
+  labels: ['60 이상', '미달'],
+  colors: ['#10b981', '#ef4444'],
+  legend: { position: 'bottom' },
+  tooltip: { y: { formatter: v => `${v}` } }}))
+
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
   if (dropdownOpen.value) {
@@ -368,14 +432,13 @@ async function selectDepartment(d) {
   // 먼저 사용자별 KPI 데이터를 가져와서 `userKpiResults`를 채운 뒤 총합을 계산합니다.
   await getuserkpiresults()
   await getUserTotal()
+  await getmentoring(selectedDepartmentId.value)
 }
 
-async function clearSelection() {
-  selectedDepartmentId.value = null
-  // reload for all
-  // await loadResults(null)
-  await loadUsers(null)
-  await loadkpiGoals(null)
+function goToUser(u) {
+  const uid = u && (u.userId || u.id || u._id)
+  if (!uid) return
+  router.push(`/kpi/user/${uid}`)
 }
 
 function onDocClick(e) {
@@ -392,6 +455,7 @@ onMounted(async () => {
   await selectDepartment(4)
   await getuserkpiresults()
   await getUserTotal()
+  await getmentoring(4)
   await console.log(totalScoreUser.value)
   console.log('KPI goals loaded for default dept:', selectedDepartmentId.value, kpiGoals.value.length)
   document.addEventListener('click', onDocClick)
@@ -638,6 +702,37 @@ async function getUserTotal() {
   }
   return totals
 }
+async function getmentoring(departmentId) {
+    try {
+      // Some backends / older services may expose this endpoint with different naming.
+      const svc = kpiService.getMentoringByDepartment || kpiService.getmentoringbydepartment || kpiService.getMentoringByDept || kpiService.getmentoringByDepartment
+      if (!svc || typeof svc !== 'function') {
+        console.warn('kpiService: mentoring endpoint not found. Skipping mentoring load.')
+        mentoringSessions.value = { total: 0, completed: 0, noShow: 0, scheduled: 0, cancelled: 0 }
+        return
+      }
+      const resp = await svc.call(kpiService, departmentId)
+      const mentoring = resp && resp.data ? resp.data : (resp || [])
+      const arr = Array.isArray(mentoring) ? mentoring : []
+      const mentoringcount = arr.length
+      const mentoringcompleted = arr.filter(m => (m && (m.status || '').toString().toUpperCase()) === 'COMPLETED').length
+      const mentoringnoshow = arr.filter(m => (m && (m.status || '').toString().toUpperCase()) === 'NO_SHOW').length
+      const mentoringscheduled = arr.filter(m => (m && (m.status || '').toString().toUpperCase()) === 'SCHEDULED').length
+      const mentoringcancelled = arr.filter(m => (m && (m.status || '').toString().toUpperCase()) === 'CANCELLED').length
+
+      mentoringSessions.value = {
+        total: mentoringcount,
+        completed: mentoringcompleted,
+        noShow: mentoringnoshow,
+        scheduled: mentoringscheduled,
+        cancelled: mentoringcancelled
+      }
+      console.log('Mentoring data loaded:', mentoringSessions.value)
+    } catch (e) {
+      console.error('Failed to load mentoring data', e)
+      mentoringSessions.value = { total: 0, completed: 0, noShow: 0, scheduled: 0, cancelled: 0 }
+    }
+}
 
 </script>
 
@@ -673,6 +768,9 @@ async function getUserTotal() {
 .summary-cards .card { flex:1 1 180px; min-width:160px }
 .card { background:#fff; border:1px solid #f0f4ff; padding:14px 16px; border-radius:12px; width:auto; box-shadow:0 4px 12px rgba(2,6,23,0.04); transition:transform .12s ease, box-shadow .12s ease }
 .card:hover { transform:translateY(-4px); box-shadow:0 18px 40px rgba(2,6,23,0.08) }
+
+/* Disable global card hover for the users list card so individual items handle hover */
+.users-card.card:hover { transform: none; box-shadow: 0 1px 6px rgba(2,6,23,0.04) }
 .card .title { color:#475569; font-size:13px; font-weight:700 }
 .card .value { font-size:20px; font-weight:800; color:#071031; margin-top:6px }
 .card .sub { font-size:12px; color:#64748b; margin-top:8px }
@@ -694,7 +792,8 @@ async function getUserTotal() {
 .card-title { font-weight:700; margin-bottom:8px }
 .card-body { padding:0 }
 .user-list { list-style:none; padding:0; margin:0 }
-.user-item { display:flex; gap:12px; padding:10px; align-items:center; border-bottom:1px solid #f1f5f9 }
+.user-item { display:flex; gap:12px; padding:10px; align-items:center; border-bottom:1px solid #f1f5f9; transition: background .12s ease, transform .08s ease }
+.user-item:hover { background:#fbfdff; transform: translateX(4px); box-shadow: inset 0 0 0 1px rgba(37,99,235,0.04) }
 .avatar { width:40px; height:40px; border-radius:50%; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:700; color:#0f172a }
 .meta .name { font-weight:700; font-size:14px }
 .meta .role { font-size:12px; color:#64748b }
@@ -737,6 +836,24 @@ async function getUserTotal() {
 .goal-field strong { font-weight:700; font-size:13px; color:#334155 }
 .goal-field span { font-size:14px; color:#0b1220 }
 .goal-field.highlight { background:linear-gradient(180deg,#ffffff,#fbfdff); border:1px solid #e6f0ff }
+
+/* Radar + Mentoring side-by-side */
+.radar-section { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap }
+.radar-section .radar-card,
+.radar-section .mentoring-card { flex:1 1 50%; min-width:280px; box-sizing:border-box }
+.radar-section .radar-card .card-body { padding:12px }
+.radar-section .mentoring-card .card-body { display:flex; flex-direction:column; gap:12px }
+.mentoring-chart-wrap { display:flex; align-items:center; justify-content:center; width:100% }
+.mentoring-legend { display:flex; flex-direction:row; flex-wrap:wrap; gap:12px; margin-top:8px; align-items:center }
+.mentoring-legend .legend-item { display:flex; align-items:center; gap:8px; font-size:13px }
+.mentoring-legend .dot { width:12px; height:12px; border-radius:50%; display:inline-block }
+.dot-completed { background:#10b981 }
+.dot-scheduled { background:#2563eb }
+.dot-cancelled { background:#f97316 }
+.dot-noshow { background:#ef4444 }
+.radar-section { flex-wrap:nowrap }
+.radar-section > .radar-card,
+.radar-section > .mentoring-card { flex: none; width: calc(50% - 8px); max-width: calc(50% - 8px); }
 .goal-value { font-size:18px; font-weight:800; color:#0b1220 }
 .goal-weight { font-size:16px; font-weight:700; color:#2563eb }
 
@@ -750,6 +867,9 @@ async function getUserTotal() {
   .chart-panel, .table-panel { flex:1 1 100% }
   .main-area { flex-direction:column }
   .summary-cards { gap:10px }
+  .radar-section { flex-wrap:wrap }
+  .radar-section > .radar-card,
+  .radar-section > .mentoring-card { width:100%; max-width:100% }
 }
 
 @media (max-width: 480px) {
@@ -764,6 +884,21 @@ async function getUserTotal() {
 .users-card .card-body { max-height: 360px; overflow-y: auto; box-sizing: border-box; padding: 12px }
 .radar-card { height:420px }
 .radar-card .card-body { height: calc(100% - 36px); display:flex; align-items:center; justify-content:center }
+
+/* Mentoring donut card styles */
+.mentoring-card { box-sizing:border-box; margin-bottom:16px; background:#fff; border-radius:12px; border:1px solid #eef6ff }
+.mentoring-card .card-body { padding:12px; display:flex; flex-direction:column; gap:10px; align-items:center }
+.mentoring-chart-wrap { width:100%; max-width:320px }
+.mentoring-legend { display:flex; flex-direction:row; flex-wrap:wrap; gap:12px; justify-content:flex-start; width:100%; padding-top:6px; align-items:center }
+.legend-item { display:flex; align-items:center; gap:8px; font-size:13px; color:#0f172a }
+.passfail-card { box-sizing:border-box; margin:8px 0; background:#fff; border-radius:12px; border:1px solid #eef6ff }
+.passfail-card .card-body { padding:12px; display:flex; align-items:center; justify-content:center }
+.passfail-chart-wrap { width:100%; max-width:320px }
+.dot { width:10px; height:10px; border-radius:50%; display:inline-block }
+.dot-completed { background:#10b981 }
+.dot-scheduled { background:#2563eb }
+.dot-cancelled { background:#f97316 }
+.dot-noshow { background:#ef4444 }
 
 /* Radar header: title + year select */
 .card-title-row { display:flex; justify-content:space-between; align-items:center; gap:12px }

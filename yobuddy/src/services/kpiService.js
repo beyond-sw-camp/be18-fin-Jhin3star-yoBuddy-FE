@@ -47,6 +47,12 @@ const kpiService = {
   getResults(params) {
     // params: { departmentId }
     return http.get('/api/v1/admin/kpi/results', { params })
+  },
+  getmentoringbydepartment(departmentId) {
+    return http.get(`/api/v1/admin/mentoring/sessions/department/${departmentId}`)
+  },
+  getweeklyreports(userId) {
+    return http.get(`/api/v1/admin/kpi/results/weeklyreports/user/${userId}`)
   }
 }
 

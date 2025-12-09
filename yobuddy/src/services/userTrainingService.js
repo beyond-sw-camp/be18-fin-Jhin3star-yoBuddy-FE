@@ -21,5 +21,9 @@ export default {
     if (!userId) throw new Error('userId is required')
     if (!trainingId) throw new Error('trainingId is required')
     return http.post(`/api/v1/users/${userId}/trainings/${trainingId}/quiz`, payload)
-  }
+  },
+  getTraingingbyuser(userId) {
+    if (!userId) throw new Error('userId is required')
+    return http.get(`/api/v1/admin/trainings/user/${userId}`)
+  } 
 }
