@@ -68,5 +68,15 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       window.location.href = '/login'
     },
+    async loadUser() {
+      // backward-compatible wrapper used by app bootstrap and other components
+      try {
+        await this.fetchMe()
+        this.initSSEAndNotifications()
+      } catch (e) {
+        // ignore silently; caller may handle
+        console.warn('loadUser failed:', e)
+      }
+    },
   },
 })
