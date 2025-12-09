@@ -41,7 +41,8 @@ const routes = [
   {
     path: '/content/wiki',
     name: 'Wiki',
-    component: () => import('@/pages/common/wiki.vue')
+    component: () => import('@/pages/common/wiki.vue'),
+    meta: { requiresAuth: true }
   },
 
   // --- 사용자 ---
