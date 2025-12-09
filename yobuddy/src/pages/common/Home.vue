@@ -57,7 +57,7 @@ export default {
   name: 'HomePage',
   setup() {
     const authStore = useAuthStore()
-    const isAuth = computed(() => authStore.isAuthenticated)
+    const isAuth = computed(() => !!authStore.user)
     const root = ref(null)
 
     let _onWheel = null

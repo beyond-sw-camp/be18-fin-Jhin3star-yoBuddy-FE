@@ -92,12 +92,16 @@ export default {
       return this.user.joinedAt.slice(0, 10)
     },
     fullProfileImageUrl() {
-      if (this.user?.profileImageUrl) {
-        const base = http.defaults.baseURL.replace(/\/$/, '');
-        const path = this.user.profileImageUrl.replace(/^\//, '');
-        return `${base}/${path}`;
+      const url = this.user?.profileImageUrl;
+      if (!url || typeof url !== "string") return null;
+
+      const base = (http.defaults.baseURL || "").replace(/\/$/, "");
+
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
       }
-      return null;
+
+      return `${base}${url.startsWith("/") ? url : "/" + url}`;
     }
   },
 

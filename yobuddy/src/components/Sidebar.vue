@@ -160,9 +160,8 @@ export default {
             label: "KPI",
             path: "/kpi",
             subItems: [
-              { id: "1-1", label: "KPI 성과 지표", path: "/kpi/monthly" },
-              { id: "1-2", label: "신입 성과 조회", path: "/kpi/annual" },
-              { id: '1-3', label: 'KPI 설정', path: '/kpi/kpisetting' }
+              { id: "1-1", label: "KPI 성과 지표", path: "/kpi" },
+              { id: '1-2', label: 'KPI 설정', path: '/kpi/kpisetting' }
             ]
           },
           {
@@ -195,7 +194,12 @@ export default {
             id: 6, 
             icon: eduIcon, 
             label: "교육", 
-            path: '/admin/trainings' },
+            path: '/admin/trainings',
+            subItems: [
+              { id: "6-1", label: "교육 관리", path: "/admin/trainings" },
+              { id: "6-2", label: "교육 평가", path: "/admin/trainings/results" },
+            ]
+          },
           {
             id: 7,
             icon: contentIcon,
@@ -203,7 +207,7 @@ export default {
             path: "/content/announcement",
             subItems: [
               { id: "7-1", label: "공지사항", path: "/content/announcement" },
-              { id: "7-2", label: "위키", path: "/content/wiki" }
+              { id: "7-2", label: "위키 ", path: "/content/wiki" }
             ]
           }
         ]

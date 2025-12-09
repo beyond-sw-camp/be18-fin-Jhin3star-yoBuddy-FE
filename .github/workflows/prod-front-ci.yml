@@ -20,7 +20,7 @@ jobs:
       - name: Create .env.production
         run: |
           cd yobuddy
-          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env.production
+          echo "VUE_APP_API_URL=${{ secrets.VUE_APP_API_URL }}" > .env.production
 
       - name: Install dependencies
         run: |
@@ -42,3 +42,9 @@ jobs:
       - name: Upload to S3
         run: |
           aws s3 sync yobuddy/dist s3://yobuddy-frontend-prod --delete
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"

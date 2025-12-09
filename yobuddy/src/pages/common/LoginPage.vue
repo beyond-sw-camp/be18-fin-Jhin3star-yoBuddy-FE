@@ -64,10 +64,12 @@ async function onSubmit() {
   try {
     await auth.login(email.value, password.value)
 
-    if (auth.isMentor) router.push('/mentor/dashboard')
-    else if (auth.isAdmin) router.push('/kpi')
-    else if (auth.isUser) router.push('/user/dashboard')
-    else router.push('/')
+    // 로그인 성공 → 이제 user가 존재함
+    if (auth.isAdmin) return router.push('/kpi')
+    if (auth.isMentor) return router.push('/mentor/dashboard')
+    if (auth.isUser) return router.push('/user/dashboard')
+
+    return router.push('/')
 
   } catch (e) {
     console.error(e)

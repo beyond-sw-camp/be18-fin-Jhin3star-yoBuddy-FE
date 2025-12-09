@@ -25,6 +25,9 @@ const tasksService = {
       return Promise.reject(e)
     }
   },
+  getuser(userId) {
+    return http.get(`/api/v1/admin/tasks/user/${userId}`)
+  },
 
   create(body) {
     return http.post('/api/v1/admin/tasks', body, {

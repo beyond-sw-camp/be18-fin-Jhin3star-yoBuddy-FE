@@ -163,11 +163,18 @@ export default {
       }
     },
     getFullImageUrl(relativePath) {
-      if (!relativePath) return null;
-      const base = http.defaults.baseURL.replace(/\/$/, '');
-      const path = relativePath.replace(/^\//, '');
-      return `${base}/${path}`;
-    },
+  if (!relativePath || typeof relativePath !== "string") return null;
+
+  const base = (http.defaults.baseURL || "").replace(/\/$/, "");
+
+  // 이미 절대 URL이면 그대로 반환
+  if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
+    return relativePath;
+  }
+
+  // "/api/xxx" 형태면 baseURL 붙이기
+  return `${base}${relativePath.startsWith("/") ? relativePath : "/" + relativePath}`;
+},
     initials(name) {
       if (!name) return ''
       return String(name).trim().charAt(0).toUpperCase();
