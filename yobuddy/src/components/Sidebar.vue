@@ -202,7 +202,7 @@ export default {
             path: "/content/announcement",
             subItems: [
               { id: "7-1", label: "공지사항", path: "/content/announcement" },
-              { id: "7-2", label: "위키", path: "/content/wiki" }
+              { id: "7-2", label: "위키 ", path: "/content/wiki" }
             ]
           }
         ]
