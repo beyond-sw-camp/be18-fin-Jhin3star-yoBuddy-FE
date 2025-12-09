@@ -28,15 +28,28 @@ export const useNotificationStore = defineStore('notification', {
     connectSSE() {
       if (this.es) return
 
-      const base = http.defaults.baseURL.replace(/\/$/, "")
-      const url = `${base}/api/v1/notifications/stream`
+      // baseURL may be undefined (e.g., during tests or unusual http wrapper configs)
+      let base = null
+      try {
+        if (http && http.defaults && http.defaults.baseURL) {
+          base = String(http.defaults.baseURL)
+        }
+      } catch (e) {
+        base = null
+      }
+
+      if (!base) {
+        // fallback to current origin
+        base = window && window.location && window.location.origin ? window.location.origin : ''
+      }
+
+      base = base.replace(/\/$/, "")
+      const url = base ? `${base}/api/v1/notifications/stream` : `/api/v1/notifications/stream`
 
       console.log("🔗 SSE 연결 URL:", url)
 
       try {
-        this.es = new EventSourcePolyfill(url, {
-        withCredentials: true,
-    });
+        this.es = new EventSourcePolyfill(url, { withCredentials: true })
       } catch (e) {
         console.error("❌ SSE 생성 실패:", e)
         return

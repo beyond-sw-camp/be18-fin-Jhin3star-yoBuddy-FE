@@ -20,7 +20,7 @@
             </ul>
           </div>
         </div>
-        <button class="pdf-btn" @click="exportPdf" title="PDF로 내보내기">PDF</button>
+        <button class="pdf-btn" @click="exportPdf" :disabled="exporting" :aria-busy="exporting" title="PDF로 내보내기">{{ exporting ? '내보내는 중...' : 'PDF' }}</button>
       </div>
     </header>
 
@@ -152,6 +152,7 @@ const dropdown = ref(null)
 const users = ref([])
 const usersLoading = ref(false)
 const usersError = ref(null)
+const exporting = ref(false)
 const deptStore = useDepartmentStore()
 const kpiGoals = ref([])
 const goalsModalVisible = ref(false)
@@ -180,13 +181,32 @@ function closeGoalsModal() {
   goalsModalVisible.value = false
 }
 
-function exportPdf() {
+async function exportPdf() {
+  const el = document.querySelector('.kpi-view')
+  if (!el) {
+    alert('PDF로 내보낼 영역을 찾을 수 없습니다.')
+    return
+  }
+  exporting.value = true
   try {
-    // Basic behavior: open print dialog for user to save as PDF
-    window.print()
+    // dynamic import so bundle only includes when used
+    const mod = await import('html2pdf.js')
+    const html2pdf = (mod && (mod.default || mod))
+    const filename = `yobuddy-kpi-${selectedDepartmentId.value || 'all'}-${new Date().toISOString().slice(0,10)}.pdf`
+    const opt = {
+      margin: 8,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+    // html2pdf returns a chainable instance; use save()
+    await html2pdf().set(opt).from(el).save()
   } catch (e) {
     console.error('Export PDF failed', e)
-    alert('PDF로 내보내기를 지원하지 않습니다.')
+    alert('PDF 내보내기 실패: ' + (e && e.message ? e.message : String(e)))
+  } finally {
+    exporting.value = false
   }
 }
 
