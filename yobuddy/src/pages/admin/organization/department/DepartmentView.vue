@@ -2,6 +2,8 @@
   <div class="department-page">
     <div class="department-content">
       <!-- 검색 영역 -->
+    <div class="top-bar">
+      <div class="title">부서 관리</div>
       <div class="search-area">
         <input
           class="search-input"
@@ -33,6 +35,7 @@
           >
             삭제
           </button>
+        </div>
         </div>
       </div>
 
@@ -320,6 +323,21 @@ const onUserDelete = async (user) => {
   gap: 50px;
 }
 
+.top-bar {
+  width: 1100px;
+  margin: 0 auto 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 양쪽 끝 정렬 */
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
 /* 검색 영역 */
 .search-area {
   width: 1100px;
@@ -327,12 +345,13 @@ const onUserDelete = async (user) => {
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .search-input {
   flex: 1;
   width: 100%;
-  max-width: 800px;
+  max-width: 250px;
   height: 40px;
   padding: 0 14px;
   border-radius: 20px;
