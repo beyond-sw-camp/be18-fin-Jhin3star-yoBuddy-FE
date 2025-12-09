@@ -1,94 +1,97 @@
 <template>
-  <div
-    class="chatbot-popup-card"
-    :style="cardStyle"
-  >
+  <teleport to="body">
     <div
-      class="chatbot-header"
-      @mousedown.stop="startDrag"
+      class="chatbot-popup-card"
+      :style="cardStyle"
+      @click.stop
     >
-      <div class="chatbot-header-left">
-        <img src="@/assets/logo_chatbot.svg" class="chatbot-avatar" alt="BuddyBot" />
-        <div>
-          <div class="chatbot-title">{{ title || 'BuddyBot' }}</div>
-          <div class="chatbot-status">
-            <span class="online-dot"></span>
-            <span v-if="!loading">Online</span>
-            <span v-else>답변 생성 중...</span>
+      <div
+        class="chatbot-header"
+        @mousedown.stop="startDrag"
+      >
+        <div class="chatbot-header-left">
+          <img src="@/assets/logo_chatbot.svg" class="chatbot-avatar" alt="BuddyBot" />
+          <div>
+            <div class="chatbot-title">{{ title || 'BuddyBot' }}</div>
+            <div class="chatbot-status">
+              <span class="online-dot"></span>
+              <span v-if="!loading">Online</span>
+              <span v-else>답변 생성 중...</span>
+            </div>
           </div>
         </div>
-      </div>
-      <button class="chatbot-close" @click="$emit('close')">×</button>
-    </div>
-
-    <div class="chatbot-content">
-      <div class="chatbot-section-title">
-        회사 적응 꿀팁! ✨
-        <br />
-        <span class="chatbot-section-sub">가장 많이 찾는 질문 TOP 5</span>
+        <button class="chatbot-close" @click="$emit('close')">×</button>
       </div>
 
-      <div class="chatbot-question-space" v-if="!hasStarted">
-        <ul class="chatbot-question-list">
-          <li v-for="(q, i) in questions" :key="i" @click="animateQuestion(q)">
-            <img src="@/assets/logo_chatbot.svg" class="question-avatar" alt="Q" />
-            <span class="question-text">{{ q }}</span>
-          </li>
-        </ul>
-      </div>
+      <div class="chatbot-content">
+        <div class="chatbot-section-title">
+          회사 적응 꿀팁! ✨
+          <br />
+          <span class="chatbot-section-sub">가장 많이 찾는 질문 TOP 5</span>
+        </div>
 
-      <transition name="fade">
-        <div v-if="hasStarted" class="chatbot-chat-area" ref="chatArea">
-          <div
-            v-for="(msg, i) in messages"
-            :key="i"
-            :class="['chatbot-bubble', msg.sender]"
+        <div class="chatbot-question-space" v-if="!hasStarted">
+          <ul class="chatbot-question-list">
+            <li v-for="(q, i) in questions" :key="i" @click="animateQuestion(q)">
+              <img src="@/assets/logo_chatbot.svg" class="question-avatar" alt="Q" />
+              <span class="question-text">{{ q }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <transition name="fade">
+          <div v-if="hasStarted" class="chatbot-chat-area" ref="chatArea">
+            <div
+              v-for="(msg, i) in messages"
+              :key="i"
+              :class="['chatbot-bubble', msg.sender]"
+            >
+              <img
+                v-if="msg.sender === 'bot'"
+                src="@/assets/logo_chatbot.svg"
+                class="bubble-avatar"
+                alt="봇"
+              />
+              <span class="bubble-text">{{ msg.text }}</span>
+            </div>
+          </div>
+        </transition>
+
+        <transition name="fade">
+          <div v-if="loading" class="chatbot-loading-text">
+            <span class="loading-dots">
+              <span></span><span></span><span></span>
+            </span>
+            <span>답변을 생성 중입니다...</span>
+          </div>
+        </transition>
+
+        <div class="chatbot-input-row">
+          <input
+            class="chatbot-input"
+            type="text"
+            v-model="inputText"
+            @keyup.enter="sendMessage"
+            :disabled="loading"
+            placeholder="메시지를 입력하세요."
+          />
+          <button
+            class="chatbot-send-btn"
+            @click="sendMessage"
+            :disabled="loading || !(inputText && inputText.trim())"
+            aria-label="send"
           >
-            <img
-              v-if="msg.sender === 'bot'"
-              src="@/assets/logo_chatbot.svg"
-              class="bubble-avatar"
-              alt="봇"
-            />
-            <span class="bubble-text">{{ msg.text }}</span>
-          </div>
+            <span v-if="loading" class="loading-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <svg v-else width="22" height="22" fill="none" viewBox="0 0 22 22">
+              <path d="M3 19L19 11L3 3V8.5L14 11L3 13.5V19Z" fill="#fff" />
+            </svg>
+          </button>
         </div>
-      </transition>
-
-      <transition name="fade">
-        <div v-if="loading" class="chatbot-loading-text">
-          <span class="loading-dots">
-            <span></span><span></span><span></span>
-          </span>
-          <span>답변을 생성 중입니다...</span>
-        </div>
-      </transition>
-
-      <div class="chatbot-input-row">
-        <input
-          class="chatbot-input"
-          type="text"
-          v-model="inputText"
-          @keyup.enter="sendMessage"
-          :disabled="loading"
-          placeholder="메시지를 입력하세요."
-        />
-        <button
-          class="chatbot-send-btn"
-          @click="sendMessage"
-          :disabled="loading || !(inputText && inputText.trim())"
-          aria-label="send"
-        >
-          <span v-if="loading" class="loading-dots" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </span>
-          <svg v-else width="22" height="22" fill="none" viewBox="0 0 22 22">
-            <path d="M3 19L19 11L3 3V8.5L14 11L3 13.5V19Z" fill="#fff" />
-          </svg>
-        </button>
       </div>
     </div>
-  </div>
+  </teleport>
 </template>
 
 <script>
@@ -96,16 +99,12 @@ import { askChatbot } from '@/services/chatbotService'
 
 export default {
   name: 'ChatbotPopupCard',
-  props: {
-    title: String
-  },
+  props: { title: String },
   data() {
     return {
       inputText: '',
       loading: false,
-      messages: [
-        { sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }
-      ],
+      messages: [{ sender: 'bot', text: '안녕하세요! 무엇을 도와드릴까요?' }],
       questions: [
         '노트북을 처음 받으면 무엇을 설정해야 하나요?',
         '연차/반차 등 휴가를 쓰려면 어떻게 해야 하나요?',
@@ -114,7 +113,6 @@ export default {
         '회사 복장 규정은 어떻게 되나요?'
       ],
       hasStarted: false,
-
       dragOffset: { x: 0, y: 0 },
       isDragging: false,
       dragStartMouse: { x: 0, y: 0 },
@@ -147,16 +145,14 @@ export default {
       this.$nextTick(this.scrollToBottom)
 
       this.loading = true
-
       try {
         const res = await askChatbot(text)
         const answer = res?.data?.answer || '죄송합니다. 응답을 읽지 못했어요.'
         await this.typeBotMessage(answer)
-      } catch (e) {
-        console.error(e)
+      } catch {
         this.messages.push({
           sender: 'bot',
-          text: '죄송합니다. 서버와 통신 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+          text: '죄송합니다. 서버와 통신 중 오류가 발생했어요.'
         })
         this.$nextTick(this.scrollToBottom)
       } finally {
@@ -168,51 +164,43 @@ export default {
       this.inputText = ''
       setTimeout(() => {
         this.inputText = q
-        this.$nextTick(() => {
-          this.sendMessage()
-        })
-      }, 120)
+        this.$nextTick(() => this.sendMessage())
+      }, 100)
     },
 
     scrollToBottom() {
       const area = this.$refs.chatArea
-      if (area) {
-        area.scrollTop = area.scrollHeight
-      }
+      if (area) area.scrollTop = area.scrollHeight
     },
-    
+
     typeBotMessage(text) {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const index = this.messages.length
-        this.messages.push({
-          sender: 'bot',
-          text: ''
-        })
-    
-        let i = 0    
-        const interval = setInterval(() => {      
-          const msg = this.messages[index]      
-          if (!msg) {        
-            clearInterval(interval)        
-            resolve()        
-            return      
+        this.messages.push({ sender: 'bot', text: '' })
+        let i = 0
+
+        const interval = setInterval(() => {
+          const msg = this.messages[index]
+          if (!msg) {
+            clearInterval(interval)
+            resolve()
+            return
           }
-    
+
           msg.text += text[i]
           this.$nextTick(this.scrollToBottom)
-      
-          i += 1 
+
+          i++
           if (i >= text.length) {
             clearInterval(interval)
             resolve()
           }
-        }, 40) 
+        }, 40)
       })
     },
 
-
     startDrag(e) {
-      if (e.button !== 0) return 
+      if (e.button !== 0) return
       this.isDragging = true
       this.dragStartMouse = { x: e.clientX, y: e.clientY }
       this.dragStartOffset = { ...this.dragOffset }
@@ -220,10 +208,8 @@ export default {
 
     onDragMove(e) {
       if (!this.isDragging) return
-
       const dx = e.clientX - this.dragStartMouse.x
       const dy = e.clientY - this.dragStartMouse.y
-
       this.dragOffset = {
         x: this.dragStartOffset.x + dx,
         y: this.dragStartOffset.y + dy
@@ -239,21 +225,25 @@ export default {
 
 <style scoped>
 .chatbot-popup-card {
+  position: fixed;
+  bottom: 26vh;
+  right: 1vw;
+
   min-width: 320px;
   max-width: 420px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   color: #213048;
   border-radius: 14px;
   box-shadow: 0 12px 30px rgba(21, 34, 80, 0.12);
+  z-index: 999999;
 
-  z-index: 999;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Helvetica Neue', Arial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Noto Sans KR', 'Helvetica Neue', Arial;
 }
 
-/* 드래그 가능 표시 */
 .chatbot-header {
   background: linear-gradient(90deg, #294594 0%, #2b57a0 100%);
   color: #fff;
@@ -264,7 +254,6 @@ export default {
   cursor: move;
 }
 
-/* 이하 스타일은 기존 그대로 */
 .chatbot-header-left { display:flex; align-items:center; gap:12px }
 .chatbot-avatar{ width:40px; height:40px; border-radius:8px; box-shadow:0 4px 12px rgba(33,48,72,0.12) }
 .chatbot-title{ font-size:1.02rem; font-weight:700 }
