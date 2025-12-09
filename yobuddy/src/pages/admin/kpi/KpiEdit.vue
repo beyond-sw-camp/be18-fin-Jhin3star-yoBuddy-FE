@@ -116,8 +116,7 @@ export default {
             ,
             // modal state
             showCategoryModal: false,
-            selectedCategory: 1
-            ,
+            selectedCategory: {id:1},
             // goal detail modal
             showGoalModal: false,
             selectedGoal: null,
