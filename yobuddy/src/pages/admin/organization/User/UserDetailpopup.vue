@@ -32,7 +32,7 @@
             <div class="label">전화 번호</div>
             <div class="val">
               <template v-if="isEditMode && editingField === 'phone'">
-                <input v-model="form.phone" />
+                <input v-model="form.phone" @input="onPhoneInput" />
               </template>
               <template v-else>
                 {{ user && (user.phone || user.phoneNumber) ? (user.phone || user.phoneNumber) : '—' }}
@@ -170,7 +170,7 @@ export default {
         if (this.user) {
           switch (field) {
             case 'email': this.form.email = this.user.email || ''; break
-            case 'phone': this.form.phone = this.user.phone || this.user.phoneNumber || ''; break
+            case 'phone': this.form.phone = this.formatPhone(this.user.phone || this.user.phoneNumber || ''); break
             case 'role': this.form.role = this.user.role || this.user.userRole || 'USER'; break
             case 'department': {
               this.form.department = this.user.department || this.user.departmentName || '';
@@ -212,6 +212,17 @@ export default {
       } catch (e) {
         this.departments = []
       }
+    },
+    formatPhone(value) {
+      const digits = (value || '').toString().replace(/\D/g, '').slice(0, 11)
+      if (digits.length <= 3) return digits
+      if (digits.length <= 7) return `${digits.slice(0,3)}-${digits.slice(3)}`
+      if (digits.length <= 10) return `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6)}`
+      return `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`
+    },
+    onPhoneInput(evt) {
+      const val = evt && evt.target ? evt.target.value : ''
+      this.form.phone = this.formatPhone(val)
     },
     cancelEdit() { this.isEditMode = false; this.editingField = null; this.form = this.user ? Object.assign({}, this.user) : {}; this.error = null },
     async saveAll() {
