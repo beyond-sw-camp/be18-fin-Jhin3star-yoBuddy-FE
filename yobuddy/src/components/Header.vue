@@ -94,6 +94,7 @@ export default {
       '/content': '콘텐츠',
       '/tasks': '과제',
       '/trainings': '교육',
+      '/trainings/results': '교육 평가',
       '/content/announcement': '공지사항',
       '/content/wiki': '위키',
       '/organization/usermanagement': '유저 관리',
