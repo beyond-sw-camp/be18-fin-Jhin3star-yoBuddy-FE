@@ -96,6 +96,7 @@ export default {
       '/trainings': '교육',
       '/trainings/results': '교육 평가',
       '/content/announcement': '공지사항',
+      '/content/announcement/create': '공지사항 생성',
       '/content/wiki': '위키',
       '/organization/usermanagement': '유저 관리',
       '/organization/department': '부서 관리',
