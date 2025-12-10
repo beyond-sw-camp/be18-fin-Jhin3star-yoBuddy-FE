@@ -2,155 +2,160 @@
   <div class="department-page">
     <div class="department-content">
       <!-- 검색 영역 -->
-    <div class="top-bar">
-      <div class="title">부서 관리</div>
-      <div class="search-area">
-        <input
-          class="search-input"
-          type="text"
-          placeholder="검색"
-          v-model="search"
-        />
+      <div class="panel-wrapper">
+        <div class="top-bar">
+          <div class="title">
+            <h2 class="head-title">부서 관리</h2>
+            <p class="head-sub">부서 목록 조회 및 관리</p>
+          </div>
+          <div class="search-area">
+            <input
+              class="search-input"
+              type="text"
+              placeholder="검색"
+              v-model="search"
+            />
 
-        <div class="search-actions">
-          <button
-            class="btn btn-primary"
-            @click="openCreateModal"
-          >
-            + 부서 등록
-          </button>
-
-          <button
-            v-if="store.selectedDepartment"
-            class="btn btn-secondary"
-            @click="openEditModal"
-          >
-            수정
-          </button>
-
-          <button
-            v-if="store.selectedDepartment"
-            class="btn btn-danger"
-            @click="handleDeleteDepartment"
-          >
-            삭제
-          </button>
-        </div>
-        </div>
-      </div>
-
-      <!-- 카드 2컬럼 영역 -->
-      <div class="card-row">
-        <!-- 조직도 패널 -->
-        <section class="card org-card">
-          <h2 class="card-title">조직도</h2>
-
-          <ul class="org-tree">
-            <li
-              v-for="d in store.departments" :key="d.departmentId"
-              class="org-tree-item"
-              @click="selectDepartment(d)"
-              :class="{
-                'org-tree-item--active':
-                  store.selectedDepartment &&
-                  store.selectedDepartment.departmentId === d.departmentId
-                }"
-            >
-              <div class="org-tree-line"></div>
-              <span class="org-tree-label">{{ d.name }}</span>
-            </li>
-          </ul>
-        </section>
-
-        <!-- 구성원 패널 -->
-        <section class="card member-card">
-          <div class="card-header">
-            <h2 class="card-title">
-              {{ store.selectedDepartment
-                ? store.selectedDepartment.name + ' 구성원'
-                : '구성원' }}
-            </h2>
-
-
-          <!-- 역할 콤보박스 -->
-            <div class="filter-row">
-              <select
-                v-model="store.roleFilter"
-                class="header-select"
+            <div class="search-actions">
+              <button
+                class="btn btn-primary"
+                @click="openCreateModal"
               >
-                <option value="all">전체</option>
-                <option value="ADMIN">관리자</option>
-                <option value="MENTOR">멘토</option>
-                <option value="USER">신입</option>
-              </select>
+                + 부서 등록
+              </button>
+
+              <button
+                v-if="store.selectedDepartment"
+                class="btn btn-secondary"
+                @click="openEditModal"
+              >
+                수정
+              </button>
+
+              <button
+                v-if="store.selectedDepartment"
+                class="btn btn-danger"
+                @click="handleDeleteDepartment"
+              >
+                삭제
+              </button>
             </div>
           </div>
+        </div>
 
-          <div class="member-table">
-            <div class="member-table-header">
-              <span class="col-name">이름</span>
-              <span class="col-email">이메일</span>
-              <span
-                v-if="store.roleFilter === 'all'"
-                class="col-role"
+        <!-- 카드 2컬럼 영역 -->
+        <div class="card-row">
+          <!-- 조직도 패널 -->
+          <section class="card org-card">
+            <h2 class="card-title">조직도</h2>
+
+            <ul class="org-tree">
+              <li
+                v-for="d in store.departments" :key="d.departmentId"
+                class="org-tree-item"
+                @click="selectDepartment(d)"
+                :class="{
+                  'org-tree-item--active':
+                    store.selectedDepartment &&
+                    store.selectedDepartment.departmentId === d.departmentId
+                  }"
               >
-                역할
-              </span>
+                <div class="org-tree-line"></div>
+                <span class="org-tree-label">{{ d.name }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- 구성원 패널 -->
+          <section class="card member-card">
+            <div class="card-header">
+              <h2 class="card-title">
+                {{ store.selectedDepartment
+                  ? store.selectedDepartment.name + ' 구성원'
+                  : '구성원' }}
+              </h2>
+
+
+            <!-- 역할 콤보박스 -->
+              <div class="filter-row">
+                <select
+                  v-model="store.roleFilter"
+                  class="header-select"
+                >
+                  <option value="all">전체</option>
+                  <option value="ADMIN">관리자</option>
+                  <option value="MENTOR">멘토</option>
+                  <option value="USER">신입</option>
+                </select>
+              </div>
             </div>
 
-            <div v-if="filteredMembers.length" class="member-table-body">
-              <div
-                v-for="m in filteredMembers"
-                :key="m.userId"
-                class="member-row"
-                @click="openUserDetail(m)"
-              >
-                <span class="col-name">{{ m.name }}</span>
-                <span class="col-email">{{ m.email }}</span>
+            <div class="member-table">
+              <div class="member-table-header">
+                <span class="col-name">이름</span>
+                <span class="col-email">이메일</span>
                 <span
                   v-if="store.roleFilter === 'all'"
                   class="col-role"
                 >
-                  {{ roleLabel(m.role) }}
+                  역할
                 </span>
               </div>
-            </div>
 
-            <div v-else class="member-empty">
-              구성원이 없습니다.
-            </div>
-          </div>
-        </section>
-        <!-- 부서 생성/수정 모달 -->
-        <div v-if="isModalOpen" class="modal-backdrop">
-          <div class="modal">
-            <div class="modal-header">
-              <h3 class="modal-title">
-                {{ modalMode === 'create' ? '부서 등록' : '부서 수정' }}
-              </h3>
-            </div>
+              <div v-if="filteredMembers.length" class="member-table-body">
+                <div
+                  v-for="m in filteredMembers"
+                  :key="m.userId"
+                  class="member-row"
+                  @click="openUserDetail(m)"
+                >
+                  <span class="col-name">{{ m.name }}</span>
+                  <span class="col-email">{{ m.email }}</span>
+                  <span
+                    v-if="store.roleFilter === 'all'"
+                    class="col-role"
+                  >
+                    {{ roleLabel(m.role) }}
+                  </span>
+                </div>
+              </div>
 
-            <div class="modal-body">
-              <label class="modal-label">부서명</label>
-              <input
-                v-model="formName"
-                type="text"
-                class="modal-input"
-                placeholder="부서 이름을 입력하세요"
-              />
+              <div v-else class="member-empty">
+                구성원이 없습니다.
+              </div>
             </div>
+          </section>
+          <!-- 부서 생성/수정 모달 -->
+          <div v-if="isModalOpen" class="modal-backdrop">
+            <div class="modal">
+              <div class="modal-header">
+                <h3 class="modal-title">
+                  {{ modalMode === 'create' ? '부서 등록' : '부서 수정' }}
+                </h3>
+              </div>
 
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="closeModal">
-                취소
-              </button>
-              <button
-                class="btn btn-primary"
-                @click="handleSubmit"
-                :disabled="!formName.trim()"
-              >
-                저장
-              </button>
+              <div class="modal-body">
+                <label class="modal-label">부서명</label>
+                <input
+                  v-model="formName"
+                  type="text"
+                  class="modal-input"
+                  placeholder="부서 이름을 입력하세요"
+                />
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn btn-secondary" @click="closeModal">
+                  취소
+                </button>
+                <button
+                  class="btn btn-primary"
+                  @click="handleSubmit"
+                  :disabled="!formName.trim()"
+                >
+                  저장
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -320,11 +325,20 @@ const onUserDelete = async (user) => {
   padding: 24px 32px 32px;
   display: flex;
   flex-direction: column;
-  gap: 50px;
+  gap: 10px;
+}
+
+.panel-wrapper {
+  width: 1100px;
+  margin: 0 auto;
+  background: #fff;            /* 흰색 배경 */
+  border-radius: 10px;
+  padding: 24px 32px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .top-bar {
-  width: 1100px;
+  width: 1000px;
   margin: 0 auto 20px auto;
   display: flex;
   align-items: center;
@@ -332,15 +346,27 @@ const onUserDelete = async (user) => {
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1f2937;
+  display:flex; 
+  flex-direction:column; 
+  gap:4px; 
+}
+
+.head-title { 
+  margin:0; 
+  font-size:20px; 
+  color:#10243b 
+}
+.head-sub { 
+  margin: 4px 0 0; 
+  color:#7d93ad;
   white-space: nowrap;
+  font-size:13px
+  
 }
 
 /* 검색 영역 */
 .search-area {
-  width: 1100px;
+  width: 1000px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -402,7 +428,7 @@ const onUserDelete = async (user) => {
 
 /* 카드 2컬럼 */
 .card-row {
-  width: 1100px;
+  width: 1000px;
   margin: 0 auto;
   display: flex;
   gap: 24px;
@@ -415,6 +441,7 @@ const onUserDelete = async (user) => {
   background-color: #ffffff;
   border-radius: 10px;
   padding: 20px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 4px 12px rgba(15, 35, 95, 0.08);
   display: flex;
   flex-direction: column;
