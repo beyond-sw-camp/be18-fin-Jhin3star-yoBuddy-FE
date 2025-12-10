@@ -194,7 +194,12 @@ export default {
             id: 6, 
             icon: eduIcon, 
             label: "교육", 
-            path: '/admin/trainings' },
+            path: '/admin/trainings',
+            subItems: [
+              { id: "6-1", label: "교육 관리", path: "/admin/trainings" },
+              { id: "6-2", label: "교육 평가", path: "/admin/trainings/results" },
+            ]
+          },
           {
             id: 7,
             icon: contentIcon,
