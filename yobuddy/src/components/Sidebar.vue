@@ -140,7 +140,23 @@ export default {
     /* User Info */
     const userName = computed(() => user.value?.name || "")
     const userRole = computed(() => user.value?.role || "")
-    const avatarUrl = computed(() => user.value?.profileImageUrl || null)
+    const avatarUrl = computed(() => {
+  const url = user.value?.profileImageUrl;
+
+      if (!url || typeof url !== "string") return null;
+
+      const base = (process.env.VUE_APP_API_URL || "").replace(/\/$/, "");
+
+      if (url.startsWith("https://yobuddy.my")) {
+        return url.replace("https://yobuddy.my", base);
+      }
+
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+
+      return `${base}${url.startsWith("/") ? url : "/" + url}`;
+    });
     const userEmail = computed(() => user.value?.email || "")
     const userDept = computed(() => user.value?.departmentName || "")
     const joinDate = computed(() =>
