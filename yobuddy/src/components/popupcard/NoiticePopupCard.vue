@@ -265,7 +265,7 @@ const formatTime = (isoString) => {
   max-height: 400px; /* Keep max-height for overall card size */
   background: #fff;
   color: #23263a;
-  border-radius: 18px;
+  border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.22);
   position: absolute;
   top: 60px;
@@ -283,6 +283,8 @@ const formatTime = (isoString) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
   padding: 18px 22px 12px 22px;
 }
 .notice-header-left {
@@ -332,6 +334,8 @@ const formatTime = (isoString) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 .notice-section-title {
   font-size: 1.08em;

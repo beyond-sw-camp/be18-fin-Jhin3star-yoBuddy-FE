@@ -364,6 +364,18 @@ export default {
 .user-table tbody tr { 
   border-top:1px solid #f0f4fb 
 }
+.user-table tbody td:nth-child(2) { 
+  max-width: 150px; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+.user-table tbody td:nth-child(3) { 
+  max-width: 150px; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
 .tag { 
   padding:6px 10px; 
   border-radius:10px; 
