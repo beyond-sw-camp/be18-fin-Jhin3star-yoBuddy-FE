@@ -32,7 +32,6 @@
                     <div class="card-title">부서명</div>
                     <div class="card-body small-list">
                                     <ul>
-                                        <li :class="{active: !selectedDepartmentId}" @click="selectDepartment(null)">전체</li>
                                         <li v-for="dept in departments" :key="dept.departmentId || dept.id || dept.name" :class="{ active: selectedDepartmentId === (dept.departmentId || dept.id || dept._id) }" @click="selectDepartment(dept)">
                                             {{ dept.name || dept.departmentName || dept.title }}
                                         </li>
@@ -117,8 +116,7 @@ export default {
             ,
             // modal state
             showCategoryModal: false,
-            selectedCategory: null
-            ,
+            selectedCategory: {id:1},
             // goal detail modal
             showGoalModal: false,
             selectedGoal: null,
