@@ -109,14 +109,14 @@ export default {
             categories: [],
             departments: [],
             goals: [],
-            selectedDepartmentId: null,
+            selectedDepartmentId: 1,
             createGoalMode: false,
             loadingCategories: false,
             categoriesError: null
             ,
             // modal state
             showCategoryModal: false,
-            selectedCategory: {id:1},
+            selectedCategory: null,
             // goal detail modal
             showGoalModal: false,
             selectedGoal: null,
