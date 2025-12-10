@@ -86,8 +86,10 @@ export default {
 
     const pageTitleMap = {
       '/kpi': 'KPI',
+      '/kpi/kpisetting': 'KPI 설정',
       '/organization': '조직 관리',
       '/onboarding': '온보딩',
+      '/onboarding/programs': '온보딩 프로그램 관리',
       '/mentoring': '멘토링',
       '/education': '교육',
       '/dashboard': '대시보드',
@@ -96,6 +98,7 @@ export default {
       '/trainings': '교육',
       '/trainings/results': '교육 평가',
       '/content/announcement': '공지사항',
+      '/content/announcement/create': '공지사항 생성',
       '/content/wiki': '위키',
       '/organization/usermanagement': '유저 관리',
       '/organization/department': '부서 관리',

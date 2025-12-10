@@ -256,6 +256,7 @@ export default {
 .user-table { width:100%; max-width:900px; margin:0 auto; border-collapse: collapse; }
 .user-table thead th { text-align:left; color:#7c96b3; font-weight:700; padding:12px 10px; font-size:13px }
 .user-table tbody tr { border-top:1px solid #f0f4fb }
+.user-table tbody td:nth-child(3) { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag-mentor { background:#f3f4f6; color:#4b5563 }
 .tag-completed { background:#ffe9e9; color:#294594 }
