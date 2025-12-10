@@ -1,90 +1,98 @@
 <template>
   <div class="announcement-container">
-    <!-- 카테고리 드롭다운 -->
-    <div class="top-bar">
-      <div class="category-dropdown" @click="toggleDropdown">
-        <span class="label-text">{{ categoryLabel(selectedCategory) }}</span>
-        <span :class="['arrow', { open: dropdownOpen }]"></span>
-        
-        <ul v-if="dropdownOpen" class="dropdown-menu">
-          <li 
-            v-for="(item, i) in categories" 
-            :key="i"
-            @click.stop="selectCategory(item)"
-            class="dropdown-item"
+    <div class="announcement-card">
+      <!-- 카테고리 드롭다운 -->
+      <div class="top-bar">
+        <div class="title-wrap">
+          <h2 class="card-title">공지사항</h2>
+          <p class="card-sub">공지사항 조회</p>
+        </div>
+        <div class="search-area">
+          <div class="category-dropdown" @click="toggleDropdown">
+            <span class="label-text">{{ categoryLabel(selectedCategory) }}</span>
+            <span :class="['arrow', { open: dropdownOpen }]"></span>
+            
+            <ul v-if="dropdownOpen" class="dropdown-menu">
+              <li 
+                v-for="(item, i) in categories" 
+                :key="i"
+                @click.stop="selectCategory(item)"
+                class="dropdown-item"
+              >
+                <span class="item-text">{{ categoryLabel(item) }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- 검색창 -->
+          <div class="search-box">
+            <input 
+              type="text" 
+              placeholder="검색어를 입력해주세요"
+              v-model="keyword"
+            />
+            <img :src="search" alt="search" class="search-icon" />
+          </div>
+
+          <button 
+            v-if="auth.isAdmin" 
+            class="add-btn"
+            @click="goToCreatePage"
           >
-            <span class="item-text">{{ categoryLabel(item) }}</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- 검색창 -->
-      <div class="search-box">
-        <input 
-          type="text" 
-          placeholder="검색어를 입력해주세요"
-          v-model="keyword"
-        />
-        <img :src="search" alt="search" class="search-icon" />
-      </div>
-
-      <button 
-        v-if="auth.isAdmin" 
-        class="add-btn"
-        @click="goToCreatePage"
-      >
-        공지사항 등록
-      </button>
-    </div>
-
-    <!-- 공지 리스트 -->
-    <div class="announcement-list">
-      <div 
-        v-for="a in announcements" 
-        :key="a.announcementId"
-        class="announcement-item"
-        @click="goDetail(a.announcementId)"
-      >
-        <div class="badge-area">
-          <span class="badge">{{ categoryLabel(a.type) }}</span>
+            공지사항 등록
+          </button>
         </div>
-        <div class="text-area">
-          <p class="title">{{ a.title }}</p>
+      </div>
+
+      <!-- 공지 리스트 -->
+      <div class="announcement-list">
+        <div 
+          v-for="a in announcements" 
+          :key="a.announcementId"
+          class="announcement-item"
+          @click="goDetail(a.announcementId)"
+        >
+          <div class="badge-area">
+            <span class="badge">{{ categoryLabel(a.type) }}</span>
+          </div>
+          <div class="text-area">
+            <p class="title">{{ a.title }}</p>
+          </div>
+          <p class="date">{{ a.createdAt?.slice(2, 10) }} {{ a.createdAt?.slice(11, 16) }}</p>
         </div>
-        <p class="date">{{ a.createdAt?.slice(2, 10) }} {{ a.createdAt?.slice(11, 16) }}</p>
+
+        <div v-if="announcements.length === 0" class="empty">
+          조회된 공지사항이 없습니다.
+        </div>
       </div>
 
-      <div v-if="announcements.length === 0" class="empty">
-        조회된 공지사항이 없습니다.
+      <!-- 페이지네이션 -->
+      <div class="pagination numeric" v-if="totalPages > 1">
+        <button
+          class="page-nav"
+          :disabled="currentPage <= 1"
+          @click="changePage(currentPage - 1)"
+        >
+          &lt;
+        </button>
+
+        <button
+          v-for="page in pageList"
+          :key="page"
+          :class="['page-num', { active: currentPage === page }]"
+          @click="changePage(page)"
+        >
+          {{ page }}
+        </button>
+
+        <button
+          class="page-nav"
+          :disabled="currentPage >= totalPages"
+          @click="changePage(currentPage + 1)"
+        >
+          &gt;
+        </button>
       </div>
-    </div>
-
-    <!-- 페이지네이션 -->
-    <div class="pagination numeric" v-if="totalPages > 1">
-      <button
-        class="page-nav"
-        :disabled="currentPage <= 1"
-        @click="changePage(currentPage - 1)"
-      >
-        &lt;
-      </button>
-
-      <button
-        v-for="page in pageList"
-        :key="page"
-        :class="['page-num', { active: currentPage === page }]"
-        @click="changePage(page)"
-      >
-        {{ page }}
-      </button>
-
-      <button
-        class="page-nav"
-        :disabled="currentPage >= totalPages"
-        @click="changePage(currentPage + 1)"
-      >
-        &gt;
-      </button>
     </div>
   </div>
 </template>
@@ -231,11 +239,42 @@ export default {
 .top-bar {
   display: flex;
   align-items: center;
-  max-width: 1100px;
-  margin-left: auto;
-  margin-right: auto;
   gap: 20px;
   margin-bottom: 25px;
+}
+
+.announcement-card {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px 28px 28px;
+  box-shadow: 0 4px 12px rgba(15, 35, 95, 0.08);
+  box-sizing: border-box;
+}
+
+.title-wrap { 
+  display:flex; 
+  flex-direction:column; 
+  gap:4px; 
+}
+
+.card-title { 
+  margin:0; 
+  font-size:20px; 
+  color:#10243b 
+}
+.card-sub { 
+  margin: 4px 0 0; 
+  color:#7d93ad; 
+  font-size:13px 
+}
+
+.search-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
 }
 
 /* 카테고리 드롭다운 */
@@ -327,7 +366,7 @@ export default {
 }
 
 .search-box input {
-  width: 100%;
+  width: 300px;
   height: 42px;
   padding: 0 15px 0 38px;
   border: 1px solid #ddd;
@@ -362,15 +401,9 @@ export default {
 
 /* 공지 리스트 */
 .announcement-list {
-  background: white;
-  height: 620px;
-  width: 1100px;
-  margin: 0 auto;
-  overflow-x: hidden;
-  border-radius: 10px;
-  padding: 20px 25px;
-  border: 1px solid #e3e6ed;
-
+  border-top: 1px solid #e3e6ed;
+  border-bottom: 1px solid #e3e6ed;
+  padding: 12px 0 0; 
   position: relative;
 }
 

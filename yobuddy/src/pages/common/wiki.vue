@@ -1,25 +1,27 @@
 <template>
 	<div class="wiki-container">
-		<div class="wiki-header">
-			<h2 class="wiki-title">Wiki 트리</h2>
-			<button class="add-root-btn" @click="openCreateRoot">＋ 새 문서</button>
-		</div>
-		<div class="wiki-tree">
-			<ul class="tree-root" v-if="nodesToShow && nodesToShow.length">
-				<wiki-tree-node
-					v-for="node in nodesToShow"
-					:key="node.wikiId"
-					:node="node"
-					@add-child="openAddChildModal"
-					@delete="onDeleteNode"
-					@edit="openEditModal"
-				/>
-			</ul>
-			<div class="empty-state" v-else>
-				등록된 문서가 없습니다.
+		<div class="wiki-card">
+			<div class="wiki-header">
+				<h2 class="wiki-title">Wiki 트리</h2>
+				<button class="add-root-btn" @click="openCreateRoot">＋ 새 문서</button>
 			</div>
+			<div class="wiki-tree">
+				<ul class="tree-root" v-if="nodesToShow && nodesToShow.length">
+					<wiki-tree-node
+						v-for="node in nodesToShow"
+						:key="node.wikiId"
+						:node="node"
+						@add-child="openAddChildModal"
+						@delete="onDeleteNode"
+						@edit="openEditModal"
+					/>
+				</ul>
+				<div class="empty-state" v-else>
+					등록된 문서가 없습니다.
+				</div>
+			</div>
+			<div class="wiki-note">클릭하여 항목을 확장/축소하고 내용을 확인하세요.</div>
 		</div>
-		<div class="wiki-note">클릭하여 항목을 확장/축소하고 내용을 확인하세요.</div>
 	</div>
 	<wikidetailpopup
 			:visible="showAddModal"
@@ -233,9 +235,10 @@ export default {
 
 
 <style scoped>
-.wiki-container{ max-width:980px; margin:28px auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:15px; color:#0b1220 }
+.wiki-container{ max-width:1100px; margin:28px auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:15px; color:#0b1220 }
+.wiki-card { background: #ffffff; border: 1px solid #e6eef8; border-radius: 12px; padding: 22px 24px 26px; box-shadow: 0 6px 18px rgba(16, 36, 59, 0.06); max-width: 1100px; margin: 0 auto 20px; box-sizing: border-box; }
 .wiki-title{ color:#0b1220; margin:0 0 16px 0; font-size:22px; font-weight:700 }
-.wiki-tree{ background: linear-gradient(180deg,#fbfdff,#f7f9fc); border:1px solid #e6eef8; padding:22px; border-radius:14px; box-shadow:0 6px 18px rgba(16,36,59,0.06) }
+.wiki-tree{ border-radius:10px; margin-top: 12px; }
 .tree-root{ list-style:none; padding-left:6px; margin:0 }
 .tree-node{ margin:10px 0; }
 .wiki-note{ margin-top:14px; font-size:13px; color:#64748b }

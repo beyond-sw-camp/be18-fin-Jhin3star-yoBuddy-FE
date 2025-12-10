@@ -328,6 +328,7 @@ export default {
   cursor: pointer;
   padding: 6px;
   color: #4b5563;
+  z-index: 2000;
 }
 .modal-title { font-size:18px; font-weight:700; color: var(--main-color); letter-spacing:0.2px }
 
