@@ -239,9 +239,6 @@ export default {
 .top-bar {
   display: flex;
   align-items: center;
-  max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
   gap: 20px;
   margin-bottom: 25px;
 }
@@ -404,15 +401,9 @@ export default {
 
 /* 공지 리스트 */
 .announcement-list {
-  background: white;
-  height: 620px;
-  width: 1000px;
-  margin: 0 auto;
-  overflow-x: hidden;
-  border-radius: 10px;
-  padding: 20px 25px;
-  border: 1px solid #e3e6ed;
-
+  border-top: 1px solid #e3e6ed;
+  border-bottom: 1px solid #e3e6ed;
+  padding: 12px 0 0; 
   position: relative;
 }
 
