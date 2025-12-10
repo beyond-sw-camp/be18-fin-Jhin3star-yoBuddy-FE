@@ -66,14 +66,16 @@
         <section class="charts">
           <div class="chart-panel">
             <!-- enlarge bar chart height -->
-            <VueApexCharts type="bar" :options="computedChartOptions" :series="computedChartSeries" height="460" />
+            <div v-if="chartLoading" class="skeleton skeleton-chart large"></div>
+            <VueApexCharts v-else type="bar" :options="computedChartOptions" :series="computedChartSeries" height="460" />
           </div>
         </section>
         <section class="kpi-passfail">
           <div class="card passfail-card">
             <div class="card-title">KPI 위험도</div>
             <div class="card-body">
-              <div class="passfail-chart-wrap">
+              <div v-if="chartLoading" class="skeleton skeleton-donut"></div>
+              <div v-else class="passfail-chart-wrap">
                 <VueApexCharts type="donut" :options="kpiPassFailOptions" :series="kpiPassFailSeries" height="220" />
               </div>
             </div>
@@ -91,21 +93,25 @@
                 </div>
               </div>
               <div class="card-body">
-                <VueApexCharts type="radar" :options="radarOptions" :series="computedRadarSeries" height="520" />
+                <div v-if="chartLoading" class="skeleton skeleton-radar"></div>
+                <VueApexCharts v-else type="radar" :options="radarOptions" :series="computedRadarSeries" height="520" />
               </div>
             </div>
             <div class="card mentoring-card">
           <div class="card-title">멘토링 세션 요약</div>
           <div class="card-body">
-            <div class="mentoring-chart-wrap">
-              <VueApexCharts type="donut" :options="mentoringDonutOptions" :series="mentoringDonutSeries" height="260" />
-            </div>
-            <div class="mentoring-legend">
-              <div class="legend-item"><span class="dot dot-completed"></span>완료 <strong>{{ mentoringSessions && mentoringSessions.completed != null ? mentoringSessions.completed : 0 }}</strong></div>
-              <div class="legend-item"><span class="dot dot-scheduled"></span>예정 <strong>{{ mentoringSessions && mentoringSessions.scheduled != null ? mentoringSessions.scheduled : 0 }}</strong></div>
-              <div class="legend-item"><span class="dot dot-cancelled"></span>취소 <strong>{{ mentoringSessions && mentoringSessions.cancelled != null ? mentoringSessions.cancelled : 0 }}</strong></div>
-              <div class="legend-item"><span class="dot dot-noshow"></span>노쇼 <strong>{{ mentoringSessions && mentoringSessions.noShow != null ? mentoringSessions.noShow : 0 }}</strong></div>
-            </div>
+            <div v-if="chartLoading" class="skeleton skeleton-donut"></div>
+            <template v-else>
+              <div class="mentoring-chart-wrap">
+                <VueApexCharts type="donut" :options="mentoringDonutOptions" :series="mentoringDonutSeries" height="260" />
+              </div>
+              <div class="mentoring-legend">
+                <div class="legend-item"><span class="dot dot-completed"></span>완료 <strong>{{ mentoringSessions && mentoringSessions.completed != null ? mentoringSessions.completed : 0 }}</strong></div>
+                <div class="legend-item"><span class="dot dot-scheduled"></span>예정 <strong>{{ mentoringSessions && mentoringSessions.scheduled != null ? mentoringSessions.scheduled : 0 }}</strong></div>
+                <div class="legend-item"><span class="dot dot-cancelled"></span>취소 <strong>{{ mentoringSessions && mentoringSessions.cancelled != null ? mentoringSessions.cancelled : 0 }}</strong></div>
+                <div class="legend-item"><span class="dot dot-noshow"></span>노쇼 <strong>{{ mentoringSessions && mentoringSessions.noShow != null ? mentoringSessions.noShow : 0 }}</strong></div>
+              </div>
+            </template>
           </div>
         </div>
       </section>
@@ -153,6 +159,7 @@ const users = ref([])
 const usersLoading = ref(false)
 const usersError = ref(null)
 const exporting = ref(false)
+const chartLoading = ref(true)
 const deptStore = useDepartmentStore()
 const kpiGoals = ref([])
 const goalsModalVisible = ref(false)
@@ -436,23 +443,28 @@ function toggleDropdown() {
 }
 
 async function selectDepartment(d) {
+  chartLoading.value = true
   // accept object or primitive id
-  if (!d) {
-    selectedDepartmentId.value = null
-  } else if (typeof d === 'object') {
-    selectedDepartmentId.value = d.departmentId || d.id || d._id || null
-  } else {
-    selectedDepartmentId.value = d
+  try {
+    if (!d) {
+      selectedDepartmentId.value = null
+    } else if (typeof d === 'object') {
+      selectedDepartmentId.value = d.departmentId || d.id || d._id || null
+    } else {
+      selectedDepartmentId.value = d
+    }
+    dropdownOpen.value = false
+    // reload KPI results and user list for selected department
+    // await loadResults(selectedDepartmentId.value)
+    await loadUsers(selectedDepartmentId.value)
+    await loadkpiGoals(selectedDepartmentId.value)
+    // 먼저 사용자별 KPI 데이터를 가져와서 `userKpiResults`를 채운 뒤 총합을 계산합니다.
+    await getuserkpiresults()
+    await getUserTotal()
+    await getmentoring(selectedDepartmentId.value)
+  } finally {
+    chartLoading.value = false
   }
-  dropdownOpen.value = false
-  // reload KPI results and user list for selected department
-  // await loadResults(selectedDepartmentId.value)
-  await loadUsers(selectedDepartmentId.value)
-  await loadkpiGoals(selectedDepartmentId.value)
-  // 먼저 사용자별 KPI 데이터를 가져와서 `userKpiResults`를 채운 뒤 총합을 계산합니다.
-  await getuserkpiresults()
-  await getUserTotal()
-  await getmentoring(selectedDepartmentId.value)
 }
 
 function goToUser(u) {
@@ -473,10 +485,6 @@ onMounted(async () => {
   await loadDepartments()
   // 기본 부서 ID 4로 초기 선택 (selectDepartment은 id 또는 객체 모두 허용)
   await selectDepartment(4)
-  await getuserkpiresults()
-  await getUserTotal()
-  await getmentoring(4)
-  await console.log(totalScoreUser.value)
   console.log('KPI goals loaded for default dept:', selectedDepartmentId.value, kpiGoals.value.length)
   document.addEventListener('click', onDocClick)
 })
@@ -919,6 +927,17 @@ async function getmentoring(departmentId) {
 .dot-scheduled { background:#2563eb }
 .dot-cancelled { background:#f97316 }
 .dot-noshow { background:#ef4444 }
+
+/* Skeleton loading for charts */
+.skeleton { position:relative; background:#eef2ff; border-radius:12px; overflow:hidden }
+.skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.6), rgba(255,255,255,0)); animation: shimmer 1.4s ease-in-out infinite }
+.skeleton-chart.large { height:460px }
+.skeleton-donut { height:220px; max-width:320px; margin:0 auto }
+.skeleton-radar { height:520px }
+
+@keyframes shimmer {
+  100% { transform:translateX(100%) }
+}
 
 /* Radar header: title + year select */
 .card-title-row { display:flex; justify-content:space-between; align-items:center; gap:12px }
