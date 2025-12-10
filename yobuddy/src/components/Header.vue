@@ -173,6 +173,8 @@ const breadcrumbLinks = computed(() => {
     }
 
     onMounted(() => {
+      notificationStore.fetchNotifications()
+      notificationStore.connectSSE()
       window.addEventListener('click', handleClickOutside)
     })
 

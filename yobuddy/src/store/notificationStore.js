@@ -55,14 +55,31 @@ export const useNotificationStore = defineStore('notification', {
         return
       }
 
-      const eventTypes = ["task", "mentoring", "kpi", "system", "form"]
+      const eventTypes = [
+        "task",
+        "mentoring",
+        "kpi",
+        "system",
+        "form",
+        "new_training",
+        "offline_form_pending",
+        "offline_next_week",
+        "offline_tomorrow",
+        "online_due_next_week",
+        "online_due_tomorrow",
+        "new_announcement"
+      ];
 
       eventTypes.forEach((type) => {
         this.es.addEventListener(type, (e) => {
           try {
             const data = JSON.parse(e.data)
 
-            this.notifications.unshift({ ...data, read: false })
+            this.notifications.unshift({
+              ...data,
+              read: false,
+              type: data.type
+            })
             this.unreadCount++
           } catch (err) {
             console.error(`❌ SSE(${type}) JSON 파싱 오류:`, err)
