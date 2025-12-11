@@ -104,7 +104,7 @@
 
               <div v-if="filteredMembers.length" class="member-table-body">
                 <div
-                  v-for="m in filteredMembers"
+                  v-for="m in pagedMembers"
                   :key="m.userId"
                   class="member-row"
                   @click="openUserDetail(m)"
@@ -122,6 +122,31 @@
 
               <div v-else class="member-empty">
                 구성원이 없습니다.
+              </div>
+
+              <div
+                v-if="filteredMembers.length > 0 && totalPages > 1"
+                class="member-pagination"
+              >
+                <button
+                  class="page-btn"
+                  @click="currentPage--"
+                  :disabled="currentPage === 1"
+                >
+                  이전
+                </button>
+
+                <span class="page-info">
+                  {{ currentPage }} / {{ totalPages }}
+                </span>
+
+                <button
+                  class="page-btn"
+                  @click="currentPage++"
+                  :disabled="currentPage === totalPages"
+                >
+                  다음
+                </button>
               </div>
             </div>
           </section>
@@ -172,7 +197,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useDepartmentStore } from '@/store/modules/department';
 import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue';
 import userService from '@/services/user';
@@ -184,6 +209,8 @@ const search = computed({
 })
 const showUserDetail = ref(false)
 const selectedUser = ref(null)
+const pageSize = ref(10)
+const currentPage = ref(1)
 
 onMounted(() => {
   store.resetState()
@@ -198,6 +225,24 @@ const filteredMembers = computed(() => {
   }
 
   return list.filter(m => m.role === store.roleFilter)
+})
+
+const totalPages = computed(() => {
+  if (!filteredMembers.value.length) return 1
+  return Math.ceil(filteredMembers.value.length / pageSize.value)
+})
+
+const pagedMembers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredMembers.value.slice(start, end)
+})
+
+watch(filteredMembers, () => {
+  // 데이터 줄어들어서 현재 페이지가 범위를 벗어나면 1페이지로
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = 1
+  }
 })
 
 const roleLabel = (role) => {
@@ -604,6 +649,33 @@ const onUserDelete = async (user) => {
   flex: 1;
   color: #333;
 }
+
+.member-pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.member-pagination .page-btn {
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px solid #d0d7e2;
+  background: #fff;
+  cursor: pointer;
+}
+
+.member-pagination .page-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.member-pagination .page-info {
+  color: #4b5563;
+}
+
 
 /* 반응형: 좁아지면 세로 배치 */
 @media (max-width: 1024px) {
