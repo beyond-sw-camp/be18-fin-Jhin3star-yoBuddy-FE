@@ -33,7 +33,6 @@
               <th>제목</th>
               <th>유형</th>
               <th>프로그램</th>
-              <th>부서</th>
             </tr>
           </thead>
           <tbody>
@@ -47,7 +46,6 @@
               </td>
               <td>{{ t.typeLabel }}</td>
               <td>{{ t.assignedProgramsNames }}</td>
-              <td>{{ t.departmentName }}</td>
             </tr>
           </tbody>
         </table>
