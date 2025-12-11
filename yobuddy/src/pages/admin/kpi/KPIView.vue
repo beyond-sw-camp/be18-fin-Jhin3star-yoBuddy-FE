@@ -200,12 +200,12 @@
               <li v-if="usersLoading" class="empty">로딩 중...</li>
               <li v-else-if="!users || users.length === 0" class="empty">사용자 없음</li>
               <li
-                v-else
-                v-for="u in users"
-                :key="u.userId || u.id || u._id"
-                class="user-item"
-                @click="goToUser(u)"
-              >
+                    v-for="u in users"
+                    :key="u.userId || u.id || u._id"
+                    class="user-item"
+                    :class="{ disabled: isAdminOrMentor(u) }"
+                    @click="goToUser(u)"
+                  >
                 <div class="avatar">
                   {{ (u.name || u.username || u.fullName || '유저').slice(0, 1) }}
                 </div>
@@ -214,7 +214,7 @@
                     {{ u.name || u.username || u.fullName || '무명' }}
                   </div>
                   <div class="role">
-                    {{ u.role || u.position || (u.authorities && u.authorities[0]) || '' }}
+                    {{ formatRole(u.role) }}
                   </div>
                 </div>
               </li>
@@ -376,9 +376,21 @@ async function selectDepartment(d) {
 }
 
 function goToUser(u) {
+  const role = typeof u.role === 'object' ? u.role?.name : u.role
+
+  if (role === 'ADMIN' || role === 'MENTOR') {
+    return // 상세보기 이동 차단
+  }
+
   const uid = u && (u.userId || u.id || u._id)
   if (!uid) return
+
   router.push(`/kpi/user/${uid}`)
+}
+
+function isAdminOrMentor(u) {
+  const role = typeof u.role === 'object' ? u.role?.name : u.role
+  return role === 'ADMIN' || role === 'MENTOR'
 }
 
 // ====== Goals / Modal ======
@@ -566,6 +578,19 @@ const kpiPassFailOptions = computed(() => ({
   legend: { position: 'bottom' },
   tooltip: { y: { formatter: v => `${v}` } }
 }))
+
+function formatRole(role) {
+  const value = typeof role === 'object' ? role?.name : role
+  if (!value) return ''
+
+  const map = {
+    ADMIN: '관리자',
+    MENTOR: '멘토',
+    USER: '멘티'
+  }
+
+  return map[value] || value
+}
 
 // ====== PDF Export ======
 async function exportPdf() {
@@ -1308,5 +1333,10 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.user-item.disabled:hover {
+  background: #ffffff; /* 기존 hover 무효 */
+  transform: none;
 }
 </style>
