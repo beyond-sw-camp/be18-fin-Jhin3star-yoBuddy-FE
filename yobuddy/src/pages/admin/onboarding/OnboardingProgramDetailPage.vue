@@ -52,7 +52,7 @@
               <li v-for="(it, idx) in dayItems" :key="it.id || idx" class="day-item">
                 <div class="left">
                   <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
-                    <div class="item-type-badge">{{ it.kind === 'task' ? '과제' : (it.kind === 'training' ? '트레이닝' : '') }}</div>
+                    <div class="item-type-badge">{{ it.kind === 'task' ? '과제' : (it.kind === 'training' ? '교육' : '') }}</div>
                     <div class="title">{{ it.title }}</div>
                   </div>
                   <div class="meta">{{ formatItemTime(it) }}</div>

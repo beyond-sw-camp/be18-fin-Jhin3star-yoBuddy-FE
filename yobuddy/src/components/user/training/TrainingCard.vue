@@ -83,7 +83,7 @@ export default {
 .pill-default{ background:#f6f8d1; color:#b0b900 }
 .pill-missed{ background:#F8E3E2; color:#AE5E62 }
 .card-body{ padding:16px 16px 14px 16px }
-.title{ font-weight:800; color:#10243b; font-size:15px; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical }
+.title{ font-weight:800; color:#10243b; font-size:15px; margin-bottom:4px; max-width: 200px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical }
 .subtitle{ color:#6d859a; font-size:13px; margin:6px 0 10px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical }
 .card-header-row{ display:flex; justify-content:space-between; align-items:center; gap:12px }
 .status-box-inline{ display:flex; align-items:center }

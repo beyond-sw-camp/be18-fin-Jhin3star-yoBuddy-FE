@@ -21,7 +21,7 @@
                     <div class="item-title">
                       {{ it.title }}
                       <span v-if="(it._isAssignment || it.taskId || it.task_id)" class="item-badge">과제</span>
-                      <span v-else class="item-badge item-badge--training">트레이닝</span>
+                      <span v-else class="item-badge item-badge--training">교육</span>
                       <span class="training-type">{{ formatTrainingType(it) }}</span>
                       <button class="btn-outline btn-small selected-inline-btn" @click="removeSelectedTraining(it)">취소</button>
                     </div>
@@ -49,12 +49,12 @@
 
           <section class="right">
             <div class="right-tabs">
-              <button :class="['tab', { active: activeRightTab === 'training' }]" @click="setActiveRightTab('training')">트레이닝</button>
+              <button :class="['tab', { active: activeRightTab === 'training' }]" @click="setActiveRightTab('training')">교육</button>
               <button :class="['tab', { active: activeRightTab === 'assignment' }]" @click="setActiveRightTab('assignment')">과제</button>
             </div>
 
             <div v-if="activeRightTab === 'training'">
-              <h4>트레이닝 목록</h4>
+              <h4>교육 목록</h4>
               <div v-if="loadingTrainings">로딩 중...</div>
               <div v-else>
                 <ul class="training-list">
@@ -62,7 +62,7 @@
                     <div class="training-left">
                       <div>
                         <span class="training-title">{{ t.title || t.name || t.trainingTitle || t.trainingName }}</span>
-                        <span class="item-badge item-badge--training">트레이닝</span>
+                        <span class="item-badge item-badge--training">교육</span>
                         <span class="training-type">{{ formatTrainingType(t) }}</span>
                       </div>
                       <div class="training-meta">{{ formatTrainingDates(t) }}</div>
@@ -71,7 +71,7 @@
                       <button class="btn-add" @click="addTrainingToDate(t)">추가</button>
                     </div>
                   </li>
-                  <li v-if="availableTrainings.length === 0" class="empty">표시할 트레이닝이 없습니다.</li>
+                  <li v-if="availableTrainings.length === 0" class="empty">표시할 교육이 없습니다.</li>
                 </ul>
               </div>
             </div>
