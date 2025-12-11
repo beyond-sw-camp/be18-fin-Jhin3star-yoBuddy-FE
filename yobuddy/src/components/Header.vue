@@ -97,6 +97,7 @@ export default {
       '/tasks': '과제',
       '/trainings': '교육',
       '/trainings/results': '교육 평가',
+      '/trainings/create': '교육 생성',
       '/content/announcement': '공지사항',
       '/content/announcement/create': '공지사항 생성',
       '/content/wiki': '위키',

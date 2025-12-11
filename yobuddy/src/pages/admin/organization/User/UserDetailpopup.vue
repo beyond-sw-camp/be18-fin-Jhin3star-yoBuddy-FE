@@ -1,122 +1,124 @@
 <template>
-  <transition name="fade">
-    <div v-if="show" class="detail-overlay" @click.self="close">
-      <div class="detail-modal layout-vertical">
-        <header class="modal-top">
-          <button class="back-btn" @click="close" aria-label="뒤로가기">X</button>
-          <div class="modal-title">사용자 정보</div>
-        </header>
+  <teleport to="body">
+    <transition name="fade">
+      <div v-if="show" class="detail-overlay" @click.self="close">
+        <div class="detail-modal layout-vertical">
+          <header class="modal-top">
+            <button class="back-btn" @click="close" aria-label="뒤로가기">X</button>
+            <div class="modal-title">사용자 정보</div>
+          </header>
 
-        <section class="center-area section">
-          <div class="avatar-large">
-            <img v-if="fullProfileImageUrl" :src="fullProfileImageUrl" alt="Profile" />
-            <span v-else class="avatar-fallback-large">{{ initials }}</span>
-          </div>
-          <div class="center-name">{{ user && (user.name || user.userName) ? (user.name || user.userName) : '알 수 없음' }}</div>
-        </section>
-
-        <section class="two-cols section">
-          <div class="col">
-            <div class="label">이메일</div>
-            <div class="val">
-              <template v-if="isEditMode && editingField === 'email'">
-                <input v-model="form.email" />
-              </template>
-              <template v-else>
-                {{ user && user.email ? user.email : '—' }}
-              </template>
+          <section class="center-area section">
+            <div class="avatar-large">
+              <img v-if="fullProfileImageUrl" :src="fullProfileImageUrl" alt="Profile" />
+              <span v-else class="avatar-fallback-large">{{ initials }}</span>
             </div>
-          </div>
+            <div class="center-name">{{ user && (user.name || user.userName) ? (user.name || user.userName) : '알 수 없음' }}</div>
+          </section>
 
-          <div class="col">
-            <div class="label">전화 번호</div>
-            <div class="val">
-              <template v-if="isEditMode && editingField === 'phone'">
-                <input v-model="form.phone" @input="onPhoneInput" />
-              </template>
-              <template v-else>
-                {{ user && (user.phone || user.phoneNumber) ? (user.phone || user.phoneNumber) : '—' }}
-              </template>
-              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('phone')">✎</button>
+          <section class="two-cols section">
+            <div class="col">
+              <div class="label">이메일</div>
+              <div class="val">
+                <template v-if="isEditMode && editingField === 'email'">
+                  <input v-model="form.email" />
+                </template>
+                <template v-else>
+                  {{ user && user.email ? user.email : '—' }}
+                </template>
+              </div>
             </div>
-          </div>
-        </section>
 
-        <section class="info-grid section">
-          <div class="info-item">
-            <div class="label">역할</div>
-            <div class="val">
-              <template v-if="isEditMode && editingField === 'role'">
-                <select v-model="form.role">
-                  <option value="ADMIN">관리자</option>
-                  <option value="MENTOR">멘토</option>
-                  <option value="USER">신입</option>
-                </select>
-              </template>
-              <template v-else>
-                {{ user && (user.roleLabel || user.role) ? (user.roleLabel || user.role) : '—' }}
-              </template>
-              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('role')">✎</button>
+            <div class="col">
+              <div class="label">전화 번호</div>
+              <div class="val">
+                <template v-if="isEditMode && editingField === 'phone'">
+                  <input v-model="form.phone" @input="onPhoneInput" />
+                </template>
+                <template v-else>
+                  {{ user && (user.phone || user.phoneNumber) ? (user.phone || user.phoneNumber) : '—' }}
+                </template>
+                <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('phone')">✎</button>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div class="info-item">
-            <div class="label">부서</div>
-            <div class="val">
-              <template v-if="isEditMode && editingField === 'department'">
-                <template v-if="departments && departments.length">
-                  <select v-model="form.departmentId">
-                    <option v-for="d in departments" :key="d.id || d.departmentId" :value="d.id || d.departmentId">{{ d.name || d.departmentName || d.department }}</option>
+          <section class="info-grid section">
+            <div class="info-item">
+              <div class="label">역할</div>
+              <div class="val">
+                <template v-if="isEditMode && editingField === 'role'">
+                  <select v-model="form.role">
+                    <option value="ADMIN">관리자</option>
+                    <option value="MENTOR">멘토</option>
+                    <option value="USER">신입</option>
                   </select>
                 </template>
                 <template v-else>
-                  <input v-model="form.department" />
+                  {{ user && (user.roleLabel || user.role) ? (user.roleLabel || user.role) : '—' }}
                 </template>
-              </template>
-              <template v-else>
-                {{ user && (user.department || user.departmentName) ? (user.department || user.departmentName) : '—' }}
-              </template>
-              <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('department')">✎</button>
+                <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('role')">✎</button>
+              </div>
             </div>
-          </div>
 
-          <div class="info-item">
-            <div class="label">입사일</div>
-            <div class="val">
-              <template v-if="isEditMode && editingField === 'joinDate'">
-                <input type="date" v-model="form.joinDate" />
-              </template>
-              <template v-else>
-                {{ formattedJoinDate }}
-              </template>
+            <div class="info-item">
+              <div class="label">부서</div>
+              <div class="val">
+                <template v-if="isEditMode && editingField === 'department'">
+                  <template v-if="departments && departments.length">
+                    <select v-model="form.departmentId">
+                      <option v-for="d in departments" :key="d.id || d.departmentId" :value="d.id || d.departmentId">{{ d.name || d.departmentName || d.department }}</option>
+                    </select>
+                  </template>
+                  <template v-else>
+                    <input v-model="form.department" />
+                  </template>
+                </template>
+                <template v-else>
+                  {{ user && (user.department || user.departmentName) ? (user.department || user.departmentName) : '—' }}
+                </template>
+                <button v-if="isEditMode" class="inline-edit" @click.stop.prevent="toggleEditing('department')">✎</button>
+              </div>
             </div>
-          </div>
-        </section>
 
-        <footer class="modal-actions section">
-          <template v-if="!isEditMode">
-            <button class="btn-outline" @click="enterEditMode">수정</button>
-            <button class="btn-primary" @click="confirmDelete">삭제</button>
-          </template>
-          <template v-else>
-            <button class="btn-outline" @click="cancelEdit">취소</button>
-            <button class="btn-primary" @click="saveAll" :disabled="saving">완료</button>
-          </template>
-        </footer>
+            <div class="info-item">
+              <div class="label">입사일</div>
+              <div class="val">
+                <template v-if="isEditMode && editingField === 'joinDate'">
+                  <input type="date" v-model="form.joinDate" />
+                </template>
+                <template v-else>
+                  {{ formattedJoinDate }}
+                </template>
+              </div>
+            </div>
+          </section>
 
-        <ConfirmDialog
-          :show="showConfirm"
-          title="사용자 삭제"
-          :message="confirmMessage"
-          confirmText="삭제"
-          cancelText="취소"
-          :danger="true"
-          @confirm="doDelete"
-          @cancel="showConfirm = false"
-        />
+          <footer class="modal-actions section">
+            <template v-if="!isEditMode">
+              <button class="btn-outline" @click="enterEditMode">수정</button>
+              <button class="btn-primary" @click="confirmDelete">삭제</button>
+            </template>
+            <template v-else>
+              <button class="btn-outline" @click="cancelEdit">취소</button>
+              <button class="btn-primary" @click="saveAll" :disabled="saving">완료</button>
+            </template>
+          </footer>
+
+          <ConfirmDialog
+            :show="showConfirm"
+            title="사용자 삭제"
+            :message="confirmMessage"
+            confirmText="삭제"
+            cancelText="취소"
+            :danger="true"
+            @confirm="doDelete"
+            @cancel="showConfirm = false"
+          />
+        </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </teleport>
 </template>
 
 <script>
@@ -294,7 +296,7 @@ export default {
   align-items: center;
   justify-content: center;
   background: rgba(3, 10, 18, 0.48);
-  z-index: 1400;
+  z-index: 2000;
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   padding: 20px;

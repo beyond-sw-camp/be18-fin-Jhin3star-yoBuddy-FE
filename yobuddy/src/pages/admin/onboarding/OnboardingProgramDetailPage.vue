@@ -24,7 +24,7 @@
             <!-- show a numeric badge when the date has trainings -->
             <div class="day-empty">
               <div
-                v-if="countItemsForDateKey(slotProps) > 0 && !showSetScheduleModal"
+                v-if="countItemsForDateKey(slotProps) > 0 && !anyModalOpen"
                 :class="['day-badge', (String(countItemsForDateKey(slotProps)).length === 1) ? 'single' : 'pill']"
                 :style="badgeStyle(countItemsForDateKey(slotProps))">
                 {{ countItemsForDateKey(slotProps) }}
@@ -52,7 +52,7 @@
               <li v-for="(it, idx) in dayItems" :key="it.id || idx" class="day-item">
                 <div class="left">
                   <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
-                    <div class="item-type-badge">{{ it.kind === 'task' ? '과제' : (it.kind === 'training' ? '트레이닝' : '') }}</div>
+                    <div class="item-type-badge">{{ it.kind === 'task' ? '과제' : (it.kind === 'training' ? '교육' : '') }}</div>
                     <div class="title">{{ it.title }}</div>
                   </div>
                   <div class="meta">{{ formatItemTime(it) }}</div>
@@ -210,6 +210,9 @@ export default {
     },
     calendarShowDate() {
       return this.internalShowDate
+    },
+    anyModalOpen() {
+      return (this.showUserDetail || this.showSetScheduleModal || this.showAddMenteeModal);
     },
     dayItems() {
       // Return trainings and program-assigned tasks scheduled for the currently selected date.
@@ -1221,7 +1224,7 @@ export default {
 .calendar-area { max-width:1100px; margin:0; width: 70%; background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1) }
 .calendar-wrapper { max-height: 540px; overflow: hidden; }
 .calendar-wrapper { position: relative; }
-.calendar-blocker { position: absolute; inset: 0; z-index: 9999; background: transparent; pointer-events: none; }
+.calendar-blocker { position: absolute; inset: 0; z-index: 100; background: transparent; pointer-events: none; }
 .btn-outline { background: transparent; border: 1px solid #d0d7e2; padding: 8px 14px; border-radius: 8px }
 
 /* Adopt modal calendar styles but target the page's calendar area */
@@ -1331,7 +1334,7 @@ export default {
 .day-empty { width:100%; height:100%; display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px }
 .day-empty .day-indicator { width:10px; height:10px; border-radius:50%; background:#294594 }
 /* debug count in cell */
-.dbg-count { position: absolute; left: 6px; bottom: 6px; color: #c53030; font-weight:700; font-size:12px; z-index:100000 !important }
+.dbg-count { position: absolute; left: 6px; bottom: 6px; color: #c53030; font-weight:700; font-size:12px; z-index:200 }
 
 /* small badge near the top-right of the day cell showing count */
 .day-badge {
@@ -1347,7 +1350,7 @@ export default {
   color: #fff !important;
   font-size: 12px !important;
   text-align: center !important;
-  z-index: 2147483647 !important; /* max z-index to ensure visibility */
+  z-index: 300; /* max z-index to ensure visibility */
   border: 1px solid #fff !important; /* white border to separate from colored cells */
   box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
   display: inline-flex !important;
@@ -1497,13 +1500,13 @@ export default {
 .day-items { list-style:none; padding:0; margin:12px 0 0 0 }
 .day-item { padding:14px 10px; border-bottom:1px solid #eef3fb; display:flex; align-items:flex-start; justify-content:space-between; gap:12px }
 .day-item .left { display:flex; flex-direction:column; align-items:flex-start; gap:6px; flex:1; min-width:0 }
-.day-item .title { font-weight:800; font-size:18px; color:#0f1724; line-height:1.25; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.day-item .title { font-weight:800; font-size:18px; max-width: 240px; color:#0f1724; line-height:1.25; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; }
 .day-item .meta { font-size:13px; color:#6b7280; white-space:normal }
 .day-item .actions { margin-left:12px; flex:0 0 auto }
 .day-list .empty { color:#6b7280; padding:12px }
 
 /* Small button variant used inside the side panel */
-.btn-small { padding:6px 10px; font-size:13px; border-radius:8px }
+.btn-small { padding:6px 10px; font-size:13px; border-radius:10px }
 .btn-outline.btn-small { background: transparent; border: 1px solid #e2e8f0; color: #1f2937 }
 .btn-outline.btn-small:hover { background: rgba(41,69,148,0.04) }
 

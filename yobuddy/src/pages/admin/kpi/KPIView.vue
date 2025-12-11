@@ -843,7 +843,7 @@ async function getmentoring(departmentId) {
 .clickable { cursor:pointer }
 
 /* Modal */
-.modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.45); display:flex; align-items:center; justify-content:center; z-index:60;margin-top: 5%; }
+.modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.45); display:flex; align-items:center; justify-content:center; z-index:60; }
 .modal { background:#fff; border-radius:10px; width:min(720px, 95vw); max-height:80vh; overflow:auto; box-shadow:0 18px 48px rgba(2,6,23,0.16) }
 .modal-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #f1f5f9 }
 .modal-title { color: #294594; font-size:20px; font-weight:800; letter-spacing: -0.2px; margin:0 }

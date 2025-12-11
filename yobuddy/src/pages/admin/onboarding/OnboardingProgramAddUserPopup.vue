@@ -1,59 +1,61 @@
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="set-overlay" @click.self="$emit('close')">
-      <div class="set-modal" role="dialog" aria-modal="true">
-        <header class="modal-top">
-          <div class="modal-title">멘티 추가</div>
-          <button class="modal-close-btn" @click="$emit('close')" aria-label="닫기">✕</button>
-        </header>
+  <teleport to="body">
+    <transition name="fade">
+      <div v-if="visible" class="set-overlay" @click.self="$emit('close')">
+        <div class="set-modal" role="dialog" aria-modal="true">
+          <header class="modal-top">
+            <div class="modal-title">멘티 추가</div>
+            <button class="modal-close-btn" @click="$emit('close')" aria-label="닫기">✕</button>
+          </header>
 
-        <div class="set-grid">
-          <section class="left">
-            <h4>선택된 멘티</h4>
-            <div v-if="!selectedUsers.length" class="empty">선택된 멘티가 없습니다.</div>
-            <ul class="item-list">
-              <li v-for="(u, idx) in selectedUsers" :key="u.id || idx" class="item-row">
-                <div class="item-left">
-                  <div class="item-title">{{ u.name || u.label }}</div>
-                  <div class="item-time">{{ u.email || '' }}</div>
-                </div>
-                <div class="item-actions">
-                  <button class="btn-outline btn-small" @click="removeSelected(u)">삭제</button>
-                </div>
-              </li>
-            </ul>
-          </section>
-
-          <section class="right">
-            <h4>유저 목록</h4>
-            <div class="field">
-              <input v-model="searchQuery" placeholder="이름/이메일/ID로 검색" @input="debouncedSearch" />
-            </div>
-            <div v-if="loadingUsers">로딩 중...</div>
-            <div v-else>
-              <ul class="training-list">
-                <li v-for="(u, i) in users" :key="u.id || u.userId || i" class="training-row">
-                  <div class="training-left">
-                    <div class="training-title">{{ u.name || u.displayName || u.username || u.email || u.id }}</div>
-                    <div class="training-meta">{{ u.email || '' }}</div>
+          <div class="set-grid">
+            <section class="left">
+              <h4>선택된 멘티</h4>
+              <div v-if="!selectedUsers.length" class="empty">선택된 멘티가 없습니다.</div>
+              <ul class="item-list">
+                <li v-for="(u, idx) in selectedUsers" :key="u.id || idx" class="item-row">
+                  <div class="item-left">
+                    <div class="item-title">{{ u.name || u.label }}</div>
+                    <div class="item-time">{{ u.email || '' }}</div>
                   </div>
-                  <div class="training-actions">
-                    <button class="btn-add" @click="addUserFromList(u)">추가</button>
+                  <div class="item-actions">
+                    <button class="btn-outline btn-small" @click="removeSelected(u)">삭제</button>
                   </div>
                 </li>
-                <li v-if="users.length === 0" class="empty">사용자 결과가 없습니다.</li>
               </ul>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        <footer class="modal-actions">
-          <button class="btn-outline" @click="$emit('close')">취소</button>
-          <button class="btn-primary" @click="onConfirm">저장</button>
-        </footer>
+            <section class="right">
+              <h4>유저 목록</h4>
+              <div class="field">
+                <input v-model="searchQuery" placeholder="이름/이메일/ID로 검색" @input="debouncedSearch" />
+              </div>
+              <div v-if="loadingUsers">로딩 중...</div>
+              <div v-else>
+                <ul class="training-list">
+                  <li v-for="(u, i) in users" :key="u.id || u.userId || i" class="training-row">
+                    <div class="training-left">
+                      <div class="training-title">{{ u.name || u.displayName || u.username || u.email || u.id }}</div>
+                      <div class="training-meta">{{ u.email || '' }}</div>
+                    </div>
+                    <div class="training-actions">
+                      <button class="btn-add" @click="addUserFromList(u)">추가</button>
+                    </div>
+                  </li>
+                  <li v-if="users.length === 0" class="empty">사용자 결과가 없습니다.</li>
+                </ul>
+              </div>
+            </section>
+          </div>
+
+          <footer class="modal-actions">
+            <button class="btn-outline" @click="$emit('close')">취소</button>
+            <button class="btn-primary" @click="onConfirm">저장</button>
+          </footer>
+        </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </teleport>
 </template>
 
 <script>
@@ -194,7 +196,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1500;
+  z-index: 2000;
 }
 .set-modal {
   width: 960px;
