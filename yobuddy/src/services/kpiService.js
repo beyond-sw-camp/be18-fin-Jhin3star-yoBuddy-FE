@@ -53,7 +53,13 @@ const kpiService = {
   },
   getweeklyreports(userId) {
     return http.get(`/api/v1/admin/kpi/results/weeklyreports/user/${userId}`)
-  }
+  },
+
+  getDashboard(departmentId) {
+  return http.get('/api/v1/admin/kpi/results/dashboard', {
+    params: { departmentId }
+  })
+}
 }
 
 export default kpiService
