@@ -34,7 +34,6 @@
               <th>유형</th>
               <th>프로그램</th>
               <th>부서</th>
-              <th>상태</th>
             </tr>
           </thead>
           <tbody>
@@ -49,9 +48,6 @@
               <td>{{ t.typeLabel }}</td>
               <td>{{ t.assignedProgramsNames }}</td>
               <td>{{ t.departmentName }}</td>
-              <td>
-                <span :class="['tag', statusClass(t.status)]">{{ statusLabel(t.status) }}</span>
-              </td>
             </tr>
           </tbody>
         </table>

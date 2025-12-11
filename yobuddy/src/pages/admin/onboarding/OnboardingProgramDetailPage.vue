@@ -1497,13 +1497,13 @@ export default {
 .day-items { list-style:none; padding:0; margin:12px 0 0 0 }
 .day-item { padding:14px 10px; border-bottom:1px solid #eef3fb; display:flex; align-items:flex-start; justify-content:space-between; gap:12px }
 .day-item .left { display:flex; flex-direction:column; align-items:flex-start; gap:6px; flex:1; min-width:0 }
-.day-item .title { font-weight:800; font-size:18px; color:#0f1724; line-height:1.25; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.day-item .title { font-weight:800; font-size:18px; max-width: 240px; color:#0f1724; line-height:1.25; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; }
 .day-item .meta { font-size:13px; color:#6b7280; white-space:normal }
 .day-item .actions { margin-left:12px; flex:0 0 auto }
 .day-list .empty { color:#6b7280; padding:12px }
 
 /* Small button variant used inside the side panel */
-.btn-small { padding:6px 10px; font-size:13px; border-radius:8px }
+.btn-small { padding:6px 10px; font-size:13px; border-radius:10px }
 .btn-outline.btn-small { background: transparent; border: 1px solid #e2e8f0; color: #1f2937 }
 .btn-outline.btn-small:hover { background: rgba(41,69,148,0.04) }
 
