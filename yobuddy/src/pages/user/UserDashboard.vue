@@ -452,7 +452,7 @@ export default {
     ------------------------------- */
     const fetchWeeklyReports = () =>
       dashboardService
-        .getWeeklyReports(userId.value, { page: 0, size: 5 })
+        .getWeeklyReports(userId.value, { page: 0, size: 12 })
         .then((res) => (weeklyReports.value = res.data.content));
 
     const fetchAllDashboardData = async () => {
