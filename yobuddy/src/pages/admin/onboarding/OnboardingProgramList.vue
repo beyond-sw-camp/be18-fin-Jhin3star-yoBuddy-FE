@@ -8,12 +8,7 @@
         </p>
       </div>
 
-      <!-- 우측 상단 버튼 -->
-      <button
-        class="btn new-btn"
-        type="button"
-        @click="goToCreateProgram"
-      >
+      <button class="btn new-btn" type="button" @click="goToCreateProgram">
         + 과정 등록
       </button>
     </div>
@@ -24,19 +19,52 @@
     <div v-else-if="error" class="error-state">
       {{ error }}
     </div>
+
     <div v-else-if="programs.length > 0" class="program-grid">
       <OnboardingProgramCard
-        v-for="program in programs"
+        v-for="program in paginatedPrograms"
         :key="program.programId"
         :program="program"
         @open="openProgramDetail"
       />
     </div>
-    <div v-else-if="programs.length === 0" class="empty-state">
+
+    <div v-else class="empty-state">
       등록된 온보딩 프로그램이 없습니다.
+    </div>
+
+    <div class="card-footer" v-if="totalPages > 1">
+      <div class="pagination numeric">
+        <button
+          class="page-nav"
+          :disabled="currentPage <= 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          &lt;
+        </button>
+
+        <button
+          v-for="page in visiblePages"
+          :key="page"
+          class="page-num"
+          :class="{ active: page === currentPage }"
+          @click="goToPage(page)"
+        >
+          {{ page }}
+        </button>
+
+        <button
+          class="page-nav"
+          :disabled="currentPage >= totalPages"
+          @click="goToPage(currentPage + 1)"
+        >
+          &gt;
+        </button>
+      </div>
     </div>
   </div>
 </template>
+
 
 <script>
 import onboardingService from '@/services/onboardingService';
@@ -44,47 +72,63 @@ import OnboardingProgramCard from '@/components/admin/onboarding/OnboardingProgr
 
 export default {
   name: "OnboardingProgramList",
-  components: {
-    OnboardingProgramCard,
-  },
+  components: { OnboardingProgramCard },
   data() {
     return {
       programs: [],
       loading: false,
       error: null,
+
+      currentPage: 1,
+      pageSize: 6,
+      MAX_VISIBLE_PAGES: 5,
     };
   },
   async mounted() {
     this.loading = true;
     try {
       this.programs = await onboardingService.getAdminOnboardingPrograms();
-      console.log('loaded programs', this.programs)
+      this.currentPage = 1; 
+      console.log('loaded programs', this.programs);
     } catch (e) {
       this.error = "프로그램 목록을 불러오는 데 실패했습니다.";
     } finally {
       this.loading = false;
     }
   },
+  computed: {
+    totalPages() {
+      return Math.ceil(this.programs.length / this.pageSize);
+    },
+    paginatedPrograms() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.programs.slice(start, start + this.pageSize);
+    },
+    visiblePages() {
+      const total = this.totalPages;
+      const current = this.currentPage;
+      if (!total) return [];
+
+      const start = Math.max(1, Math.min(current, total - this.MAX_VISIBLE_PAGES + 1));
+      const end = Math.min(total, start + this.MAX_VISIBLE_PAGES - 1);
+
+      const pages = [];
+      for (let i = start; i <= end; i++) pages.push(i);
+      return pages;
+    },
+  },
   methods: {
+    goToPage(page) {
+      const total = this.totalPages;
+      if (total < 1) return;
+      const next = Math.min(Math.max(page, 1), total);
+      if (next !== this.currentPage) this.currentPage = next;
+    },
+
     openProgramDetail(program) {
       console.log('openProgramDetail called with', program)
       const id = program ? (program.programId || program.id) : null
       if (id) this.$router.push({ name: 'OnboardingProgramDetail', params: { programId: id } })
-    },
-    debugOpenFirst() {
-      if (this.programs && this.programs.length > 0) {
-        this.openProgramDetail(this.programs[0])
-      } else {
-        this.openProgramDetail({
-          name: '샘플 프로그램',
-          department: '샘플 부서',
-          startDate: '—',
-          endDate: '—',
-          participantCount: 0,
-          progress: 0,
-          status: 'UPCOMING'
-        })
-      }
     },
     goToCreateProgram() {
       this.$router.push({ name: 'OnboardingProgramCreate' });
@@ -175,6 +219,14 @@ export default {
   color: #7d93ad;
   font-size: 16px;
 }
+
+.pagination.numeric { display:flex; gap:10px; align-items:center; justify-content:center }
+.page-nav { background:transparent; border:none; color:#4b5563; font-size:18px; padding:8px; cursor:pointer; transition: color 0.15s ease, opacity 0.15s ease }
+.page-nav:disabled { color: #c5c9d6; opacity: 0.7; cursor: default }
+.page-num { width:36px; height:36px; border-radius:50%; border:none; background:transparent; color:#4b5563; font-weight:700; cursor:pointer }
+.page-num.active { background:#3b4aa0; color:#fff; box-shadow: 0 6px 18px rgba(59,74,160,0.18) }
+.card-footer { padding: 16px 0; display:flex; justify-content:center }
+
 
 .error-state {
   color: #b91c1c;
