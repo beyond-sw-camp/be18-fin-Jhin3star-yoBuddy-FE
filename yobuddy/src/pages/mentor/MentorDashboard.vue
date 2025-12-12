@@ -195,21 +195,15 @@ export default {
   },
 
   methods: {
-    async fetchMentees(force = false) {
-  if (!this.mentorId) return
-
-  try {
-    const list = await mentoringService.getMenteesForMentor(this.mentorId, {
-      params: force ? { _ts: Date.now() } : undefined
-    })
-
-    this.mentees = Array.isArray(list?.data) ? list.data : list
-    this.currentPage = 1
-  } catch (e) {
-    console.error("멘티 목록 조회 실패", e)
-  }
-},
-
+    async fetchMentees() {
+      if (!this.mentorId) return
+      try {
+        this.mentees = await mentoringService.getMenteesForMentor(this.mentorId)
+        this.currentPage = 1
+      } catch (e) {
+        console.error("멘티 목록 조회 실패", e)
+      }
+    },
 
     async fetchMentorSummary() {
       if (!this.mentorId) return
@@ -238,22 +232,16 @@ export default {
     },
 
     async removeMentee(mentee) {
-  try {
-    const id = String(mentee.menteeId)
-
-    await http.delete(`/api/v1/mentors/${this.mentorId}/mentees/${id}`)
-
-    this.mentees = (this.mentees || []).filter(m => String(m.menteeId) !== id)
-
-    this.showMenteeDetail = false
-    this.selectedMentee = null
-
-    await this.fetchMentees()
-  } catch (e) {
-    console.error("멘티 배정 해제 실패", e)
-  }
-},
-
+      try {
+        await http.delete(
+          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
+        )
+        this.showMenteeDetail = false
+        this.fetchMentees()
+      } catch (e) {
+        console.error("멘티 배정 해제 실패", e)
+      }
+    },
 
     setActiveTab(tabName) {
       this.activeTab = tabName
@@ -412,6 +400,12 @@ export default {
   text-align: center;
   padding: 40px 0;
   color: #7d93ad;
+}
+
+.btn-primary:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(41, 69, 148, 0.3);
 }
 
 .pagination.numeric { display:flex; gap:10px; align-items:center; justify-content:center }

@@ -5,6 +5,10 @@
 
         <header class="modal-top">
           <div class="modal-title">멘티 정보</div>
+
+          <button class="close-btn" type="button" @click="close" aria-label="닫기">
+            ×
+          </button>
         </header>
 
         <section class="center-area">
@@ -35,16 +39,6 @@
             <div class="label">입사일</div>
             <div class="val">{{ formattedJoinDate }}</div>
           </div>
-
-          <div class="info-item">
-            <div class="label">완료 교육</div>
-            <div class="val">{{ user?.completedTrainings || 0 }}</div>
-          </div>
-
-          <div class="info-item">
-            <div class="label">예정 교육</div>
-            <div class="val">{{ user?.pendingTrainings || 0 }}</div>
-          </div>
         </section>
 
         <footer class="modal-actions">
@@ -52,11 +46,7 @@
             + 멘토링 세션 생성
           </button>
 
-          <button class="btn-outline" @click="close">
-            닫기
-          </button>
-
-          <button 
+          <button
             v-if="allowUnassign"
             class="btn-danger"
             @click="unassign"
@@ -131,9 +121,7 @@ export default {
 }
 </script>
 
-
 <style scoped>
-/* 기존 스타일 대부분 그대로 활용 */
 .detail-overlay {
   position: fixed;
   inset: 0;
@@ -158,14 +146,23 @@ export default {
   margin-bottom: 16px;
 }
 
-.back-btn {
+.close-btn {
   position: absolute;
   right: 0;
   top: 0;
-  background: transparent;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   border: none;
-  font-size: 18px;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
   cursor: pointer;
+  color: #334155;
+}
+
+.close-btn:hover {
+  background: #f1f5f9;
 }
 
 .modal-title {
@@ -209,7 +206,7 @@ export default {
 .info-grid {
   margin-top: 20px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Changed to 2 columns */
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 
@@ -225,16 +222,9 @@ export default {
 
 .modal-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end; 
   gap: 12px;
   margin-top: 24px;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid #d0d7e2;
-  padding: 8px 14px;
-  border-radius: 8px;
 }
 
 .btn-danger {
@@ -243,6 +233,16 @@ export default {
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: #b02a37;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .btn-primary {
@@ -254,5 +254,12 @@ export default {
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(41, 69, 148, 0.3);
 }
 </style>

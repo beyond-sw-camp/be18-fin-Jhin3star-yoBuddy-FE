@@ -160,6 +160,17 @@ export default {
   color: white;
   padding: 8px 16px;
   border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(41, 69, 148, 0.3);
 }
 
 .btn-ghost {
@@ -167,5 +178,17 @@ export default {
   border: 1px solid #e6eef8;
   padding: 8px 16px;
   border-radius: 8px;
+  color: #294594;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: #e6eef8;
+  border-color: #d1e0f0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 238, 248, 0.5);
 }
 </style>
