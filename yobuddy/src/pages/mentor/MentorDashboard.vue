@@ -36,18 +36,48 @@
       </div>
 
       <div class="card-body">
-        <div v-if="mentees.length" class="mentee-list">
-          <MenteeSummaryCard 
-            v-for="m in mentees" 
-            :key="m.menteeId" 
-            :mentee="m"
-            @select="openMenteeDetail"
-          />
-        </div>
-        <div v-else class="empty-state">
-          배정된 신입사원이 없습니다.
-        </div>
-      </div>
+  <div v-if="paginatedMentees.length" class="mentee-list">
+    <MenteeSummaryCard
+      v-for="m in paginatedMentees"
+      :key="m.menteeId"
+      :mentee="m"
+      @select="openMenteeDetail"
+    />
+  </div>
+  <div v-else class="empty-state">
+    배정된 신입사원이 없습니다.
+  </div>
+</div>
+
+<div class="card-footer" v-if="totalPages > 1">
+  <div class="pagination numeric">
+    <button
+      class="page-nav"
+      :disabled="currentPage <= 1"
+      @click="goToPage(currentPage - 1)"
+    >
+      &lt;
+    </button>
+
+    <button
+      v-for="p in visiblePages"
+      :key="p"
+      class="page-num"
+      :class="{ active: p === currentPage }"
+      @click="goToPage(p)"
+    >
+      {{ p }}
+    </button>
+
+    <button
+      class="page-nav"
+      :disabled="currentPage >= totalPages"
+      @click="goToPage(currentPage + 1)"
+    >
+      &gt;
+    </button>
+  </div>
+</div>
     </div>
 
     <!-- Tab Content: Mentor Schedule -->
@@ -96,9 +126,9 @@ import { watch } from "vue"
 
 export default {
   name: "MentorDashboard",
-  components: { 
-    MenteeSummaryCard, 
-    MenteeRegisterPopup, 
+  components: {
+    MenteeSummaryCard,
+    MenteeRegisterPopup,
     MenteeDetailPopup,
     MentorSchedule,
     MenteeOnboardingPerformance,
@@ -114,8 +144,37 @@ export default {
       selectedMentee: null,
 
       showRegister: false,
-      activeTab: 'mentees', 
+      activeTab: "mentees",
+
+      currentPage: 1,
+      pageSize: 8,
+      MAX_VISIBLE_PAGES: 5,
     }
+  },
+
+  computed: {
+    totalPages() {
+      return Math.ceil((this.mentees?.length || 0) / this.pageSize)
+    },
+
+    paginatedMentees() {
+      const start = (this.currentPage - 1) * this.pageSize
+      return (this.mentees || []).slice(start, start + this.pageSize)
+    },
+
+    visiblePages() {
+      const total = this.totalPages
+      const current = this.currentPage
+      const maxVisible = this.MAX_VISIBLE_PAGES
+      if (!total) return []
+
+      const start = Math.max(1, Math.min(current, total - maxVisible + 1))
+      const end = Math.min(total, start + maxVisible - 1)
+
+      const pages = []
+      for (let i = start; i <= end; i++) pages.push(i)
+      return pages
+    },
   },
 
   mounted() {
@@ -138,9 +197,9 @@ export default {
   methods: {
     async fetchMentees() {
       if (!this.mentorId) return
-
       try {
-        this.mentees = await mentoringService.getMenteesForMentor(this.mentorId);
+        this.mentees = await mentoringService.getMenteesForMentor(this.mentorId)
+        this.currentPage = 1
       } catch (e) {
         console.error("멘티 목록 조회 실패", e)
       }
@@ -149,7 +208,7 @@ export default {
     async fetchMentorSummary() {
       if (!this.mentorId) return
       try {
-        this.mentorSummary = await mentoringService.getMentorSummary(this.mentorId);
+        this.mentorSummary = await mentoringService.getMentorSummary(this.mentorId)
       } catch (e) {
         console.error("멘토 요약 정보 조회 실패", e)
         this.mentorSummary = {}
@@ -162,7 +221,9 @@ export default {
 
     async openMenteeDetail(mentee) {
       try {
-        const resp = await http.get(`/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`)
+        const resp = await http.get(
+          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
+        )
         this.selectedMentee = resp.data
         this.showMenteeDetail = true
       } catch (e) {
@@ -172,7 +233,9 @@ export default {
 
     async removeMentee(mentee) {
       try {
-        await http.delete(`/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`)
+        await http.delete(
+          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
+        )
         this.showMenteeDetail = false
         this.fetchMentees()
       } catch (e) {
@@ -182,13 +245,23 @@ export default {
 
     setActiveTab(tabName) {
       this.activeTab = tabName
-      if (tabName === 'mentees') this.fetchMentees()
+      if (tabName === "mentees") {
+        this.currentPage = 1
+        this.fetchMentees()
+      }
+    },
+
+    goToPage(page) {
+      const total = this.totalPages
+      if (total < 1) return
+      const next = Math.min(Math.max(page, 1), total)
+      if (next !== this.currentPage) this.currentPage = next
     },
 
     handleOpenSessionDetail(sessionId) {
       this.$router.push(`/mentor/sessions/${sessionId}`)
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -328,4 +401,11 @@ export default {
   padding: 40px 0;
   color: #7d93ad;
 }
+
+.pagination.numeric { display:flex; gap:10px; align-items:center; justify-content:center }
+.page-nav { background:transparent; border:none; color:#4b5563; font-size:18px; padding:8px; cursor:pointer; transition: color 0.15s ease, opacity 0.15s ease }
+.page-nav:disabled { color: #c5c9d6; opacity: 0.7; cursor: default }
+.page-num { width:36px; height:36px; border-radius:50%; border:none; background:transparent; color:#4b5563; font-weight:700; cursor:pointer }
+.page-num.active { background:#3b4aa0; color:#fff; box-shadow: 0 6px 18px rgba(59,74,160,0.18) }
+.card-footer { padding: 16px 0; display:flex; justify-content:center }
 </style>
