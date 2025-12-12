@@ -19,7 +19,7 @@
 
         <div class="form-row">
           <label for="session-datetime">멘토링 일정</label>
-          <input id="session-datetime" type="datetime-local" v-model="scheduledAt" />
+          <input id="session-datetime" type="datetime-local" v-model="scheduledAt" :min="minDateTime" />
         </div>
 
         <div class="form-row">
@@ -51,10 +51,15 @@ export default {
     };
   },
   computed: {
-    isFormValid() {
-      return this.selectedMenteeId && this.scheduledAt && this.description;
-    }
+  isFormValid() {
+    return this.selectedMenteeId && this.scheduledAt && this.description;
   },
+  minDateTime() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
+},
   async mounted() {
     const auth = useAuthStore();
     this.mentorId = auth.user?.userId;
