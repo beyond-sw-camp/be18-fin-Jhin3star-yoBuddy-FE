@@ -50,30 +50,53 @@
 
                       <!-- ✅ 교육일 때: 기존처럼 날짜 + 시작 + 종료 -->
                       <template v-else>
-                        <label>
-                          날짜
-                          <input
-                            type="date"
-                            v-model="it._editDate"
-                            @change="updateTrainingDateTime(it)"
-                          />
-                        </label>
-                        <label>
-                          시작
-                          <input
-                            type="time"
-                            v-model="it._startTime"
-                            @change="updateTrainingDateTime(it)"
-                          />
-                        </label>
-                        <label>
-                          종료
-                          <input
-                            type="time"
-                            v-model="it._endTime"
-                            @change="updateTrainingDateTime(it)"
-                          />
-                        </label>
+                        <!-- 🔹 ONLINE 교육일 때: 시작일/종료일 -->
+                        <template v-if="isOnline(it)">
+                          <label>
+                            시작일
+                            <input
+                              type="date"
+                              v-model="it._onlineStartDate"
+                              @change="updateOnlineTrainingDates(it)"
+                            />
+                          </label>
+                          <label>
+                            종료일
+                            <input
+                              type="date"
+                              v-model="it._onlineEndDate"
+                              @change="updateOnlineTrainingDates(it)"
+                            />
+                          </label>
+                        </template>
+
+                        <!-- 🔹 그 외 교육 (OFFLINE 등): 날짜 + 시작/종료 시간 -->
+                        <template v-else>
+                          <label>
+                            날짜
+                            <input
+                              type="date"
+                              v-model="it._editDate"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                          <label>
+                            시작
+                            <input
+                              type="time"
+                              v-model="it._startTime"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                          <label>
+                            종료
+                            <input
+                              type="time"
+                              v-model="it._endTime"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                        </template>
                       </template>
                     </div>
                   </div>
@@ -186,10 +209,23 @@ export default {
   },
   watch: {
     visible(val) {
-      if (val) { this.deletedAssignmentIds = []; this.loadTrainings(); this.loadAssignments() }
-      console.log('[OnboardingPopup] visible ->', val, 'date:', this.date)
-      // also log incoming visibleDayItems for quick debug
-      console.log('[OnboardingPopup] visibleDayItems ->', this.visibleDayItems)
+      if (val) {
+      // 🔹 팝업 열릴 때: 내부 상태 리셋 + 데이터 로드
+      this.deletedAssignmentIds = []
+      this.selectedTrainings = []
+      this.title = ''
+      this.description = ''
+
+      this.loadTrainings()
+      this.loadAssignments()
+    } else {
+      // 🔹 팝업 닫힐 때: 임시 편집 값들 정리(선택된 것들만 초기화)
+      this.selectedTrainings = []
+      this.deletedAssignmentIds = []
+    }
+
+    console.log('[OnboardingPopup] visible ->', val, 'date:', this.date)
+    console.log('[OnboardingPopup] visibleDayItems ->', this.visibleDayItems)
     }
   },
   computed: {
@@ -305,6 +341,16 @@ export default {
       const time = item._dueTime || '18:00'
       // 최종 마감일시 (백엔드 LocalDateTime용)
       item.dueDate = this.combineLocalDateTime(date, time)
+    },
+    isOnline(item) {
+      const type = (item && (item.type || item.trainingType || item.training_type) || '').toString().toUpperCase()
+      return type === 'ONLINE'
+    },
+    updateOnlineTrainingDates(training) {
+      const start = training._onlineStartDate || this.getLocalDatePart(this.date)
+      const end = training._onlineEndDate || start
+      training.startDate = start   // 백엔드에 보낼 startDate(LocalDate)
+      training.endDate = end       // 백엔드에 보낼 endDate(LocalDate)
     },
     
     async confirmAndDelete(item) {
@@ -486,15 +532,25 @@ export default {
       const tid = training.trainingId || training.id
       const exists = this.selectedTrainings.some(t => (t.trainingId || t.id) === tid)
       if (exists) return
+
       const copy = Object.assign({}, training)
-      // prepare editable fields for date/time
       const yyyy = this.getLocalDatePart(this.date)
       copy._editDate = yyyy
-      // default times
-      copy._startTime = '12:00'
-      copy._endTime = '13:00'
-      copy.startDate = this.combineDateTime(yyyy, copy._startTime)
-      copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+
+      if (this.isOnline(copy)) {
+        // 🔹 ONLINE: 기간(시작일/종료일)만 사용
+        copy._onlineStartDate = yyyy
+        copy._onlineEndDate = yyyy
+        copy.startDate = yyyy
+        copy.endDate = yyyy
+      } else {
+        // 🔹 OFFLINE 등: 기존처럼 날짜 + 시간
+        copy._startTime = '12:00'
+        copy._endTime = '13:00'
+        copy.startDate = this.combineDateTime(yyyy, copy._startTime)
+        copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+      }
+
       this.selectedTrainings.push(copy)
     },
 
@@ -552,6 +608,23 @@ export default {
       }
 
       // ✅ 기존 교육 로직은 그대로
+      if (this.isOnline(it)) {
+        const s = it._onlineStartDate || (it.startDate ? this.getLocalDatePart(it.startDate) : null)
+        const e = it._onlineEndDate || (it.endDate ? this.getLocalDatePart(it.endDate) : null)
+
+        if (!s && !e) return ''
+        if (!e || s === e) {
+          // 시작/종료 같은 날이면 한 번만
+          const [yyyy, mm, dd] = s.split('-')
+          return `${yyyy}.${mm}.${dd}`         // 예: 2025.12.18
+        }
+
+        const [sy, sm, sd] = s.split('-')
+        const [ey, em, ed] = e.split('-')
+        return `${sy}.${sm}.${sd} ~ ${ey}.${em}.${ed}`  // 예: 2025.12.18 ~ 2025.12.19
+      }
+
+      // 🔹 그 외 교육(OFFLINE 등): 시간 범위 그대로
       try {
         const s = it.startDate ? new Date(it.startDate) : null
         const e = it.endDate ? new Date(it.endDate) : null
@@ -635,14 +708,20 @@ export default {
               const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
 
               if (rawType === 'ONLINE') {
-                const sdDate = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+                const sdDate =
+                  t._onlineStartDate ||
+                  t._editDate ||
+                  (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+
                 const edDate =
-                  (t._editDate && (t._endTime || t._startTime))
-                    ? t._editDate
-                    : (t.endDate ? this.getLocalDatePart(t.endDate) : null)
-                if (sdDate) payload.startDate = sdDate
+                  t._onlineEndDate ||
+                  t._editDate ||
+                  (t.endDate ? this.getLocalDatePart(t.endDate) : null)
+
+                if (sdDate) payload.startDate = sdDate   // "YYYY-MM-DD"
                 if (edDate) payload.endDate = edDate
               } else {
+                // 기존 OFFLINE/기타 교육 로직 그대로
                 const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
                 const timePart = t._startTime || '09:00'
                 const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
@@ -767,7 +846,14 @@ export default {
 .item-left { flex:1 }
 .item-actions { margin-left:12px }
 .item-row:last-child, .training-row:last-child { border-bottom:none }
-.item-title, .training-title { font-weight:600 }
+.item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;  /* 기존 그대로 유지 */
+  flex-wrap: wrap;   /* 제목/뱃지가 길면 아래 줄로 내려가도록 */
+}
+.training-title { font-weight:600 }
 .item-time, .training-meta { font-size:12px; color:#6b7280 }
 .modal-top { display:flex; align-items:center; justify-content:center; position:relative; margin-bottom:12px }
 .modal-title { font-size:18px; font-weight:700 }
@@ -794,7 +880,7 @@ input, textarea { width:100%; box-sizing:border-box; padding:8px; border:1px sol
 .selected-row { display:flex; align-items:flex-start; justify-content:space-between }
 .selected-left { flex:1 }
 .selected-actions { margin-left:12px }
-.selected-inline-btn { margin-left: 40%; vertical-align: middle }
+.selected-inline-btn { margin-left: auto; vertical-align: middle }
 .item-badge { display:inline-block; margin-left:8px; padding:2px 8px; font-size:11px; border-radius:12px; background:#fff3cd; color:#854d00; border:1px solid #ffeeba }
 .item-badge--training { background:#e6f0ff; color:#13306e; border-color:#d3e1ff }
 .dt-controls { display:flex; gap:8px; align-items:center; margin-top:8px }
