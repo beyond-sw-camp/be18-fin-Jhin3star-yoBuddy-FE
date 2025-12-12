@@ -7,7 +7,7 @@
         <h2 class="title">신입 온보딩 성과</h2>
 
         <div class="filters">
-          <select v-model.number="selectedMenteeId" @change="onFilterChange">
+          <select v-model.number="selectedMenteeId" @change="onMenteeChange">
             <option disabled value="">담당 멘티 선택</option>
             <option v-for="m in mentees" :key="m.menteeId" :value="m.menteeId">
               {{ m.name }} ({{ m.department || '부서 미지정' }})
@@ -15,9 +15,9 @@
           </select>
 
           <div class="date-range">
-            <input type="date" v-model="from" @change="onFilterChange" />
+            <input type="date" v-model="from" @change="onDateChange" />
             <span>~</span>
-            <input type="date" v-model="to" @change="onFilterChange" />
+            <input type="date" v-model="to" @change="onDateChange" />
           </div>
         </div>
       </div>
@@ -29,10 +29,6 @@
           <span class="value">{{ data.header.mentoringCount }}회</span>
         </div>
         <div class="metric">
-          <span class="label">총 멘토링 시간</span>
-          <span class="value">{{ data.header.totalMentoringHours.toFixed(1) }}시간</span>
-        </div>
-        <div class="metric">
           <span class="label">평균 과제 점수</span>
           <span class="value">
             {{ data.header.averageTaskScore != null ? data.header.averageTaskScore.toFixed(1) + '점' : '-' }}
@@ -41,7 +37,7 @@
         <div class="metric">
           <span class="label">KPI 점수</span>
           <span class="value">
-            {{ data.header.kpiScore != null ? data.header.kpiScore.toFixed(1) + '점' : '-' }}
+            {{ kpiScoreDisplay }}
           </span>
         </div>
       </div>
@@ -229,7 +225,27 @@ export default {
       isLoading: false,
       isReportPopupVisible: false,
       selectedReportId: null,
+      userModifiedRange: false,
+      cachedKpi: null,
     }
+  },
+  computed: {
+    kpiScoreDisplay() {
+      const h = this.data?.header || {}
+      const candidates = [
+        h.kpiScore,
+        h.kpi,
+        h.kpiAverage,
+        h.kpiAvg,
+        h.averageKpiScore,
+        h.kpi_score,
+        this.cachedKpi,
+      ]
+      const found = candidates.find(v => v !== undefined && v !== null && !Number.isNaN(Number(v)))
+      if (found === undefined) return "-"
+      const num = Number(found)
+      return Number.isFinite(num) ? `${num.toFixed(1)}점` : "-"
+    },
   },
   watch: {
     mentees: {
@@ -238,31 +254,127 @@ export default {
         // 멘티 목록 처음 로드되면 첫 번째 멘티 자동 선택
         if (newVal && newVal.length && !this.selectedMenteeId) {
           this.selectedMenteeId = newVal[0].menteeId
+          this.userModifiedRange = false
+          this.setRangeFromMenteeId(this.selectedMenteeId)
           this.fetchData()
         }
       },
     },
+    selectedMenteeId(val) {
+      if (val) {
+        this.userModifiedRange = false
+        this.setRangeFromMenteeId(val)
+      }
+    }
   },
   methods: {
-    async fetchData() {
+    onMenteeChange() {
+      this.userModifiedRange = false
+      this.setRangeFromMenteeId(this.selectedMenteeId)
+      this.fetchData()
+    },
+    onDateChange() {
+      this.userModifiedRange = true
+      this.fetchData()
+    },
+    setRangeFromMenteeId(id) {
+      const mentee = (this.mentees || []).find(m => m.menteeId === id)
+      if (!mentee) return
+
+      const start = this.pickDate(mentee, [
+        'onboardingStartDate',
+        'onboardingStartAt',
+        'onboardingStart',
+        'startDate',
+        'joinedAt'
+      ])
+      const end = this.pickDate(mentee, [
+        'onboardingEndDate',
+        'onboardingEndAt',
+        'onboardingEnd',
+        'endDate'
+      ])
+
+      if (start) this.from = start
+      if (end) this.to = end
+    },
+    pickDate(obj, keys = []) {
+      for (const k of keys) {
+        const val = obj?.[k]
+        const normalized = this.normalizeDate(val)
+        if (normalized) return normalized
+      }
+      return null
+    },
+    normalizeDate(val) {
+      if (!val) return null
+      const d = new Date(val)
+      if (Number.isNaN(d.getTime())) return null
+      return d.toISOString().slice(0, 10)
+    },
+    normalizeNumber(val) {
+      const num = Number(val)
+      return Number.isFinite(num) ? num : null
+    },
+    setRangeFromFirstWeeklyReport(sourceData = null) {
+      const target = sourceData || this.data
+      const reports = (target && target.weeklyReports) || []
+      if (!reports.length) return
+      const sorted = reports
+        .map(r => ({ ...r, _start: this.normalizeDate(r.startDate) }))
+        .filter(r => r._start)
+        .sort((a, b) => new Date(a._start) - new Date(b._start))
+      if (!sorted.length) return
+      const first = sorted[0]
+      const start = first._start
+      if (!start) return
+      const prevFrom = this.from
+      const prevTo = this.to
+      this.from = start
+
+      // to = start + 3 months (same day, clamp by month length)
+      const d = new Date(start)
+      const month = d.getMonth()
+      d.setMonth(month + 3)
+      // If month overflowed (e.g., Jan 31 -> Apr 31), adjust back to last valid day
+      if (d.getMonth() > (month + 3) % 12) {
+        d.setDate(0)
+      }
+      this.to = d.toISOString().slice(0, 10)
+
+      return prevFrom !== this.from || prevTo !== this.to
+    },
+    async fetchData(allowAutoRange = true) {
       if (!this.mentorId || !this.selectedMenteeId || !this.from || !this.to) return
       this.isLoading = true
       try {
-        this.data = await mentoringService.getMenteeOnboardingPerformance(
+        const next = await mentoringService.getMenteeOnboardingPerformance(
           this.mentorId,
           this.selectedMenteeId,
           this.from,
           this.to
         )
+        // preserve KPI if new payload is missing it
+        const header = next && next.header ? next.header : null
+        const nextKpi = this.normalizeNumber(header?.kpiScore ?? header?.kpi ?? header?.kpiAverage ?? header?.kpiAvg ?? header?.averageKpiScore ?? header?.kpi_score)
+        if (nextKpi != null) this.cachedKpi = nextKpi
+        if (header && nextKpi == null && this.cachedKpi != null) {
+          header.kpiScore = this.cachedKpi
+        }
+        if (allowAutoRange && !this.userModifiedRange) {
+          const changed = this.setRangeFromFirstWeeklyReport(next)
+          if (changed) {
+            this.isLoading = false
+            return this.fetchData(false)
+          }
+        }
+        this.data = next
       } catch (e) {
         console.error("온보딩 성과 조회 실패", e)
         this.data = null
       } finally {
         this.isLoading = false
       }
-    },
-    onFilterChange() {
-      this.fetchData()
     },
     openReportPopup(reportId) {
       this.selectedReportId = reportId;
