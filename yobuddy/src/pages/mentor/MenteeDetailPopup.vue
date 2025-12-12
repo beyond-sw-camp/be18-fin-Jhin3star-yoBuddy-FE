@@ -42,7 +42,7 @@
         </section>
 
         <footer class="modal-actions">
-          <button class="btn-primary" @click="goCreateSession">
+          <button v-if="canCreateSession" class="btn-primary" @click="goCreateSession">
             + 멘토링 세션 생성
           </button>
 
@@ -92,7 +92,23 @@ export default {
       }
 
       return `${base}${url.startsWith("/") ? url : "/" + url}`;
-    }
+    },
+
+    canCreateSession() {
+    const joinedAt = this.user?.joinedAt
+    if (!joinedAt) return false
+
+    const joinDate = new Date(joinedAt.slice(0, 10) + "T00:00:00")
+    if (Number.isNaN(joinDate.getTime())) return false
+
+    const today = new Date()
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
+    const diffMs = todayMidnight.getTime() - joinDate.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    return diffDays >= 0 && diffDays < 100
+  },
   },
 
   methods: {

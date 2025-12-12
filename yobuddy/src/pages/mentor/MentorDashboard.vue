@@ -1,115 +1,115 @@
 <template>
   <div class="org-page">
 
-    <!-- Tab Navigation -->
     <div class="tab-navigation">
-      <button 
-        :class="['tab-item', { active: activeTab === 'mentees' }]" 
+      <button
+        :class="['tab-item', { active: activeTab === 'mentees' }]"
         @click="setActiveTab('mentees')"
       >
         담당 신입
       </button>
-      <button 
-        :class="['tab-item', { active: activeTab === 'schedule' }]" 
+      <button
+        :class="['tab-item', { active: activeTab === 'schedule' }]"
         @click="setActiveTab('schedule')"
       >
         스케줄
       </button>
-      <button 
-        :class="['tab-item', { active: activeTab === 'performance' }]" 
+      <button
+        :class="['tab-item', { active: activeTab === 'performance' }]"
         @click="setActiveTab('performance')"
       >
         온보딩 성과
       </button>
     </div>
 
-    <!-- Tab Content: Assigned Mentees -->
     <div v-if="activeTab === 'mentees'" class="content-card">
       <div class="card-header">
-        <div class="title-wrap">
-          <h2 class="card-title">담당 신입</h2>
-        </div>
+        <h2 class="card-title">담당 신입</h2>
 
-        <button class="btn-primary" @click="openRegisterPopup">
-          + 멘티 등록
-        </button>
+        <div class="task-controls">
+          <select class="dept-select" v-model="statusFilter" @change="currentPage = 1">      
+            <option value="IN_PROGRESS">진행 중</option>
+            <option value="COMPLETED">종료</option>
+            <option value="ALL">전체</option>
+          </select>
+
+          <button class="btn-primary btn-small" @click="openRegisterPopup">
+            + 멘티 등록
+          </button>
+        </div>  
       </div>
+
 
       <div class="card-body">
         <div v-if="paginatedMentees.length" class="mentee-list">
           <MenteeSummaryCard
-                v-for="m in paginatedMentees"    
-                :key="`${mentorId}-${m.menteeId}`"
-                :mentee="m"
-                @select="openMenteeDetail"
-                />
-              </div>
-              <div v-else class="empty-state">
-                배정된 신입사원이 없습니다.
-              </div>
-            </div>
+            v-for="m in paginatedMentees"
+            :key="`${mentorId}-${m.menteeId}`"
+            :mentee="m"
+            @select="openMenteeDetail"
+          />
+        </div>
+        <div v-else class="empty-state">
+          배정된 신입사원이 없습니다.
+        </div>
+      </div>
 
-            <div class="card-footer" v-if="totalPages > 1">
-              <div class="pagination numeric">
-                <button
-                class="page-nav"
-                :disabled="currentPage <= 1"              
-                @click="goToPage(currentPage - 1)"
-                >
-                &lt;
-              </button>
+      <div class="card-footer" v-if="totalPages > 1">
+        <div class="pagination numeric">
+          <button
+            class="page-nav"
+            :disabled="currentPage <= 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            &lt;
+          </button>
 
-              <button
-              v-for="p in visiblePages"
-              :key="p"
-              class="page-num"
-              :class="{ active: p === currentPage }"
-              @click="goToPage(p)"
-              >
-              {{ p }}
-            </button>
+          <button
+            v-for="p in visiblePages"
+            :key="p"
+            class="page-num"
+            :class="{ active: p === currentPage }"
+            @click="goToPage(p)"
+          >
+            {{ p }}
+          </button>
 
-            <button
-                  class="page-nav"
-                  :disabled="currentPage >= totalPages"
-                  @click="goToPage(currentPage + 1)"
-                  >
-                  &gt;
-                </button>
-              </div>
-            </div>
-          </div>
+          <button
+            class="page-nav"
+            :disabled="currentPage >= totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            &gt;
+          </button>
+        </div>
+      </div>
+    </div>
 
-          <!-- Tab Content: Mentor Schedule -->
-          <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
-            <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
-          </div>
+    <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
+      <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
+    </div>
 
-          <!-- Tab Content: Performance -->
-               <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
-                <MenteeOnboardingPerformance
-                v-if="mentees.length && mentorId"
-                :mentor-id="mentorId"
-                :mentees="mentees"
-                />
-              </div>
-            </div>
+    <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
+      <MenteeOnboardingPerformance
+        v-if="mentees.length && mentorId"
+        :mentor-id="mentorId"
+        :mentees="mentees"
+      />
+    </div>
+  </div>
 
-            <!-- 멘티 등록 팝업 -->
-            <MenteeRegisterPopup
-            :show="showRegister"
-            :mentor-id="mentorId"
-            @close="showRegister = false"
-            @registered="fetchMentees"
-            />
-
-            <!-- 멘티 상세 팝업 -->
-            <MenteeDetailPopup
-            :show="showMenteeDetail"
-            :user="selectedMentee"
-            :allowUnassign="true"
-            @close="showMenteeDetail = false"
-            @unassign="removeMentee"
+  <MenteeRegisterPopup
+    :show="showRegister"
+    :mentor-id="mentorId"
+    @close="showRegister = false"
+    @registered="fetchMentees"
+  />
+  <MenteeDetailPopup
+    :show="showMenteeDetail"
+    :user="selectedMentee"
+    :allowUnassign="true"
+    @close="showMenteeDetail = false"
+    @unassign="removeMentee"
   />
 </template>
 
@@ -146,6 +146,8 @@ export default {
       showRegister: false,
       activeTab: "mentees",
 
+      statusFilter: "IN_PROGRESS", 
+
       currentPage: 1,
       pageSize: 8,
       MAX_VISIBLE_PAGES: 5,
@@ -153,13 +155,23 @@ export default {
   },
 
   computed: {
+    filteredMentees() {
+      const list = this.mentees || []
+      if (this.statusFilter === "ALL") return list
+
+      return list.filter((m) => {
+        const status = this.getOnboardingStatusByJoinedAt(m?.joinedAt)
+        return this.statusFilter === status
+      })
+    },
+
     totalPages() {
-      return Math.ceil((this.mentees?.length || 0) / this.pageSize)
+      return Math.ceil((this.filteredMentees?.length || 0) / this.pageSize)
     },
 
     paginatedMentees() {
       const start = (this.currentPage - 1) * this.pageSize
-      return (this.mentees || []).slice(start, start + this.pageSize)
+      return (this.filteredMentees || []).slice(start, start + this.pageSize)
     },
 
     visiblePages() {
@@ -215,15 +227,38 @@ export default {
       }
     },
 
+    setStatusFilter(next) {
+      this.statusFilter = next
+      this.currentPage = 1
+    },
+
+    getOnboardingStatusByJoinedAt(joinedAt) {
+      if (!joinedAt) return "IN_PROGRESS" 
+
+      const joined = new Date(joinedAt)
+      if (Number.isNaN(joined.getTime())) return "IN_PROGRESS"
+
+      const joinedDay = new Date(joined.getFullYear(), joined.getMonth(), joined.getDate())
+      const today = new Date()
+      const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
+      if (joinedDay.getTime() > todayDay.getTime()) return "IN_PROGRESS"
+
+      const plus100 = new Date(joinedDay)
+      plus100.setDate(plus100.getDate() + 100)
+
+      if (plus100.getTime() <= todayDay.getTime()) return "COMPLETED"
+
+      return "IN_PROGRESS"
+    },
+
     openRegisterPopup() {
       this.showRegister = true
     },
 
     async openMenteeDetail(mentee) {
       try {
-        const resp = await http.get(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
+        const resp = await http.get(`/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`)
         this.selectedMentee = resp.data
         this.showMenteeDetail = true
       } catch (e) {
@@ -233,9 +268,7 @@ export default {
 
     async removeMentee(mentee) {
       try {
-        await http.delete(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
+        await http.delete(`/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`)
         this.showMenteeDetail = false
         this.fetchMentees()
       } catch (e) {
@@ -271,50 +304,16 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 1200px; /* Page Safe Width - Adjusted to match UserDashboard */
-  margin: 0 auto; /* Center the entire dashboard content */
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.mentor-summary-panel {
-  width: 1200px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.summary-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(9,30,66,0.08);
-  padding: 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  min-height: 90px; /* Height: 88–96px */
-}
-
-.summary-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #294594;
-}
-
-.summary-label {
-  font-size: 14px;
-  color: #7d93ad;
-  font-weight: 500;
-}
-
-/* Tab Navigation Styles */
 .tab-navigation {
-  width: 100%; /* Match content card width */
-  max-width: 1200px; /* Adjusted to match UserDashboard */
+  width: 100%;
+  max-width: 1200px;
   display: flex;
   border-bottom: 1px solid #eef2f7;
-  margin-bottom: 1px; /* Space between tabs and content */
+  margin-bottom: 1px;
 }
 
 .tab-item {
@@ -327,7 +326,7 @@ export default {
   cursor: pointer;
   position: relative;
   transition: color 0.2s, border-bottom-color 0.2s;
-  min-height: 52px; /* Height: 52px */
+  min-height: 52px;
 }
 
 .tab-item.active {
@@ -338,7 +337,7 @@ export default {
 .tab-item.active::after {
   content: '';
   position: absolute;
-  bottom: -1px; /* Overlap with the border-bottom of tab-navigation */
+  bottom: -1px;
   left: 0;
   width: 100%;
   height: 3px;
@@ -348,16 +347,11 @@ export default {
 
 .content-card {
   width: 100%;
-  max-width: 1200px; /* Adjusted to match UserDashboard */
+  max-width: 1200px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(9,30,66,0.08);
   overflow: hidden;
-}
-
-.mentor-schedule-tab-content {
-  width: 100%; /* Ensure schedule component also takes full width */
-  max-width: 1200px; /* Adjusted to match UserDashboard */
 }
 
 .card-header {
@@ -366,6 +360,12 @@ export default {
   align-items: center;
   padding: 20px 28px;
   border-bottom: 1px solid #eef2f7;
+}
+
+.title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .card-title {
@@ -392,8 +392,8 @@ export default {
 .mentee-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  column-gap: 18px; /* Column gap */
-  row-gap: 24px; /* Row gap: 18–24px */
+  column-gap: 18px;
+  row-gap: 24px;
 }
 
 .empty-state {
@@ -414,4 +414,56 @@ export default {
 .page-num { width:36px; height:36px; border-radius:50%; border:none; background:transparent; color:#4b5563; font-weight:700; cursor:pointer }
 .page-num.active { background:#3b4aa0; color:#fff; box-shadow: 0 6px 18px rgba(59,74,160,0.18) }
 .card-footer { padding: 16px 0; display:flex; justify-content:center }
+
+.task-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.dept-select {
+  width: 100px;
+  height: 40px;
+  padding: 8px 12px;
+  padding-right: 32px;
+  border-radius: 10px; 
+  border: 1px solid #d1d5db;
+  background-color: #fff;
+  box-sizing: border-box;
+  text-align: center;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: #10243b;
+
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dept-select:focus {
+  outline: none;
+  border-color: #294594;
+  box-shadow: 0 0 0 3px rgba(41, 69, 148, 0.15);
+}
+
+.btn-small {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px; 
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 </style>
