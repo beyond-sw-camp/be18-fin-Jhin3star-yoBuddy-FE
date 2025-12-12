@@ -242,45 +242,69 @@ export default {
     },
     async confirmAndDelete(item) {
       if (!item) return
+      console.log('삭제 시도 item:', JSON.parse(JSON.stringify(item)));
       const ok = window.confirm('이 일정을 삭제하시겠습니까?')
       if (!ok) return
       await this.deleteAssignedTraining(item)
     },
     async deleteAssignedTraining(item) {
+      if (!this.programId) {
+        console.warn('programId가 없습니다.', item);
+        return;
+      }
       // determine whether this is an assignment/task or a training
-      const aid = item.assignmentId || item.id || item.assignment_id || item.taskId || item.task_id
-      const tid = item.trainingId || item.id || item.training_id
-      if (aid && this.programId) {
+        const assignmentId =
+          item.assignmentId ||
+          item.assignment_id ||
+          item.taskId ||
+          item.task_id;
+          
+        const trainingId =
+          item.trainingId ||
+          item.training_id ||
+          (!assignmentId ? item.id : null);
+
+        const isAssignment =
+          !!(item._isAssignment || item.taskId || item.task_id || item.assignmentId || item.assignment_id);
+
+        console.log('삭제 타입 판정:', { isAssignment, assignmentId, trainingId, raw: JSON.parse(JSON.stringify(item)) });
+      if (assignmentId) {
         try {
-          // primary: try tasks path (preferred)
-          await http.delete(`/api/v1/admin/programs/${this.programId}/tasks/${aid}`)
-          this.$emit('training-removed', { assignmentId: aid })
-          return
+          await http.delete(
+            `/api/v1/admin/programs/${this.programId}/tasks/${assignmentId}`
+          );
+          this.$emit('training-removed', { assignmentId });
+          return;
         } catch (e) {
-          console.debug('tasks delete failed, trying assignments delete', e)
+          console.debug('tasks delete failed, trying assignments delete', e);
           try {
-            // fallback: older assignments path
-            await http.delete(`/api/v1/admin/programs/${this.programId}/assignments/${aid}`)
-            this.$emit('training-removed', { assignmentId: aid })
-            return
+            await http.delete(
+              `/api/v1/admin/programs/${this.programId}/assignments/${assignmentId}`
+            );
+            this.$emit('training-removed', { assignmentId });
+            return;
           } catch (e2) {
-            console.error('과제 삭제 실패 (both tasks/assignments)', e2)
-            alert('삭제에 실패했습니다.')
-            return
+            console.error('과제 삭제 실패 (both tasks/assignments)', e2);
+            alert('과제 삭제에 실패했습니다.');
+            return;
           }
         }
       }
-      if (tid && this.programId) {
+      if (trainingId) {
         try {
-          await http.delete(`/api/v1/admin/programs/${this.programId}/trainings/${tid}`)
-          // notify parent to refresh
-          this.$emit('training-removed', { trainingId: tid })
+          await http.delete(
+            `/api/v1/admin/programs/${this.programId}/trainings/${trainingId}`
+          );
+          this.$emit('training-removed', { trainingId });
         } catch (e) {
-          console.error('트레이닝 삭제 실패', e)
-          alert('삭제에 실패했습니다.')
+          console.error('트레이닝 삭제 실패', e);
+          alert('교육 삭제에 실패했습니다.');
         }
       } else {
-        console.warn('삭제할 training/assignment id 또는 programId가 없습니다.', item)
+        console.warn(
+          '삭제할 training/assignment id를 찾을 수 없습니다.',
+          item
+        );
       }
     },
     isSelected(training) {
@@ -442,11 +466,7 @@ export default {
     save() {
       // On save, assign selectedTrainings to program (call API for each) then emit assigned events
       // First, filter out items that are already assigned according to visibleDayItems to avoid duplicate requests
-      const existingAssignedIds = new Set((this.visibleDayItems || []).map(it => String(it.trainingId || it.assignmentId || it.taskId || it.id)).filter(Boolean))
-      const toSave = (this.selectedTrainings || []).filter(t => {
-        const id = String(t.trainingId || t.assignmentId || t.taskId || t.id || '')
-        return id && !existingAssignedIds.has(id)
-      })
+      const toSave = this.selectedTrainings || []
       if ((this.selectedTrainings || []).length !== toSave.length) {
         console.debug('[OnboardingSetschedulePopup] save: filtered already-assigned items', { total: this.selectedTrainings.length, toSave: toSave.length })
       }
@@ -480,48 +500,57 @@ export default {
             // Assignments (tasks) should be posted to /programs/{programId}/tasks/{taskId}
             const url = isAssignment ? `/api/v1/admin/programs/${this.programId}/tasks/${id}` : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
             // If this is a task, include due_date (YYYY-MM-DD) from editable date
-            if (isAssignment) {
-              const due = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
-              if (due) {
-                // send both snake_case and camelCase to be tolerant to backend naming
-                payload.due_date = due
-                payload.dueDate = due
+              let resp
+                try {
+                resp = await http.post(url, payload)
+              } catch (e) {
+                // 🔥 여기서 "이미 매핑"이면 PATCH로 일정 수정
+                const respErr = e?.response
+                const status = respErr?.status
+                const data = respErr?.data
+                const msg = (data && (data.message || data.error || data.msg)) || ''
+
+                if (!isAssignment && status === 400 && typeof msg === 'string'
+                    && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
+                  console.warn('[OnboardingSetschedulePopup] 이미 매핑된 교육 → PATCH로 일정 수정 시도')
+
+                  // PATCH payload는 ProgramTrainingUpdateRequest와 맞춰서: { scheduledAt, startDate, endDate }
+                  const patchPayload = {
+                    scheduledAt: payload.scheduledAt || null,
+                    startDate: payload.startDate || null,
+                    endDate: payload.endDate || null,
+                  }
+
+                  console.debug('[OnboardingSetschedulePopup] PATCH', url, patchPayload)
+                  resp = await http.patch(url, patchPayload)  // ✅ 여기서 Content-Type: application/json으로 감
+                } else {
+                  // 진짜 에러는 그대로 처리
+                  console.error('일정 할당 실패', e)
+                  const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
+                  window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
+                  assignedList.push(Object.assign({}, t))
+                  return
+                }
               }
-            }
-            console.debug('[OnboardingSetschedulePopup] POST', url, payload)
-            const resp = await http.post(url, payload)
-            console.debug('[OnboardingSetschedulePopup] POST resp', resp)
-            const body = resp?.data ?? resp
-            const assigned = body || Object.assign({}, t)
-            assigned.startDate = assigned.startDate || t.startDate
-            assigned.endDate = assigned.endDate || t.endDate
-            if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
-            assignedList.push(assigned)
-          } catch (e) {
-            console.error('일정 할당 실패', e)
-            // handle duplicate-mapping 400 errors gracefully and surface full response for debugging
-            try {
-              const respErr = e?.response
-              const status = respErr?.status
-              const data = respErr?.data
-              console.debug('[OnboardingSetschedulePopup] error response data:', data)
-              const msg = (data && (data.message || data.error || data.msg)) || ''
-              if (status === 400 && typeof msg === 'string' && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
-                console.warn('[OnboardingSetschedulePopup] duplicate mapping, skipping:', msg)
-                assignedList.push(Object.assign({}, t))
-                return
+
+              // POST 또는 PATCH가 성공한 케이스
+              console.debug('[OnboardingSetschedulePopup] POST/PATCH resp', resp)
+              const body = resp?.data ?? resp
+              const assigned = body || Object.assign({}, t)
+              assigned.startDate = assigned.startDate || t.startDate
+              assigned.endDate = assigned.endDate || t.endDate
+              if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) {
+                assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
               }
-              const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
-              window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
-            } catch (inner) {
-              // ignore
+              assignedList.push(assigned)
+            } catch (e) {
+              console.error('일정 처리 실패', e)
+              assignedList.push(Object.assign({}, t))
             }
+          } else {
             assignedList.push(Object.assign({}, t))
           }
-        } else {
-          assignedList.push(Object.assign({}, t))
-        }
-      })
+        })
 
       Promise.all(promises).then(() => {
         // emit assigned trainings to parent
