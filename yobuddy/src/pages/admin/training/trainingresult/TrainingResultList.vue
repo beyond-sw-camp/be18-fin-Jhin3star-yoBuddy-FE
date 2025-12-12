@@ -8,13 +8,6 @@
         </div>
 
         <div class="search-wrap">
-          <select v-model="searchFilter" class="search-select">
-            <option value="ALL">전체</option>
-            <option value="USER">사원명</option>
-            <option value="TRAINING">교육명</option>
-            <option value="PROGRAM">프로그램명</option>
-          </select>
-
           <input
             v-model="searchKeyword"
             type="text"
@@ -22,7 +15,6 @@
             placeholder="검색어를 입력하세요"
             @keyup.enter="onSearch"
           />
-
           <button class="btn btn-primary" @click="onSearch">검색</button>
         </div>
 
@@ -38,11 +30,7 @@
 
           <template v-else>
             <button class="btn btn-secondary" @click="cancelDeleteMode">취소</button>
-            <button
-              class="btn btn-danger"
-              :disabled="selectedIds.length === 0"
-              @click="confirmDelete"
-            >
+            <button class="btn btn-danger" :disabled="selectedIds.length === 0" @click="confirmDelete">
               삭제
             </button>
           </template>
@@ -51,7 +39,26 @@
 
       <div class="card-body">
         <div v-if="trainingresults && trainingresults.length" class="result-grid">
-          <div class="result-card" v-for="tr in trainingresults" :key="tr.formResultId">
+          <div
+            class="result-card"
+            v-for="tr in trainingresults"
+            :key="tr.formResultId"
+            :class="{
+              'delete-mode': isDeleteMode,
+              selected: isDeleteMode && isSelected(tr.formResultId)
+            }"
+            @click="onCardClick(tr.formResultId)"
+          >
+            <!-- 삭제모드 선택 표시(우측 상단 동그라미) -->
+            <div
+              v-if="isDeleteMode"
+              class="select-indicator"
+              :class="{ selected: isSelected(tr.formResultId) }"
+              aria-hidden="true"
+            >
+              ✓
+            </div>
+
             <div class="result-top">
               <div class="who">
                 <div class="avatar">{{ (tr.userName || '?').slice(0, 1) }}</div>
@@ -88,13 +95,6 @@
                   ></div>
                 </div>
               </div>
-
-              <div v-if="isDeleteMode" class="select-wrap">
-                <label class="check">
-                  <input type="checkbox" :value="tr.formResultId" v-model="selectedIds" />
-                  <span>선택</span>
-                </label>
-              </div>
             </div>
           </div>
         </div>
@@ -104,12 +104,7 @@
 
       <div class="card-footer">
         <div class="pagination numeric">
-          <button
-            class="page-nav"
-            @click="setPage(page - 1)"
-            :disabled="page <= 0"
-            aria-label="이전 페이지"
-          >
+          <button class="page-nav" @click="setPage(page - 1)" :disabled="page <= 0" aria-label="이전 페이지">
             &lt;
           </button>
 
@@ -145,12 +140,9 @@ export default {
     return {
       page: 0,
       size: 10,
-      searchFilter: 'ALL',
       searchKeyword: '',
       trainingresults: [],
-      loading: false,
       totalPages: 1,
-      error: null,
       isDeleteMode: false,
       selectedIds: []
     }
@@ -194,23 +186,14 @@ export default {
 
   methods: {
     async fetchTrainingResults() {
-      this.loading = true
-      this.error = null
       try {
         const payload = { page: this.page, size: this.size }
 
+        // 필터 UI가 없으니, 검색어는 “전체” 검색으로만 동작
         if (this.searchKeyword) {
-          if (this.searchFilter === 'ALL') {
-            payload.userName = this.searchKeyword
-            payload.trainingName = this.searchKeyword
-            payload.onboardingName = this.searchKeyword
-          } else if (this.searchFilter === 'USER') {
-            payload.userName = this.searchKeyword
-          } else if (this.searchFilter === 'TRAINING') {
-            payload.trainingName = this.searchKeyword
-          } else if (this.searchFilter === 'PROGRAM') {
-            payload.onboardingName = this.searchKeyword
-          }
+          payload.userName = this.searchKeyword
+          payload.trainingName = this.searchKeyword
+          payload.onboardingName = this.searchKeyword
         }
 
         const pageData = await trainingResultService.getTrainingResultList(payload)
@@ -220,9 +203,7 @@ export default {
         this.page = pageData.number ?? this.page
       } catch (e) {
         console.error(e)
-        this.error = '교육 평가 조회에 실패했습니다.'
-      } finally {
-        this.loading = false
+        alert('교육 평가 조회에 실패했습니다.')
       }
     },
 
@@ -278,6 +259,17 @@ export default {
     cancelDeleteMode() {
       this.isDeleteMode = false
       this.selectedIds = []
+    },
+
+    isSelected(id) {
+      return this.selectedIds.includes(id)
+    },
+
+    onCardClick(id) {
+      if (!this.isDeleteMode) return
+      const idx = this.selectedIds.indexOf(id)
+      if (idx >= 0) this.selectedIds.splice(idx, 1)
+      else this.selectedIds.push(id)
     },
 
     async confirmDelete() {
@@ -360,12 +352,6 @@ export default {
   justify-content: flex-end;
 }
 
-.search-select {
-  min-width: 120px;
-  border-radius: 10px;
-  padding: 10px 16px;
-}
-
 .search-input {
   min-width: 220px;
   border-radius: 10px;
@@ -416,11 +402,50 @@ export default {
 }
 
 .result-card {
+  position: relative; /* ✅ 우측 상단 선택표시 배치용 */
   background: #ffffff;
   border: 1px solid #eef2f7;
   border-radius: 14px;
   padding: 16px 16px;
   box-shadow: 0 6px 18px rgba(9, 30, 66, 0.06);
+}
+
+/* ✅ 삭제 모드일 때 카드 전체 클릭 가능하다는 “느낌” */
+.result-card.delete-mode {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ✅ 선택된 카드 강조 */
+.result-card.selected {
+  border-color: rgba(41, 69, 148, 0.45);
+  box-shadow: 0 10px 26px rgba(41, 69, 148, 0.14);
+}
+
+/* ✅ 우측 상단 동그라미 */
+.select-indicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: transparent; /* 기본은 체크 숨김 */
+  background: #fff;
+  transition: all 0.12s ease;
+}
+
+/* ✅ 선택되면 채워지고 체크 보이게 */
+.select-indicator.selected {
+  border-color: #294594;
+  background: #294594;
+  color: #fff;
 }
 
 .result-top {
@@ -545,23 +570,6 @@ export default {
   height: 100%;
   border-radius: 999px;
   background: #294594;
-}
-
-.select-wrap {
-  flex-shrink: 0;
-}
-
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #e6eef8;
-  background: #ffffff;
-  color: #334155;
-  font-weight: 700;
-  font-size: 12px;
 }
 
 .tag {
