@@ -75,8 +75,12 @@ export default {
 
     const translateStatus = (status) => {
       const map = {
-        SUBMITTED: "제출됨",
+        SUBMITTED: "제출 완료",
         MISSING: "미제출",
+        DRAFT: "임시저장",
+        REVIEWED: "검토 완료",
+        OVERDUE: "미제출(기한 초과)",
+        FEEDBACK_OVERDUE: "피드백 기한 초과",
       };
       return map[status] || status;
     };

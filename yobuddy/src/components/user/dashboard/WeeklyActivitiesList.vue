@@ -1,38 +1,42 @@
 <template>
   <div class="weekly-activities-list content-card">
-    <div class="card-header">
+  <div class="card-header">
       <h2 class="card-title">주간 활동</h2>
 
-      <!-- 여기로 week-navigation 이사 -->
-      <div class="week-navigation">
-        <button @click="$emit('go-prev-week')" class="week-nav-button">‹ 이전 주</button>
-        <span class="week-range">{{ weeklyRangeText }}</span>
-        <button @click="$emit('go-current-week')" class="week-nav-button">이번 주</button>
-        <button @click="$emit('go-next-week')" class="week-nav-button">다음 주 ›</button>
+      <div class="week-controls">
+        <div class="week-jump">
+          <input
+            v-model="weekInput"
+            type="date"
+            class="week-input"
+            @keydown.enter="applyWeek"
+          />
+          <button class="week-apply-button" @click="applyWeek">이동</button>
+          <span class="week-range-text">{{ weeklyRangeText }}</span>
+        </div>
+
+        <div class="week-navigation">
+          <button @click="$emit('go-prev-week')" class="week-nav-button">‹ 이전 주</button>
+
+          <button @click="$emit('go-current-week')" class="week-nav-button">이번 주</button>
+          <button @click="$emit('go-next-week')" class="week-nav-button">다음 주 ›</button>
+        </div>
       </div>
     </div>
 
     <div class="card-body">
-      <!-- 활동이 있을 때 -->
       <div v-if="groupedByDate.length" class="activity-days">
-        <div
-          v-for="day in groupedByDate"
-          :key="day.date"
-          class="activity-day-group"
-        >
-          <!-- 날짜 헤더 -->
+        <div v-for="day in groupedByDate" :key="day.date" class="activity-day-group">
           <div class="activity-day-header">
             {{ formatDate(day.date) }}
           </div>
 
-          <!-- 해당 날짜의 활동들 -->
           <div
             v-for="activity in day.items"
             :key="activity.id"
             class="activity-item"
             @click="viewActivityDetail(activity)"
           >
-            <!-- 타입별 색 점 -->
             <div
               :class="['activity-type-indicator', `event-${activity.type.toLowerCase()}`]"
             ></div>
@@ -69,37 +73,48 @@
         </div>
       </div>
 
-      <!-- 활동이 없을 때 -->
       <div v-else class="empty-state">이번 주 활동이 없습니다.</div>
     </div>
   </div>
 </template>
 
 <script>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 export default {
   name: "WeeklyActivitiesList",
   props: {
-    activities: {
-      type: Array,
-      default: () => [],
-    },
-    weeklyRangeText: {
-      type: String,
-      default: "",
-    },
+    activities: { type: Array, default: () => [] },
+    weeklyRangeText: { type: String, default: "" },
+    weekBaseDate: { type: Date, required: true },
   },
-
-  emits: [
-    "view-activity-detail",
-    "go-prev-week",
-    "go-next-week",
-    "go-current-week",
-  ],
+  emits: ["view-activity-detail", "go-prev-week", "go-next-week", "go-current-week", "jump-to-week"],
 
   setup(props, { emit }) {
-    // 날짜/시간 기준으로 정렬
+    const weekInput = ref("");
+
+    const toYmd = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    watch(
+      () => props.weekBaseDate,
+      (d) => {
+        if (d instanceof Date && !isNaN(d.getTime())) {
+          weekInput.value = toYmd(d);
+        }
+      },
+      { immediate: true }
+    );
+
+    const applyWeek = () => {
+      if (!weekInput.value) return;
+      emit("jump-to-week", weekInput.value);
+    };
+
     const sortedActivities = computed(() => {
       return [...props.activities].sort((a, b) => {
         const dateA = new Date(`${a.date}T${a.time || "00:00:00"}`);
@@ -108,26 +123,18 @@ export default {
       });
     });
 
-    // 날짜별 그룹
     const groupedByDate = computed(() => {
       const map = new Map();
 
       sortedActivities.value.forEach((item) => {
         if (!item.date) return;
-
-        if (!map.has(item.date)) {
-          map.set(item.date, []);
-        }
+        if (!map.has(item.date)) map.set(item.date, []);
         map.get(item.date).push(item);
       });
 
-      return Array.from(map.entries()).map(([date, items]) => ({
-        date,
-        items,
-      }));
+      return Array.from(map.entries()).map(([date, items]) => ({ date, items }));
     });
 
-    // 날짜 포맷
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return date.toLocaleDateString("ko-KR", {
@@ -144,7 +151,6 @@ export default {
       return "•";
     };
 
-    // 상태 한글 라벨
     const getStatusLabel = (status) => {
       const map = {
         MISSING: "미제출",
@@ -155,9 +161,8 @@ export default {
       return map[status] || status || "";
     };
 
-    // 상태별 CSS 클래스
     const getStatusClass = (status) => {
-      const lower = status.toLowerCase();
+      const lower = String(status).toLowerCase();
       if (lower === "missing") return "status-missing";
       if (lower === "pending") return "status-pending";
       if (lower === "completed") return "status-completed";
@@ -170,6 +175,8 @@ export default {
     };
 
     return {
+      weekInput,
+      applyWeek,
       groupedByDate,
       formatDate,
       getTypeIcon,
@@ -198,6 +205,11 @@ export default {
   border-bottom: 1px solid #eef2f7;
 }
 
+.week-controls {
+  display: flex;
+  gap: 10px;
+}
+
 .card-title {
   margin: 0;
   font-size: 20px;
@@ -208,7 +220,6 @@ export default {
   padding: 22px 28px;
 }
 
-/* ⬇⬇ 주간 네비게이션 (헤더 안 오른쪽 정렬) */
 .week-navigation {
   display: flex;
   align-items: center;
@@ -232,13 +243,44 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.week-range {
-  font-size: 13px;
-  font-weight: 700;
+.week-jump {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.week-input {
+  height: 30px;
+  padding:  8px;
+  border: 1px solid #e6edf7;
+  border-radius: 8px;
+  font-size: 12px;
   color: #10243b;
 }
 
-/* 날짜 그룹 */
+.week-apply-button {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.week-apply-button:hover {
+  background: #e5e7eb;
+}
+
+.week-range-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #10243b;
+  white-space: nowrap;
+}
+
 .activity-days {
   display: flex;
   flex-direction: column;
@@ -261,7 +303,6 @@ export default {
   margin-bottom: 8px;
 }
 
-/* 개별 활동 */
 .activity-item {
   display: flex;
   align-items: flex-start;
@@ -304,7 +345,6 @@ export default {
   font-weight: 500;
 }
 
-/* 상태 공통 스타일 */
 .activity-status {
   font-weight: 600;
   padding: 2px 6px;
@@ -312,7 +352,6 @@ export default {
   font-size: 10px;
 }
 
-/* 상태별 색상 */
 .status-missing {
   background-color: #ffe6e6;
   color: #cc0000;
@@ -330,7 +369,6 @@ export default {
   color: #294594;
 }
 
-/* 타입별 색상 - 왼쪽 막대 */
 .event-mentoring {
   background-color: #294594;
 }
