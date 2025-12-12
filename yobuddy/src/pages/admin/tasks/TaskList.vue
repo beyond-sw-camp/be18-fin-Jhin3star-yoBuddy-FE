@@ -37,7 +37,7 @@
           <div class="table-head">
             <div class="col name-col">과제명</div>
             <div class="col dept-col">해당부서</div>
-            <div class="col date-col">작성일</div>
+            <div class="col date-col">생성일</div>
           </div>
 
           <div class="table-body">
