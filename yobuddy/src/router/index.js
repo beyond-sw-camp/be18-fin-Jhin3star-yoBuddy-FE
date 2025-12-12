@@ -21,6 +21,16 @@ const routes = [
     meta: { hideHeader: true, hideSidebar: true }
   },
   {
+    path: '/request-password-reset',
+    component: () => import('@/pages/common/RequestPasswordReset.vue'),
+    meta: { hideHeader: true, hideSidebar: true }
+  },
+  {
+    path: '/reset-password',
+    component: () => import('@/pages/common/ResetPassword.vue'),
+    meta: { hideHeader: true, hideSidebar: true }
+  },
+  {
     path: '/',
     component: () => import('@/pages/common/Home.vue'),
     meta: { hideHeader: true, hideSidebar: true }

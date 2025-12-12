@@ -59,7 +59,11 @@ const kpiService = {
   return http.get('/api/v1/admin/kpi/results/dashboard', {
     params: { departmentId }
   })
-}
+},
+
+getOverview(params) {
+  return http.get('/api/v1/admin/kpi/results/dashboard/overview', { params })
+},
 }
 
 export default kpiService

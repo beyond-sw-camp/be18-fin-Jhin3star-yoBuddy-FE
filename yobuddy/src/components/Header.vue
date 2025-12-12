@@ -2,10 +2,16 @@
   <header class="header-bar">
     <div class="header-left">
       <div class="logo-section">
-        <div class="logo">
-          <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
+          <div class="logo" @click="goHome" style="cursor:pointer;">
+            <img
+              src="@/assets/logo_main.svg"
+              alt="YoBuddy Logo"
+              class="logo-icon"
+              width="126em"
+              height="100em"
+            />
+          </div>
         </div>
-      </div>
       <div class="breadcrumb">
         <span class="chevron">
           <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
@@ -65,10 +71,11 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useAuthStore } from '@/store/authStore'
 
 export default {
   name: 'HeaderBar',
@@ -78,11 +85,12 @@ export default {
   },
   setup(props, { emit }) {
     const route = useRoute()
+    const router = useRouter() 
     const notificationStore = useNotificationStore()
-
+     const auth = useAuthStore()
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-
+    
     const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
@@ -105,7 +113,8 @@ export default {
       '/organization/usermanagement': '유저 관리',
       '/organization/department': '부서 관리',
       '/sessions': '세션 목록',
-      '/sessions/create': '세션 생성'
+      '/sessions/create': '세션 생성',
+      '/onboarding/programs/new': '프로그램 생성'
     }
 
     const pageTitle = computed(() => pageTitleMap[route.path] || 'YoBuddy')
@@ -174,6 +183,18 @@ export default {
       window.removeEventListener('click', handleClickOutside)
     })
 
+    const goHome = () => {
+    if (auth.isAdmin) {
+      router.push('/kpi')
+    } else if (auth.isMentor) {
+      router.push('/mentor/dashboard')
+    } else if (auth.isUser) {
+      router.push('/user/dashboard')
+    } else {
+      router.push('/login')
+    }
+  }
+
     return {
       pageTitle,
       notificationCount,
@@ -182,7 +203,8 @@ export default {
       breadcrumbItems,
       showNotificationCard,
       showChatbotCard,
-      notificationStore
+      notificationStore,
+      goHome
     }
   }
 }

@@ -44,11 +44,17 @@
           <label for="email">이메일</label>
           <input type="email" id="email" :value="userEmail" disabled />
         </div>
-
         <div class="form-group">
           <label for="phoneNumber">전화번호</label>
-          <input type="text" id="phoneNumber" v-model="form.phoneNumber" />
+          <input
+          type="text"
+          id="phoneNumber"
+          v-model="form.phoneNumber"
+          @input="onPhoneInput"
+          maxlength="13"
+        />
         </div>
+        
 
         <div class="form-group">
           <label for="currentPassword">현재 비밀번호</label>
@@ -166,6 +172,17 @@ setup(props, { emit }) {
     }
   };
 
+  const formatPhone = (value) => {
+    const digits = value.replace(/\D/g, "");
+
+    if (digits.length < 4) return digits;
+    if (digits.length < 8) return digits.replace(/(\d{3})(\d+)/, "$1-$2");
+    return digits.replace(/(\d{3})(\d{4})(\d+)/, "$1-$2-$3");
+  };
+
+  const onPhoneInput = (e) => {
+    form.value.phoneNumber = formatPhone(e.target.value);
+  };
 
   return {
     form,
@@ -175,6 +192,7 @@ setup(props, { emit }) {
     onFileSelect,
     updateProfile,
     deleteProfileImage,
+    onPhoneInput,
   };
 }
 

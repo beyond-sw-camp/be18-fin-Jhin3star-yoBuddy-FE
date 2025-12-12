@@ -22,7 +22,12 @@
           </div>
           <div class="form-row">
             <label class="label">전화 번호</label>
-            <input v-model="form.phone" type="text" />
+            <input 
+              v-model="form.phone"
+              type="text"
+              @input="onPhoneInput"
+              maxlength="13"
+            />
           </div>
           <div class="form-row">
             <label class="label">비밀번호</label>
@@ -88,6 +93,22 @@ export default {
     show(val) { if (val) this.fetchDepartments(); else this.resetForm() }
   },
   methods: {
+      formatPhone(value) {
+      const digits = value.replace(/\D/g, '');
+
+      if (digits.length < 4) {
+        return digits;
+      } else if (digits.length < 8) {
+        return digits.replace(/(\d{3})(\d+)/, '$1-$2');
+      } else {
+        return digits.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
+      }
+    },
+    
+    onPhoneInput(e) {
+      this.form.phone = this.formatPhone(e.target.value);
+    },
+
     resetForm() { this.form = { name: '', email: '', phone: '', role: 'USER', departmentId: null, joinDate: '' }; this.error = null },
     close() { this.$emit('close') },
     async fetchDepartments() {
@@ -101,26 +122,26 @@ export default {
     async createUser() {
       // basic client-side validation
       if (!this.form.name || !this.form.email) {
-        this.error = '이름과 이메일은 필수 항목입니다.'
+        alert('이름과 이메일은 필수 항목입니다.')
         return
       }
       // password required and basic checks
       if (!this.form.password) {
-        this.error = '비밀번호를 입력해주세요.'
+        alert('비밀번호를 입력해주세요.')
         return
       }
       if (this.form.password.length < 8) {
-        this.error = '비밀번호는 최소 8자 이상이어야 합니다.'
+        alert('비밀번호는 최소 8자 이상이어야 합니다.')
         return
       }
       if (this.form.password !== this.form.confirmPassword) {
-        this.error = '비밀번호와 비밀번호 확인이 일치하지 않습니다.'
+        alert('비밀번호와 비밀번호 확인이 일치하지 않습니다.')
         return
       }
       // simple email format check
       const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
       if (!emailRe.test(this.form.email)) {
-        this.error = '유효한 이메일 주소를 입력해주세요.'
+        alert('유효한 이메일 주소를 입력해주세요.')
         return
       }
 
@@ -141,15 +162,16 @@ export default {
       } catch (e) {
         console.error('createUser failed', e)
         if (e && e.response) {
-          try {
-            const data = e.response.data
-            this.error = data && (data.message || data.error || JSON.stringify(data)) || `서버 오류 (${e.response.status})`
-          } catch (err) {
-            this.error = `서버 오류 (${e.response.status})`
+            try {
+              const data = e.response.data
+              const msg = data?.message || data?.error || JSON.stringify(data)
+              alert(`${msg}`)
+            } catch (err) {
+              alert(`서버 오류 (${e.response.status})`)
+            }
+          } else {
+            alert(e?.message || '등록 중 오류가 발생했습니다.')
           }
-        } else {
-          this.error = (e && e.message) || '등록 중 오류가 발생했습니다.'
-        }
       } finally { this.saving = false }
     }
   }
