@@ -36,80 +36,80 @@
       </div>
 
       <div class="card-body">
-  <div v-if="paginatedMentees.length" class="mentee-list">
-    <MenteeSummaryCard
-      v-for="m in paginatedMentees"
-      :key="m.menteeId"
-      :mentee="m"
-      @select="openMenteeDetail"
-    />
-  </div>
-  <div v-else class="empty-state">
-    배정된 신입사원이 없습니다.
-  </div>
-</div>
+        <div v-if="paginatedMentees.length" class="mentee-list">
+          <MenteeSummaryCard
+                v-for="m in paginatedMentees"    
+                :key="`${mentorId}-${m.menteeId}`"
+                :mentee="m"
+                @select="openMenteeDetail"
+                />
+              </div>
+              <div v-else class="empty-state">
+                배정된 신입사원이 없습니다.
+              </div>
+            </div>
 
-<div class="card-footer" v-if="totalPages > 1">
-  <div class="pagination numeric">
-    <button
-      class="page-nav"
-      :disabled="currentPage <= 1"
-      @click="goToPage(currentPage - 1)"
-    >
-      &lt;
-    </button>
+            <div class="card-footer" v-if="totalPages > 1">
+              <div class="pagination numeric">
+                <button
+                class="page-nav"
+                :disabled="currentPage <= 1"              
+                @click="goToPage(currentPage - 1)"
+                >
+                &lt;
+              </button>
 
-    <button
-      v-for="p in visiblePages"
-      :key="p"
-      class="page-num"
-      :class="{ active: p === currentPage }"
-      @click="goToPage(p)"
-    >
-      {{ p }}
-    </button>
+              <button
+              v-for="p in visiblePages"
+              :key="p"
+              class="page-num"
+              :class="{ active: p === currentPage }"
+              @click="goToPage(p)"
+              >
+              {{ p }}
+            </button>
 
-    <button
-      class="page-nav"
-      :disabled="currentPage >= totalPages"
-      @click="goToPage(currentPage + 1)"
-    >
-      &gt;
-    </button>
-  </div>
-</div>
-    </div>
+            <button
+                  class="page-nav"
+                  :disabled="currentPage >= totalPages"
+                  @click="goToPage(currentPage + 1)"
+                  >
+                  &gt;
+                </button>
+              </div>
+            </div>
+          </div>
 
-    <!-- Tab Content: Mentor Schedule -->
-    <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
-      <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
-    </div>
+          <!-- Tab Content: Mentor Schedule -->
+          <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
+            <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
+          </div>
 
-    <!-- Tab Content: Performance -->
-    <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
-      <MenteeOnboardingPerformance
-        v-if="mentees.length && mentorId"
-        :mentor-id="mentorId"
-        :mentees="mentees"
-      />
-    </div>
-  </div>
+          <!-- Tab Content: Performance -->
+               <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
+                <MenteeOnboardingPerformance
+                v-if="mentees.length && mentorId"
+                :mentor-id="mentorId"
+                :mentees="mentees"
+                />
+              </div>
+            </div>
 
-  <!-- 멘티 등록 팝업 -->
-  <MenteeRegisterPopup
-    :show="showRegister"
-    :mentor-id="mentorId"
-    @close="showRegister = false"
-    @registered="fetchMentees"
-  />
+            <!-- 멘티 등록 팝업 -->
+            <MenteeRegisterPopup
+            :show="showRegister"
+            :mentor-id="mentorId"
+            @close="showRegister = false"
+            @registered="fetchMentees"
+            />
 
-  <!-- 멘티 상세 팝업 -->
-  <MenteeDetailPopup
-    :show="showMenteeDetail"
-    :user="selectedMentee"
-    :allowUnassign="true"
-    @close="showMenteeDetail = false"
-    @unassign="removeMentee"
+            <!-- 멘티 상세 팝업 -->
+            <MenteeDetailPopup
+            :show="showMenteeDetail"
+            :user="selectedMentee"
+            :allowUnassign="true"
+            @close="showMenteeDetail = false"
+            @unassign="removeMentee"
   />
 </template>
 
@@ -195,15 +195,21 @@ export default {
   },
 
   methods: {
-    async fetchMentees() {
-      if (!this.mentorId) return
-      try {
-        this.mentees = await mentoringService.getMenteesForMentor(this.mentorId)
-        this.currentPage = 1
-      } catch (e) {
-        console.error("멘티 목록 조회 실패", e)
-      }
-    },
+    async fetchMentees(force = false) {
+  if (!this.mentorId) return
+
+  try {
+    const list = await mentoringService.getMenteesForMentor(this.mentorId, {
+      params: force ? { _ts: Date.now() } : undefined
+    })
+
+    this.mentees = Array.isArray(list?.data) ? list.data : list
+    this.currentPage = 1
+  } catch (e) {
+    console.error("멘티 목록 조회 실패", e)
+  }
+},
+
 
     async fetchMentorSummary() {
       if (!this.mentorId) return
@@ -232,16 +238,22 @@ export default {
     },
 
     async removeMentee(mentee) {
-      try {
-        await http.delete(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
-        this.showMenteeDetail = false
-        this.fetchMentees()
-      } catch (e) {
-        console.error("멘티 배정 해제 실패", e)
-      }
-    },
+  try {
+    const id = String(mentee.menteeId)
+
+    await http.delete(`/api/v1/mentors/${this.mentorId}/mentees/${id}`)
+
+    this.mentees = (this.mentees || []).filter(m => String(m.menteeId) !== id)
+
+    this.showMenteeDetail = false
+    this.selectedMentee = null
+
+    await this.fetchMentees()
+  } catch (e) {
+    console.error("멘티 배정 해제 실패", e)
+  }
+},
+
 
     setActiveTab(tabName) {
       this.activeTab = tabName
