@@ -25,11 +25,79 @@
                       <span class="training-type">{{ formatTrainingType(it) }}</span>
                       <button class="btn-outline btn-small selected-inline-btn" @click="removeSelectedTraining(it)">취소</button>
                     </div>
+
                     <div class="item-time">{{ formatItemTime(it) }}</div>
+
                     <div class="dt-controls">
-                      <label>날짜 <input type="date" v-model="it._editDate" @change="updateTrainingDateTime(it)" /></label>
-                      <label>시작 <input type="time" v-model="it._startTime" @change="updateTrainingDateTime(it)" /></label>
-                      <label>종료 <input type="time" v-model="it._endTime" @change="updateTrainingDateTime(it)" /></label>
+                      <template v-if="it._isAssignment || it.taskId || it.task_id">
+                        <label>
+                          제출일
+                          <input
+                            type="date"
+                            v-model="it._editDate"
+                            @change="updateAssignmentDueDate(it)"
+                          />
+                        </label>
+                        <label>
+                          제출 시간
+                          <input
+                            type="time"
+                            v-model="it._dueTime"
+                            @change="updateAssignmentDueDate(it)"
+                          />
+                        </label>
+                      </template>
+
+                      <!-- ✅ 교육일 때: 기존처럼 날짜 + 시작 + 종료 -->
+                      <template v-else>
+                        <!-- 🔹 ONLINE 교육일 때: 시작일/종료일 -->
+                        <template v-if="isOnline(it)">
+                          <label>
+                            시작일
+                            <input
+                              type="date"
+                              v-model="it._onlineStartDate"
+                              @change="updateOnlineTrainingDates(it)"
+                            />
+                          </label>
+                          <label>
+                            종료일
+                            <input
+                              type="date"
+                              v-model="it._onlineEndDate"
+                              @change="updateOnlineTrainingDates(it)"
+                            />
+                          </label>
+                        </template>
+
+                        <!-- 🔹 그 외 교육 (OFFLINE 등): 날짜 + 시작/종료 시간 -->
+                        <template v-else>
+                          <label>
+                            날짜
+                            <input
+                              type="date"
+                              v-model="it._editDate"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                          <label>
+                            시작
+                            <input
+                              type="time"
+                              v-model="it._startTime"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                          <label>
+                            종료
+                            <input
+                              type="time"
+                              v-model="it._endTime"
+                              @change="updateTrainingDateTime(it)"
+                            />
+                          </label>
+                        </template>
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -136,14 +204,28 @@ export default {
       loadingAssignments: false,
       activeRightTab: 'training',
       selectedTrainings: [],
+      deletedAssignmentIds: [],
     }
   },
   watch: {
     visible(val) {
-      if (val) { this.loadTrainings(); this.loadAssignments() }
-      console.log('[OnboardingPopup] visible ->', val, 'date:', this.date)
-      // also log incoming visibleDayItems for quick debug
-      console.log('[OnboardingPopup] visibleDayItems ->', this.visibleDayItems)
+      if (val) {
+      // 🔹 팝업 열릴 때: 내부 상태 리셋 + 데이터 로드
+      this.deletedAssignmentIds = []
+      this.selectedTrainings = []
+      this.title = ''
+      this.description = ''
+
+      this.loadTrainings()
+      this.loadAssignments()
+    } else {
+      // 🔹 팝업 닫힐 때: 임시 편집 값들 정리(선택된 것들만 초기화)
+      this.selectedTrainings = []
+      this.deletedAssignmentIds = []
+    }
+
+    console.log('[OnboardingPopup] visible ->', val, 'date:', this.date)
+    console.log('[OnboardingPopup] visibleDayItems ->', this.visibleDayItems)
     }
   },
   computed: {
@@ -163,16 +245,25 @@ export default {
     // visibleDayItems: filter out duration / multi-day items (e.g. those with class 'training-duration')
     visibleDayItems() {
       if (!this.dayItems) return []
-      return this.dayItems.filter(it => {
-        if (!it) return false
-        // if classes present and contains 'training-duration', exclude
-        if (Array.isArray(it.classes) && it.classes.includes('training-duration')) return false
-        // also exclude any item whose id suggests it's a duration
-        if (typeof it.id === 'string' && it.id.includes('duration')) return false
-        return true
+        return this.dayItems
+          .filter(it => {
+            if (!it) return false
+            if (Array.isArray(it.classes) && it.classes.includes('training-duration')) return false
+            if (typeof it.id === 'string' && it.id.includes('duration')) return false
+            return true
+          })
+          .map(it => {
+            const isAssignment =
+              it.type === 'ASSIGNMENT' ||
+              it.kind === 'task' ||
+              (Array.isArray(it.classes) && it.classes.includes('task'))
+
+          return {
+            ...it,
+            _isAssignment: isAssignment  // 🔥 핵심
+          }
       })
-    }
-    ,
+    },
     // Merge parent-provided visibleDayItems with program-scoped assignments (tasks)
     mergedVisibleDayItems() {
       const base = this.visibleDayItems || []
@@ -194,7 +285,12 @@ export default {
       // avoid duplicates against base by id/title
       const baseIds = new Set((base || []).map(b => String(b.id || b.assignmentId || b.taskId || b.id)).filter(Boolean))
       const uniques = mapped.filter(m => !baseIds.has(String(m.id)))
-      return base.concat(uniques)
+      const merged = base.concat(uniques)
+      return merged.filter(it => {
+        const aid = it.assignmentId || it.id || it.taskId || it.task_id
+        if (!aid) return true
+        return !this.deletedAssignmentIds.includes(String(aid))
+      })
     }
     ,
     availableTrainings() {
@@ -240,48 +336,130 @@ export default {
     close() {
       this.$emit('close')
     },
+    updateAssignmentDueDate(item) {
+      const date = item._editDate || this.getLocalDatePart(this.date)
+      const time = item._dueTime || '18:00'
+      // 최종 마감일시 (백엔드 LocalDateTime용)
+      item.dueDate = this.combineLocalDateTime(date, time)
+    },
+    isOnline(item) {
+      const type = (item && (item.type || item.trainingType || item.training_type) || '').toString().toUpperCase()
+      return type === 'ONLINE'
+    },
+    updateOnlineTrainingDates(training) {
+      const start = training._onlineStartDate || this.getLocalDatePart(this.date)
+      const end = training._onlineEndDate || start
+      training.startDate = start   // 백엔드에 보낼 startDate(LocalDate)
+      training.endDate = end       // 백엔드에 보낼 endDate(LocalDate)
+    },
+    
     async confirmAndDelete(item) {
       if (!item) return
+      console.log('삭제 시도 item:', JSON.parse(JSON.stringify(item)));
       const ok = window.confirm('이 일정을 삭제하시겠습니까?')
       if (!ok) return
       await this.deleteAssignedTraining(item)
     },
     async deleteAssignedTraining(item) {
+      if (!this.programId) {
+        console.warn('programId가 없습니다.', item);
+        return;
+      }
       // determine whether this is an assignment/task or a training
-      const aid = item.assignmentId || item.id || item.assignment_id || item.taskId || item.task_id
-      const tid = item.trainingId || item.id || item.training_id
-      if (aid && this.programId) {
+      const isAssignment =
+        !!(
+          item._isAssignment ||
+          item.assignmentId ||
+          item.assignment_id ||
+          item.taskId ||
+          item.task_id ||
+          item.kind === 'task' ||                          // ← 여기가 중요
+          (Array.isArray(item.classes) && (
+            item.classes.includes('task') ||
+            item.classes.includes('tesk')                  // 오타로 들어온 'tesk'도 커버
+          ))
+        );
+
+      const assignmentId = isAssignment
+        ? (item.assignmentId ||
+            item.assignment_id ||
+            item.taskId ||
+            item.task_id ||
+            item.id)                                        // ← 과제면 id를 taskId로 사용
+        : null;
+              
+      const trainingId =
+        item.trainingId ||
+        item.training_id ||
+        (!assignmentId ? item.id : null);
+
+      console.log('삭제 타입 판정:', { isAssignment, assignmentId, trainingId, raw: JSON.parse(JSON.stringify(item)) });
+      if (isAssignment && assignmentId) {
         try {
-          // primary: try tasks path (preferred)
-          await http.delete(`/api/v1/admin/programs/${this.programId}/tasks/${aid}`)
-          this.$emit('training-removed', { assignmentId: aid })
-          return
+          await http.delete(
+            `/api/v1/admin/programs/${this.programId}/tasks/${assignmentId}`
+          );
+          this.removeAssignmentLocally(assignmentId)
+          this.deletedAssignmentIds.push(String(assignmentId))
+          this.$emit('training-removed', { assignmentId });
+          return;
         } catch (e) {
-          console.debug('tasks delete failed, trying assignments delete', e)
+          console.debug('tasks delete failed, trying assignments delete', e);
           try {
-            // fallback: older assignments path
-            await http.delete(`/api/v1/admin/programs/${this.programId}/assignments/${aid}`)
-            this.$emit('training-removed', { assignmentId: aid })
-            return
+            await http.delete(
+              `/api/v1/admin/programs/${this.programId}/tasks/${assignmentId}`
+            );
+
+            this.removeAssignmentLocally(assignmentId)
+            this.deletedAssignmentIds.push(String(assignmentId))
+            this.$emit('training-removed', { assignmentId });
+            return;
           } catch (e2) {
-            console.error('과제 삭제 실패 (both tasks/assignments)', e2)
-            alert('삭제에 실패했습니다.')
-            return
+            console.error('과제 삭제 실패 (both tasks/assignments)', e2);
+            alert('과제 삭제에 실패했습니다.');
+            return;
           }
         }
       }
-      if (tid && this.programId) {
+      if (trainingId) {
         try {
-          await http.delete(`/api/v1/admin/programs/${this.programId}/trainings/${tid}`)
-          // notify parent to refresh
-          this.$emit('training-removed', { trainingId: tid })
+          await http.delete(
+            `/api/v1/admin/programs/${this.programId}/trainings/${trainingId}`
+          );
+          this.trainings = (this.trainings || []).filter(tr => {
+            const tid = tr.trainingId || tr.id || tr.training_id;
+            return String(tid) !== String(trainingId);
+          });
+          this.selectedTrainings = (this.selectedTrainings || []).filter(t => {
+            const tid = t.trainingId || t.id || t.training_id;
+            return String(tid) !== String(trainingId);
+          });
+          this.$emit('training-removed', { trainingId });
         } catch (e) {
-          console.error('트레이닝 삭제 실패', e)
-          alert('삭제에 실패했습니다.')
+          console.error('교육 삭제 실패', e);
+          alert('교육 삭제에 실패했습니다.');
         }
       } else {
-        console.warn('삭제할 training/assignment id 또는 programId가 없습니다.', item)
+        console.warn(
+          '삭제할 training/assignment id를 찾을 수 없습니다.',
+          item
+        );
       }
+    },
+    removeAssignmentLocally(assignmentId) {
+      if (!assignmentId) return
+
+      // 🔹 과제 목록에서 제거
+      this.assignments = (this.assignments || []).filter(a => {
+        const aid = a.assignmentId || a.id || a.taskId || a.task_id
+        return String(aid) !== String(assignmentId)
+      })
+
+      // 🔹 선택된 일정(selectedTrainings)에서도 제거
+      this.selectedTrainings = (this.selectedTrainings || []).filter(t => {
+        const tid = t.assignmentId || t.id || t.taskId || t.task_id
+        return String(tid) !== String(assignmentId)
+      })
     },
     isSelected(training) {
       const tid = training.trainingId || training.id
@@ -354,15 +532,25 @@ export default {
       const tid = training.trainingId || training.id
       const exists = this.selectedTrainings.some(t => (t.trainingId || t.id) === tid)
       if (exists) return
+
       const copy = Object.assign({}, training)
-      // prepare editable fields for date/time
       const yyyy = this.getLocalDatePart(this.date)
       copy._editDate = yyyy
-      // default times
-      copy._startTime = '12:00'
-      copy._endTime = '13:00'
-      copy.startDate = this.combineDateTime(yyyy, copy._startTime)
-      copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+
+      if (this.isOnline(copy)) {
+        // 🔹 ONLINE: 기간(시작일/종료일)만 사용
+        copy._onlineStartDate = yyyy
+        copy._onlineEndDate = yyyy
+        copy.startDate = yyyy
+        copy.endDate = yyyy
+      } else {
+        // 🔹 OFFLINE 등: 기존처럼 날짜 + 시간
+        copy._startTime = '12:00'
+        copy._endTime = '13:00'
+        copy.startDate = this.combineDateTime(yyyy, copy._startTime)
+        copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+      }
+
       this.selectedTrainings.push(copy)
     },
 
@@ -374,10 +562,8 @@ export default {
       copy._isAssignment = true
       const yyyy = this.getLocalDatePart(this.date)
       copy._editDate = yyyy
-      copy._startTime = '12:00'
-      copy._endTime = '13:00'
-      copy.startDate = this.combineDateTime(yyyy, copy._startTime)
-      copy.endDate = this.combineDateTime(yyyy, copy._endTime)
+      copy._dueTime = "18:00"
+      copy.dueDate = this.combineLocalDateTime(yyyy, copy._dueTime)
       this.selectedTrainings.push(copy)
     },
 
@@ -413,6 +599,32 @@ export default {
       training.endDate = this.combineDateTime(d, et)
     },
     formatItemTime(it) {
+      if (it._isAssignment || it.taskId || it.task_id) {
+          const date = it._editDate || (it.dueDate ? this.getLocalDatePart(it.dueDate) : null)
+          const time = it._dueTime || (it.dueDate ? it.dueDate.substring(11, 16) : null)
+          if (!date || !time) return ''
+          const [yyyy, mm, dd] = date.split('-')
+          return `${yyyy}.${mm}.${dd} ${time}`   // 예: 2025.12.18 18:00
+      }
+
+      // ✅ 기존 교육 로직은 그대로
+      if (this.isOnline(it)) {
+        const s = it._onlineStartDate || (it.startDate ? this.getLocalDatePart(it.startDate) : null)
+        const e = it._onlineEndDate || (it.endDate ? this.getLocalDatePart(it.endDate) : null)
+
+        if (!s && !e) return ''
+        if (!e || s === e) {
+          // 시작/종료 같은 날이면 한 번만
+          const [yyyy, mm, dd] = s.split('-')
+          return `${yyyy}.${mm}.${dd}`         // 예: 2025.12.18
+        }
+
+        const [sy, sm, sd] = s.split('-')
+        const [ey, em, ed] = e.split('-')
+        return `${sy}.${sm}.${sd} ~ ${ey}.${em}.${ed}`  // 예: 2025.12.18 ~ 2025.12.19
+      }
+
+      // 🔹 그 외 교육(OFFLINE 등): 시간 범위 그대로
       try {
         const s = it.startDate ? new Date(it.startDate) : null
         const e = it.endDate ? new Date(it.endDate) : null
@@ -441,81 +653,146 @@ export default {
     },
     save() {
       // On save, assign selectedTrainings to program (call API for each) then emit assigned events
-      // First, filter out items that are already assigned according to visibleDayItems to avoid duplicate requests
-      const existingAssignedIds = new Set((this.visibleDayItems || []).map(it => String(it.trainingId || it.assignmentId || it.taskId || it.id)).filter(Boolean))
-      const toSave = (this.selectedTrainings || []).filter(t => {
-        const id = String(t.trainingId || t.assignmentId || t.taskId || t.id || '')
-        return id && !existingAssignedIds.has(id)
-      })
+      const toSave = this.selectedTrainings || []
       if ((this.selectedTrainings || []).length !== toSave.length) {
-        console.debug('[OnboardingSetschedulePopup] save: filtered already-assigned items', { total: this.selectedTrainings.length, toSave: toSave.length })
+        console.debug('[OnboardingSetschedulePopup] save: filtered already-assigned items', {
+          total: this.selectedTrainings.length,
+          toSave: toSave.length
+        })
       }
 
       const assignedList = []
       const promises = toSave.map(async (t) => {
         const isAssignment = !!(t._isAssignment || t.assignmentId || t.assignment_id || t.taskId || t.task_id)
-        const id = isAssignment ? (t.assignmentId || t.id || t.taskId || t.task_id) : (t.trainingId || t.id)
+        const id = isAssignment
+          ? (t.assignmentId || t.id || t.taskId || t.task_id)
+          : (t.trainingId || t.id)
+
         if (this.programId && id) {
           try {
-            const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
             const payload = {}
-            if (rawType === 'ONLINE') {
-              const sdDate = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
-              const edDate = (t._editDate && (t._endTime || t._startTime)) ? (t._editDate) : (t.endDate ? this.getLocalDatePart(t.endDate) : null)
-              if (sdDate) payload.startDate = sdDate
-              if (edDate) payload.endDate = edDate
-            } else {
-              const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
-              const timePart = t._startTime || '09:00'
-              const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
-              if (sched) payload.scheduledAt = sched
-            }
-            if (Object.keys(payload).length === 0) {
-              // ensure we send a plain YYYY-MM-DD string for assigned date (avoid Date objects)
-              const assigned = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
-              payload.assignedDate = assigned
-              payload.assigned_date = assigned
-            }
 
-            // Assignments (tasks) should be posted to /programs/{programId}/tasks/{taskId}
-            const url = isAssignment ? `/api/v1/admin/programs/${this.programId}/tasks/${id}` : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
-            // If this is a task, include due_date (YYYY-MM-DD) from editable date
+            // 🔹 1) 과제일 경우: 제출일 + 제출 시간 → dueDate(LocalDateTime)
             if (isAssignment) {
-              const due = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
-              if (due) {
-                // send both snake_case and camelCase to be tolerant to backend naming
-                payload.due_date = due
+              // 우선순위: 사용자가 수정한 날짜/시간 > 기존 dueDate 값 > 선택한 날짜
+              const datePart =
+                t._editDate ||
+                (t.dueDate ? this.getLocalDatePart(t.dueDate) : null) ||
+                this.getLocalDatePart(this.date)
+
+              // "HH:mm" 형태 유지. 없으면 18:00 기본값
+              const timePart =
+                t._dueTime ||
+                (t.dueDate && typeof t.dueDate === 'string' ? t.dueDate.substring(11, 16) : null) ||
+                '18:00'
+
+              if (datePart) {
+                const due = this.combineLocalDateTime(datePart, timePart)
+                // 백엔드 DTO가 camelCase라면 이걸 사용
                 payload.dueDate = due
+                // 만약 snake_case(JSON)이면 아래 사용
+                // payload.due_date = due
+              }
+
+              // 혹시라도 datePart가 없어서 payload가 비면, 선택한 날짜 기준으로라도 채워주기
+              if (Object.keys(payload).length === 0) {
+                const fallbackDate = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
+                const due = this.combineLocalDateTime(fallbackDate, '18:00')
+                payload.dueDate = due
+                // payload.due_date = due
               }
             }
-            console.debug('[OnboardingSetschedulePopup] POST', url, payload)
-            const resp = await http.post(url, payload)
-            console.debug('[OnboardingSetschedulePopup] POST resp', resp)
-            const body = resp?.data ?? resp
-            const assigned = body || Object.assign({}, t)
-            assigned.startDate = assigned.startDate || t.startDate
-            assigned.endDate = assigned.endDate || t.endDate
-            if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
-            assignedList.push(assigned)
-          } catch (e) {
-            console.error('일정 할당 실패', e)
-            // handle duplicate-mapping 400 errors gracefully and surface full response for debugging
+
+            // 🔹 2) 교육일 경우: 기존 로직 유지
+            else {
+              const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
+
+              if (rawType === 'ONLINE') {
+                const sdDate =
+                  t._onlineStartDate ||
+                  t._editDate ||
+                  (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+
+                const edDate =
+                  t._onlineEndDate ||
+                  t._editDate ||
+                  (t.endDate ? this.getLocalDatePart(t.endDate) : null)
+
+                if (sdDate) payload.startDate = sdDate   // "YYYY-MM-DD"
+                if (edDate) payload.endDate = edDate
+              } else {
+                // 기존 OFFLINE/기타 교육 로직 그대로
+                const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+                const timePart = t._startTime || '09:00'
+                const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
+                if (sched) payload.scheduledAt = sched
+              }
+
+              if (Object.keys(payload).length === 0) {
+                // ensure we send a plain YYYY-MM-DD string for assigned date (avoid Date objects)
+                const assigned = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
+                payload.assignedDate = assigned
+                payload.assigned_date = assigned
+              }
+            }
+
+            // 🔹 3) URL: 과제 / 교육 분기
+            const url = isAssignment
+              ? `/api/v1/admin/programs/${this.programId}/tasks/${id}`
+              : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
+
+            let resp
             try {
+              resp = await http.post(url, payload)
+            } catch (e) {
+              // 🔥 "이미 매핑"된 교육이면 PATCH로 일정 수정 (과제에는 적용 안 함)
               const respErr = e?.response
               const status = respErr?.status
               const data = respErr?.data
-              console.debug('[OnboardingSetschedulePopup] error response data:', data)
               const msg = (data && (data.message || data.error || data.msg)) || ''
-              if (status === 400 && typeof msg === 'string' && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
-                console.warn('[OnboardingSetschedulePopup] duplicate mapping, skipping:', msg)
+
+              if (!isAssignment && status === 400 && typeof msg === 'string'
+                && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
+                console.warn('[OnboardingSetschedulePopup] 이미 매핑된 교육 → PATCH로 일정 수정 시도')
+
+                // PATCH payload는 ProgramTrainingUpdateRequest와 맞춰서: { scheduledAt, startDate, endDate }
+                const patchPayload = {
+                  scheduledAt: payload.scheduledAt || null,
+                  startDate: payload.startDate || null,
+                  endDate: payload.endDate || null,
+                }
+
+                console.debug('[OnboardingSetschedulePopup] PATCH', url, patchPayload)
+                resp = await http.patch(url, patchPayload)
+              } else {
+                console.error('일정 할당 실패', e)
+                const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
+                window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
                 assignedList.push(Object.assign({}, t))
                 return
               }
-              const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
-              window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
-            } catch (inner) {
-              // ignore
             }
+
+            // 🔹 4) POST/PATCH 성공 후 할당 리스트에 추가
+            console.debug('[OnboardingSetschedulePopup] POST/PATCH resp', resp)
+            const body = resp?.data ?? resp
+            const assigned = body || Object.assign({}, t)
+
+            if (isAssignment) {
+              // 과제는 dueDate 기준으로 반영
+              assigned.dueDate = assigned.dueDate || assigned.due_date || t.dueDate || payload.dueDate
+            } else {
+              // 교육은 기존 start/end 유지
+              assigned.startDate = assigned.startDate || t.startDate
+              assigned.endDate = assigned.endDate || t.endDate
+              if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) {
+                assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
+              }
+            }
+
+            assignedList.push(assigned)
+          } catch (e) {
+            console.error('일정 처리 실패', e)
             assignedList.push(Object.assign({}, t))
           }
         } else {
@@ -534,7 +811,7 @@ export default {
         this.selectedTrainings = []
         this.close()
       })
-    }
+    } 
   }
 }
 </script>
@@ -569,7 +846,14 @@ export default {
 .item-left { flex:1 }
 .item-actions { margin-left:12px }
 .item-row:last-child, .training-row:last-child { border-bottom:none }
-.item-title, .training-title { font-weight:600 }
+.item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;  /* 기존 그대로 유지 */
+  flex-wrap: wrap;   /* 제목/뱃지가 길면 아래 줄로 내려가도록 */
+}
+.training-title { font-weight:600 }
 .item-time, .training-meta { font-size:12px; color:#6b7280 }
 .modal-top { display:flex; align-items:center; justify-content:center; position:relative; margin-bottom:12px }
 .modal-title { font-size:18px; font-weight:700 }
@@ -596,7 +880,7 @@ input, textarea { width:100%; box-sizing:border-box; padding:8px; border:1px sol
 .selected-row { display:flex; align-items:flex-start; justify-content:space-between }
 .selected-left { flex:1 }
 .selected-actions { margin-left:12px }
-.selected-inline-btn { margin-left: 40%; vertical-align: middle }
+.selected-inline-btn { margin-left: auto; vertical-align: middle }
 .item-badge { display:inline-block; margin-left:8px; padding:2px 8px; font-size:11px; border-radius:12px; background:#fff3cd; color:#854d00; border:1px solid #ffeeba }
 .item-badge--training { background:#e6f0ff; color:#13306e; border-color:#d3e1ff }
 .dt-controls { display:flex; gap:8px; align-items:center; margin-top:8px }
