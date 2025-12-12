@@ -148,9 +148,12 @@ export default {
     const getStatusLabel = (status) => {
       const map = {
         MISSING: "미제출",
-        PENDING: "진행중",
-        COMPLETED: "완료",
+        PENDING: "진행 중",
+        COMPLETED: "완료됨",
         SCHEDULED: "예정",
+        GRADED: "평가됨",
+        SUBMITTED: "제출됨",
+        LATE: "지연 제출",
       };
       return map[status] || status || "";
     };

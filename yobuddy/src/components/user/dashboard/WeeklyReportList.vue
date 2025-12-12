@@ -77,6 +77,9 @@ export default {
       const map = {
         SUBMITTED: "제출됨",
         MISSING: "미제출",
+        REVIEWED: "피드백 완료",
+        FEEDBACK_OVERDUE: "피드백 지연",
+        WRITTEN: "작성 중",
       };
       return map[status] || status;
     };

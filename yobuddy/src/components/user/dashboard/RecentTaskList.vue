@@ -57,11 +57,12 @@ export default {
 
     const statusLabel = (s) => {
       const map = {
-        PENDING: "제출 전",
-        SUBMITTED: "제출 완료",
-        LATE: "지각 제출",
+        PENDING: "진행 중",
+        SUBMITTED: "제출됨",
+        LATE: "지연 제출",
         MISSING: "미제출",
-        GRADED: "채점 완료",
+        GRADED: "평가됨",
+        COMPLETED: "완료됨",
       };
       return map[s] || s;
     };

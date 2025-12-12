@@ -78,6 +78,14 @@ export default {
         departmentName: t.departmentName || t.department || ((t.assignedPrograms && t.assignedPrograms[0] && (t.assignedPrograms[0].departmentName || t.assignedPrograms[0].department)) ? (t.assignedPrograms[0].departmentName || t.assignedPrograms[0].department) : '-'),
         status: t.status || ((t.assignedPrograms && t.assignedPrograms[0] && t.assignedPrograms[0].status) ? t.assignedPrograms[0].status : ''),
         startDate: t.startDate,
+        endDate: t.endDate,
+        completedAt: t.completedAt,
+        certificateFiles: t.certificateFiles || [],
+        certificateFileName: t.certificateFileName,
+        certificateName: t.certificateName,
+        certificateUrl: t.certificateUrl,
+        fileName: t.fileName,
+        filename: t.filename,
         scheduledAt: t.scheduledAt,
         materials: t.materials || [],
         hero: t.headerImage || t.hero || ''
@@ -143,6 +151,13 @@ export default {
         // payload may be the training object or { training: {...} } or { data: {...} }
         const detail = payload?.training || payload?.data || payload || t
         this.selected = detail
+        const matchIdx = this.trainings.findIndex(
+          (item) => (item.id || item.trainingId) === (detail.id || detail.trainingId)
+        )
+        if (matchIdx >= 0) {
+          const merged = { ...this.trainings[matchIdx], ...this.mapTraining(detail) }
+          this.trainings.splice(matchIdx, 1, merged)
+        }
       }catch(e){ console.error(e); this.selected = t }
       this.showDetail=true
     },
