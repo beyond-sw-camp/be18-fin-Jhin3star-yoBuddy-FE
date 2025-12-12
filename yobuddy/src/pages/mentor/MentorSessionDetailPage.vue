@@ -11,7 +11,6 @@
         </div>
       </div>
 
-      <!-- 세션 정보 표시 -->
       <div v-if="!editMode" class="card-body">
         <div class="info-grid">
           <div class="info-group">
@@ -55,7 +54,6 @@
         </div>
       </div>
 
-      <!-- 피드백 수정 폼 -->
       <div v-else class="card-body">
         <div class="form-grid">
           <div class="form-row">
@@ -78,9 +76,15 @@
         </div>
       </div>
 
-      <!-- 버튼 영역 -->
       <div class="card-footer">
-        <button v-if="!editMode" class="btn-primary" @click="enterEditMode">피드백 작성/수정</button>
+        <button  
+        v-if="!editMode && !['COMPLETED', 'CANCELLED'].includes(session.status)"
+        class="btn-primary"
+        @click="enterEditMode"
+        >  
+        피드백 작성/수정
+      </button>
+
         <template v-if="editMode">
           <button class="btn-ghost" @click="cancelEdit">취소</button>
           <button class="btn-primary" @click="saveFeedback">피드백 저장</button>
@@ -167,12 +171,10 @@ export default {
 
   const base = (http.defaults.baseURL || "").replace(/\/$/, "");
 
-  // 이미 절대 URL이면 그대로 반환
   if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
     return relativePath;
   }
 
-  // "/api/xxx" 형태면 baseURL 붙이기
   return `${base}${relativePath.startsWith("/") ? relativePath : "/" + relativePath}`;
 },
     initials(name) {
@@ -202,7 +204,6 @@ export default {
 </script>
 
 <style scoped>
-/* Common styles from list page */
 .org-page { padding: 28px 40px; display:flex; justify-content:center; }
 .content-card { width: 1100px; max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(9,30,66,0.08); overflow: hidden; }
 .card-header { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; padding: 20px 28px; border-bottom: 1px solid #eef2f7; flex-wrap:wrap; }
@@ -215,7 +216,6 @@ export default {
 .card-body { padding: 28px 32px; }
 .card-footer { padding: 20px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:center; gap: 12px; }
 
-/* Detail page specific styles */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -255,7 +255,7 @@ export default {
   object-fit: cover;
 }
 .info-list {
-  flex-grow: 1; /* Allow info-list to take available space */
+  flex-grow: 1; 
 }
 .info-list dt {
   color: #7d93ad;
@@ -284,12 +284,12 @@ export default {
   font-weight: 600;
 }
 .stat-item.completed {
-  background-color: #d1fae5; /* Light green */
-  color: #059669; /* Darker green */
+  background-color: #d1fae5;
+  color: #059669;
 }
 .stat-item.pending {
-  background-color: #fef3c7; /* Light yellow */
-  color: #92400e; /* Darker yellow */
+  background-color: #fef3c7;
+  color: #92400e; 
 }
 .feedback-content {
   white-space: pre-wrap;
@@ -302,7 +302,6 @@ export default {
   min-height: 100px;
 }
 
-/* Form styles */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -331,7 +330,6 @@ export default {
   resize: vertical;
 }
 
-/* Tag styles from list page */
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700; display: inline-block; }
 .tag-admin { background:#ffe9e9; color:#c94242 }
 .tag-mentor { background:#f6f8d1; color:#b0b900 }

@@ -1,28 +1,35 @@
 <template>
   <header class="header-bar">
     <div class="header-left">
-      <!-- Logo -->
       <div class="logo-section">
-        <div class="logo">
-          <img src="@/assets/logo_main.svg" alt="YoBuddy Logo" class="logo-icon" width="126em" height="100em" />
+          <div class="logo" @click="goHome" style="cursor:pointer;">
+            <img
+              src="@/assets/logo_main.svg"
+              alt="YoBuddy Logo"
+              class="logo-icon"
+              width="126em"
+              height="100em"
+            />
+          </div>
         </div>
-      </div>
       <div class="breadcrumb">
         <span class="chevron">
           <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
         </span>
-        <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
+        <template v-for="(item, idx) in breadcrumbItems" :key="idx">
           <span class="chevron" v-if="idx > 0">
             <img src="@/assets/logo_anglebrackets.svg" alt=">" class="logo-icon" sizes="100%">
           </span>
+
           <router-link
-              :to="breadcrumbLinks[idx]"
-              class="page-name"
-              style="cursor:pointer; text-decoration:none; color:inherit;"
+          :to="item.to"
+          class="page-name"
+          style="cursor:pointer; text-decoration:none; color:inherit;"
           >
-            {{ crumb }}
-          </router-link>
-        </template>
+          {{ item.label }}
+        </router-link>
+      </template>
+
       </div>
     </div>
     <div class="header-right">
@@ -64,10 +71,11 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ChatbotPopupCard from '@/components/popupcard/ChatbotPopupCard.vue'
 import NoiticePopupCard from '@/components/popupcard/NoiticePopupCard.vue'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useAuthStore } from '@/store/authStore'
 
 export default {
   name: 'HeaderBar',
@@ -77,11 +85,12 @@ export default {
   },
   setup(props, { emit }) {
     const route = useRoute()
+    const router = useRouter() 
     const notificationStore = useNotificationStore()
-
+     const auth = useAuthStore()
     const showNotificationCard = ref(false)
     const showChatbotCard = ref(false)
-
+    
     const notificationCount = computed(() => notificationStore.unreadCount)
 
     const pageTitleMap = {
@@ -105,58 +114,46 @@ export default {
       '/organization/department': '부서 관리',
       '/sessions': '세션 목록',
       '/sessions/create': '세션 생성',
+      '/onboarding/programs/new': '프로그램 생성'
     }
 
     const pageTitle = computed(() => pageTitleMap[route.path] || 'YoBuddy')
 
+    const breadcrumbItems = computed(() => {
+      const hiddenSegments = ['user', 'admin', 'mentor']
+      const renameMap = { edit: '수정', create: '생성', new: '생성' }
 
-const breadcrumbs = computed(() => {
-  let segments = route.path.split('/').filter(Boolean)
+      const segments = route.path
+        .split('/')
+        .filter(Boolean)
+        .filter(seg => !hiddenSegments.includes(seg))
 
-  const hiddenSegments = ["user", "admin", "mentor"]
-  segments = segments.filter(seg => !hiddenSegments.includes(seg))
+      const items = []
+      let path = ''
 
-  const crumbs = []
-  let accumulatedPath = ""
+      segments.forEach(seg => {
+        path += '/' + seg
 
-  segments.forEach((seg, idx) => {
-    accumulatedPath += "/" + seg
+        if (/^\d+$/.test(seg)) {
+          items.push({ label: '상세보기', to: path })
+          return
+        }
 
-    // 마지막 segment가 PK(숫자)면 → 상세보기
-    if (idx === segments.length - 1 && /^\d+$/.test(seg)) {
-      crumbs.push("상세보기")
-    }
-    // 누적 path로 pageTitleMap에서 찾기
-    else if (pageTitleMap[accumulatedPath]) {
-      crumbs.push(pageTitleMap[accumulatedPath])
-    }
-    // 없으면 segment 그대로
-    else {
-      crumbs.push(seg)
-    }
-  })
+        if (renameMap[seg]) {
+          items.push({ label: renameMap[seg], to: path })
+          return
+        }
 
-  return crumbs
-})
-const breadcrumbLinks = computed(() => {
-  const segments = route.path.split('/').filter(Boolean)
-  const hiddenRoot = ["user", "admin", "mentor"]
+        if (pageTitleMap[path]) {
+          items.push({ label: pageTitleMap[path], to: path })
+          return
+        }
 
-  const links = []
-  let path = ""
+        items.push({ label: seg, to: path })
+      })
 
-  segments.forEach((seg, idx) => {
-    path += "/" + seg
-
-    if (idx === 0 && hiddenRoot.includes(seg)) {
-      return
-    }
-
-    links.push(path)
-  })
-
-  return links
-})
+      return items
+    })
 
     const toggleMenu = () => {
       showChatbotCard.value = !showChatbotCard.value
@@ -186,18 +183,28 @@ const breadcrumbLinks = computed(() => {
       window.removeEventListener('click', handleClickOutside)
     })
 
+    const goHome = () => {
+    if (auth.isAdmin) {
+      router.push('/kpi')
+    } else if (auth.isMentor) {
+      router.push('/mentor/dashboard')
+    } else if (auth.isUser) {
+      router.push('/user/dashboard')
+    } else {
+      router.push('/login')
+    }
+  }
+
     return {
       pageTitle,
       notificationCount,
       toggleMenu,
       toggleNotifications,
-
-      breadcrumbs,
-      breadcrumbLinks,
-
+      breadcrumbItems,
       showNotificationCard,
       showChatbotCard,
-      notificationStore
+      notificationStore,
+      goHome
     }
   }
 }

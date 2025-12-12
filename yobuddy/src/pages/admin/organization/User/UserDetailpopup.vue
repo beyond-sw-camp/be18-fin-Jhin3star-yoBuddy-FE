@@ -253,26 +253,47 @@ export default {
     confirmDelete() { this.showConfirm = true },
     doDelete() { this.$emit('delete', this.user); this.showConfirm = false }
   },
-  computed: {
-    initials() {
-      const name = this.user?.name || this.user?.userName || '';
-      return name ? name.substring(0, 1).toUpperCase() : '?';
-    },
-    fullProfileImageUrl() {
-      if (this.user?.profileImageUrl) {
-        const base = http.defaults.baseURL.replace(/\/$/, '');
-        const path = this.user.profileImageUrl.replace(/^\//, '');
-        return `${base}/${path}`;
-      }
-      return null;
-    },
-    formattedJoinDate() {
-      const d = this.user && (this.user.joinedAt || this.user.joinDate || this.user.hireDate) || ''
-      if (!d) return '—'
-      try { const dt = new Date(d); if (Number.isNaN(dt.getTime())) return d; const y = dt.getFullYear(); const m = String(dt.getMonth() + 1).padStart(2, '0'); const day = String(dt.getDate()).padStart(2, '0'); return `${y}-${m}-${day}` } catch (e) { return d }
-    },
-    confirmMessage() { const name = (this.user && (this.user.name || this.user.userName)) ? (this.user.name || this.user.userName) : '해당 사용자'; return `${name}님을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.` }
+computed: {
+  initials() {
+    const name = this.user?.name || this.user?.userName || '';
+    return name ? name.substring(0, 1).toUpperCase() : '?';
   },
+
+  fullProfileImageUrl() {
+    const raw = this.user?.profileImageUrl;
+    if (!raw) return null;
+
+    // 이미 절대경로면 그대로 사용
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+
+    // baseURL 방어 처리
+    const base = http?.defaults?.baseURL;
+    if (!base) return raw; // fallback (상대경로라도 렌더는 되게)
+
+    const safeBase = base.replace(/\/$/, '');
+    const safePath = raw.replace(/^\//, '');
+    return `${safeBase}/${safePath}`;
+  },
+
+  formattedJoinDate() {
+    const d = this.user && (this.user.joinedAt || this.user.joinDate || this.user.hireDate);
+    if (!d) return '—';
+    try {
+      const dt = new Date(d);
+      if (Number.isNaN(dt.getTime())) return d;
+      return dt.toISOString().slice(0, 10);
+    } catch {
+      return d;
+    }
+  },
+
+  confirmMessage() {
+    const name = this.user?.name || this.user?.userName || '해당 사용자';
+    return `${name}님을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`;
+  }
+},
   
 }
 </script>

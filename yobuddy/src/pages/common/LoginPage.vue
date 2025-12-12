@@ -29,7 +29,7 @@
           <label class="remember">
             <input type="checkbox" v-model="remember" /> 기억하기
           </label>
-          <a class="forgot" href="/">비밀번호 찾기</a>
+          <router-link class="forgot" to="/request-password-reset">비밀번호 찾기</router-link>
         </div>
 
         <button class="btn-submit" type="submit" :disabled="loading" :class="{ pressed: loading }">

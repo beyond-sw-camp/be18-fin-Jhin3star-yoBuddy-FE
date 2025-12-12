@@ -36,7 +36,17 @@
           <tbody>
             <tr v-for="u in users" :key="u.id" @click="openDetail(u)" style="cursor:pointer">
               <td class="name-col">
-                <div class="avatar">{{ initials(u.name) }}</div>
+                <div class="avatar">
+                  <img
+                    v-if="u.profileImageUrl"
+                    :src="u.profileImageUrl"
+                    alt="profile"
+                    class="avatar-img"
+                  />
+                  <span v-else>
+                    {{ initials(u.name) }}
+                  </span>
+                </div>
                 <div class="meta">
                   <div class="name">{{ u.name }}</div>
                   <div class="email">{{ u.email }}</div>
@@ -174,18 +184,17 @@ export default {
     mapUser(u) {
       const roleRaw = u.role || (u.roles && u.roles[0]) || ''
       const roleUpper = String(roleRaw).toUpperCase()
+
       return {
-        id: u.userId || u.id || u.uuid || null,
-        name: u.name || u.fullName || u.displayName || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
-        email: u.email || u.username || '',
-        // server may return phone as phoneNumber, phone or mobile
-        phone: u.phoneNumber || u.phone || u.mobile || '',
+        id: u.userId || u.id || null,
+        name: u.name || '',
+        email: u.email || '',
+        phone: u.phoneNumber || '',
         role: roleUpper,
-        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR'? '멘토' : '신입',
-        // server may return department as departmentName, department, or nested team.name
-        department: u.departmentName || u.department || (u.team && u.team.name) || '',
-        // server may return join date in various fields: joinedAt, joinDate, hireDate
-        joinDate: u.joinedAt || u.joinDate || u.hireDate || ''
+        roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR' ? '멘토' : '신입',
+        department: u.departmentName || '',
+        joinDate: u.joinedAt || '',
+        profileImageUrl: u.profileImageUrl || null
       }
     },
 
@@ -441,7 +450,24 @@ export default {
 .user-table tbody tr { border-top:1px solid #f0f4fb }
 .user-table tbody td { padding:16px 10px; vertical-align:middle; color:#123; }
 .name-col { display:flex; gap:12px; align-items:center }
-.avatar { width:36px; height:36px; border-radius:50%; background:#294594; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700 }
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #294594;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .meta .name { font-weight:700; color:#10243b }
 .meta .email { font-size:13px; color:#6d859a }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
