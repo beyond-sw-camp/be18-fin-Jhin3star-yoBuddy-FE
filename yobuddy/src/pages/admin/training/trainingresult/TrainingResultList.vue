@@ -7,6 +7,28 @@
           <p class="card-sub">교육 평가 조회</p>
         </div>
 
+          <!-- 🔍 검색 영역 -->
+        <div class="search-wrap">
+          <select v-model="searchFilter" class="search-select">
+            <option value="ALL">전체</option>
+            <option value="USER">사원명</option>
+            <option value="TRAINING">교육명</option>
+            <option value="PROGRAM">프로그램명</option>
+          </select>
+
+          <input
+            v-model="searchKeyword"
+            type="text"
+            class="search-input"
+            placeholder="검색어를 입력하세요"
+            @keyup.enter="onSearch"
+          />
+
+          <button class="btn btn-primary" @click="onSearch">
+            검색
+          </button>
+        </div>
+
         <div class="action-wrap">
           <!-- 삭제 모드가 아닐 때 -->
           <button
@@ -103,7 +125,8 @@ export default {
     return {
       page: 0,
       size: 10,
-      pageList: [],
+      searchFilter: 'ALL',
+      searchKeyword: '',
       trainingresults: [],
       loading: false,
       totalPages: 1,
@@ -117,30 +140,95 @@ export default {
     this.fetchTrainingResults();
   },
 
+  computed: {
+    pageList() {
+      const total = this.totalPages || 0;
+      const current = this.page || 0;       // 0-based
+      const maxVisible = 5;
+      const pages = [];
+
+      if (total <= 0) {
+        return pages;
+      }
+
+      if (total <= maxVisible) {
+        for (let i = 0; i < total; i++) {
+          pages.push(i);
+        }
+        return pages;
+      }
+
+      const half = Math.floor(maxVisible / 2); // 5 → 2
+
+      let start = current - half;
+      let end = current + half + 1; // end는 미포함
+
+      if (start < 0) {
+        start = 0;
+        end = maxVisible;
+      }
+
+      if (end > total) {
+        end = total;
+        start = total - maxVisible;
+      }
+
+      for (let i = start; i < end; i++) {
+        pages.push(i);
+      }
+
+      return pages;
+    },
+  },
+
   methods: {
     // 리스트 조회
     async fetchTrainingResults() {
       this.loading = true;
       this.error = null;
       try {
-        const pageData = await trainingResultService.getTrainingResultList({
+        const payload = {
           page: this.page,
           size: this.size,
-        });
+        };
+
+        if (this.searchKeyword) {
+          if (this.searchFilter === 'ALL') {
+            // 🔥 ALL일 때는 3가지 필드를 모두 검색
+            payload.userName = this.searchKeyword;
+            payload.trainingName = this.searchKeyword;
+            payload.onboardingName = this.searchKeyword;
+          } 
+          else if (this.searchFilter === 'USER') {
+            payload.userName = this.searchKeyword;
+          } 
+          else if (this.searchFilter === 'TRAINING') {
+            payload.trainingName = this.searchKeyword;
+          } 
+          else if (this.searchFilter === 'PROGRAM') {
+            payload.onboardingName = this.searchKeyword;
+          }
+        }
+
+        const pageData = await trainingResultService.getTrainingResultList(payload);
 
         // ⚠️ 백엔드 응답 형식에 따라 여기 필드 이름만 맞춰주면 됨
         // 예: Spring Data Page 기준
         this.trainingresults = pageData.content || [];
         this.totalPages = Math.max(1, pageData.totalPages ?? 0);
         this.page = pageData.number ?? this.page;
-
-        this.buildPageList();
       } catch (e) {
         console.error(e);
         this.error = '교육 평가 조회에 실패했습니다.';
       } finally {
         this.loading = false;
       }
+    },
+
+    onSearch() {
+      // 검색할 때는 항상 첫 페이지부터
+      this.page = 0; 
+      this.fetchTrainingResults();
     },
 
     formatDate(dateStr) {
@@ -162,24 +250,6 @@ export default {
       if (newPage < 0 || newPage >= this.totalPages || newPage === this.page) return;
       this.page = newPage;
       this.fetchTrainingResults();
-    },
-
-    // 페이지네이션 버튼들 계산
-    buildPageList() {
-      const total = this.totalPages || 0
-      const current = this.page || 0
-      const maxVisible = 5
-      const pages = []
-      if (total <= 0) {
-        this.pageList = pages
-        return
-      }
-      const start = Math.max(0, Math.min(current, total - maxVisible))
-      const end = Math.min(total, start + maxVisible)
-      for (let i = start; i < end; i++) {
-        pages.push(i)
-      }
-      this.pageList = pages
     },
 
     statusClass(status) {
@@ -246,7 +316,7 @@ export default {
         console.error(e);
       }
     },
-  }
+  },
 };
 </script>
 
@@ -285,15 +355,38 @@ export default {
   display: flex;
   gap: 8px;
 }
+
+.search-wrap {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  gap: 8px;
+  flex: 1;              /* 가운데 영역 좀 넓게 */
+  justify-content: flex-end; /* 필요에 따라 변경 */
+}
+
+.search-select {
+  min-width: 120px;
+  border-radius: 10px;
+  padding:10px 16px;
+}
+
+.search-input {
+  min-width: 220px;
+  border-radius: 10px;
+  padding:10px 16px;
+}
+
 .btn {
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
 }
 
 .btn-danger {
   background: #e74c3c;
+  padding:10px 16px;
   color: #fff;
 }
 
