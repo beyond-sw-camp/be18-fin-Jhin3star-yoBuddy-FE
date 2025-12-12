@@ -69,19 +69,23 @@
 
             <!-- 퀴즈 응시 섹션 (상태 기반) -->
             <div v-if="isOfflineCompleted && isQuizSubmitted" class="quiz-completed-section">
-              <div class="quiz-left">
-                <span class="quiz-label">퀴즈 응시 완료:</span>
-                <span class="quiz-date">{{ formatDateTime(training?.submittedAt) }}</span>
+              <div class="quiz-row-top">
+                <div class="quiz-left">
+                  <span class="quiz-label">퀴즈 응시 완료:</span>
+                  <span class="quiz-date">{{ formatDateTime(training?.submittedAt) }}</span>
+                </div>
+                <div class="quiz-right">
+                  <div class="score-row">
+                    <span class="score-label">{{ training?.score }}점</span>
+                    <span :class="['passing-status', isPassingScore ? 'pass' : 'fail']">
+                      {{ isPassingScore ? 'PASS' : 'FAIL' }}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div class="quiz-right">
-                <span class="score-label">{{ training?.score }}점</span>
-                <span :class="['passing-status', isPassingScore ? 'pass' : 'fail']">
-                  {{ isPassingScore ? 'PASS' : 'FAIL' }}
+                <span v-if="isOfflineCompleted && !isPassingScore" class="passing-score-info">
+                  (통과 점수: {{ training?.passingScore }}점)
                 </span>
-              </div>
-              <span v-if="isOfflineCompleted && !isPassingScore" class="passing-score-info">
-                (통과 점수: {{ training?.passingScore }}점)
-              </span>
             </div>
             <div v-else class="quiz-button-section">
               <label class="quiz-input-label">
@@ -94,6 +98,7 @@
                 </div>
               </label>
             </div>
+            
           </template>
         </section>
         <!-- 하단 고정 첨부파일 -->
@@ -687,8 +692,8 @@ export default {
 /* 퀴즈 완료 */
 .quiz-completed-section {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 16px;
   padding: 10px 4px;
   margin: 12px 0 4px;
@@ -733,9 +738,30 @@ export default {
 
 .quiz-right {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 14px;
   flex: 0 0 auto;
+}
+
+.quiz-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.passing-score-info {
+  align-self: flex-end;
+  margin-top: 4px;
+  font-size: 12px;
+  display: block;
+  /* 필요하면 줄바꿈 강제 */
 }
 
 .score-label {
