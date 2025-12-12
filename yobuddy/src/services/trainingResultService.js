@@ -1,11 +1,26 @@
 import http from "./http";
 
 const trainingResultService = {
-  async getTrainingResultList({page = 0, size = 10}) {
+  async getTrainingResultList({
+    page = 0, 
+    size = 10,
+    trainingName = null,
+    onboardingName = null,
+    userName = null,
+  }) {
     try {
-      const resp = await http.get('/api/v1/admin/trainings/results', {params: {page, size}});
+      const params = {
+        page,
+        size,
+      };
 
-			return resp.data || [];
+      if (trainingName) params.trainingName = trainingName;
+      if (onboardingName) params.onboardingName = onboardingName;
+      if (userName) params.userName = userName;
+      
+      const resp = await http.get('/api/v1/admin/trainings/results', { params });
+
+			return resp.data;
 
     } catch (e) {
       console.error("교육 평가 조회 실패", e);
