@@ -24,15 +24,13 @@
             <CalendarViewHeader :headerProps="headerProps" @input="setShowDate" />
           </template>
           <template #dayContent="slotProps">
-            <!-- show a numeric badge when the date has trainings -->
-            <div class="day-empty">
+             <div class="day-empty">
               <div
                 v-if="countItemsForDateKey(slotProps) > 0 && !anyModalOpen"
                 :class="['day-badge', (String(countItemsForDateKey(slotProps)).length === 1) ? 'single' : 'pill']"
                 :style="badgeStyle(countItemsForDateKey(slotProps))">
                 {{ countItemsForDateKey(slotProps) }}
               </div>
-              <!-- debug: show plain count when debugging is enabled -->
               <div v-if="showDebug" class="dbg-count">{{ countItemsForDateKey(slotProps) }}</div>
             </div>
           </template>
@@ -83,7 +81,6 @@
         </div>
 
         <div class="program-grid">
-          <!-- Left Column: Mentee List -->
           <div class="card list-card mentees-card">
             <div class="card-title">멘티 목록
               <button class="btn-add-mentee" @click="onAddMentee" title="멘티 추가">+</button>
@@ -92,7 +89,7 @@
                 <ul class="people-list">
                   <li v-if="menteeDisplayList.length === 0" class="empty">멘티 정보 없음</li>
                   <li v-else v-for="(mentee, i) in menteeDisplayList" :key="mentee.id || i">
-                    <div class="person-row" @click="openUserDetail(mentee)">
+                    <div class="person-row">
                       <div class="avatar">{{ initials(mentee.name || mentee.label) }}</div>
                       <div class="meta">
                         <div class="name">{{ mentee.name || mentee.label }}</div>
@@ -108,7 +105,6 @@
             </div>
           </div>
 
-          <!-- Right Column: Charts -->
           <div class="right-column">
             <div class="card chart-card">
               <div class="card-title">KPI 점수</div>
@@ -123,7 +119,6 @@
       </div>
     </section>
 
-    <!-- simplified UI: no per-day modal; use schedule popup on date click -->
     <UserDetailpopup
       :show="showUserDetail"
       :user="selectedUser"
@@ -209,7 +204,6 @@ export default {
       return (this.showUserDetail || this.showSetScheduleModal || this.showAddMenteeModal);
     },
     dayItems() {
-      // Return trainings and program-assigned tasks scheduled for the currently selected date.
       if (!this.selectedDate) return []
       const target = new Date(this.selectedDate)
       target.setHours(0,0,0,0)
@@ -229,7 +223,6 @@ export default {
         }
       })
 
-      // programTasks are already normalized in fetchProgramTasks
       const taskItems = (this.programTasks || []).filter(p => {
         if (!p || !p.startDate) return false
         const sd = new Date(p.startDate)
@@ -238,14 +231,11 @@ export default {
         return sd.getTime() === target.getTime()
       }).map(p => ({ id: p.id, title: p.title || '과제', startDate: p.startDate, endDate: p.endDate, classes: p.classes || ['tesk'] }))
 
-      // mark task kind
       const taskItemsMarked = taskItems.map(i => Object.assign({}, i, { kind: 'task' }))
 
       return [...trainingItems, ...taskItemsMarked]
     },
-    // All items mapped per-date (used for custom rendering and popup)
     allDayItems() {
-      // Build a normalized list of day items from trainings and program tasks
       const trainingItems = (this.trainings || []).map(t => ({
         id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
         title: t.title || t.name || t.trainingTitle || '일정',
@@ -265,9 +255,6 @@ export default {
       return [...trainingItems, ...taskItems]
     },
     calendarItems() {
-      // Intentionally return no items so calendar doesn't render pill UI.
-      // We still use `allDayItems` and `trainings` for badges and the
-      // right-side list; keeping the calendar visually simple per UX request.
       return []
     },
     calendarDateClasses() {
@@ -285,7 +272,6 @@ export default {
       map[endKey] = (map[endKey] || []).concat(['program-end'])
       return map
     },
-    // date => count map computed from trainings/allDayItems to avoid repeated parsing
     dateCountMap() {
       const map = {}
       const items = this.allDayItems || []
@@ -325,12 +311,10 @@ export default {
     }
     ,
     showSetScheduleModal(val) {
-      // when modal opens, remove/hide any DOM-injected badges to avoid overlap
       try {
         if (val) {
           document.querySelectorAll('.day-badge-dom').forEach(n => n.remove())
         } else {
-          // re-apply after modal closes (allow layout to settle)
           this.$nextTick(() => { try { this.applyDomBadges() } catch (e) { /* ignore */ } })
         }
       } catch (e) {
@@ -340,12 +324,10 @@ export default {
   },
   mounted() {
     console.log('[Onboarding] mounted - programId', this.programId)
-    // ensure badges are applied when component first appears
     this.$nextTick(() => {
       try { this.applyDomBadges() } catch (e) { /* ignore */ }
     })
     
-    // emit a global event so external listeners can react when this page mounts
     try {
       this.$nextTick(() => {
         try {
@@ -359,11 +341,8 @@ export default {
     } catch (err) {
       console.debug('[Onboarding] onboarding:mounted dispatch setup failed', err)
     }
-    // re-apply badges on window resize (layout may change)
     window.addEventListener('resize', this.applyDomBadges)
-    // Block calendar element from reacting to wheel/touch gestures that navigate by week
     try {
-      // use a handler that prevents default and stops propagation; attach as non-passive so preventDefault works
       this._calendarWheelHandler = (e) => {
         try {
           if (e && typeof e.preventDefault === 'function') e.preventDefault()
@@ -372,33 +351,22 @@ export default {
       }
       const rootEl = this.$el && this.$el.querySelector && this.$el.querySelector('.calendar-wrapper')
       const innerEl = this.$el && this.$el.querySelector && this.$el.querySelector('.calendar-area ::v-deep .cv-wrapper')
-      // attach to both wrapper and inner calendar if available
       if (rootEl) {
         rootEl.addEventListener('wheel', this._calendarWheelHandler, { capture: true, passive: false })
         rootEl.addEventListener('touchmove', this._calendarWheelHandler, { capture: true, passive: false })
       }
-      // try to attach to cv-wrapper (library DOM) if present
       const cv = this.$el && this.$el.querySelector && (this.$el.querySelector('.cv-wrapper') || (innerEl && innerEl.parentElement))
       if (cv) {
         cv.addEventListener('wheel', this._calendarWheelHandler, { capture: true, passive: false })
         cv.addEventListener('touchmove', this._calendarWheelHandler, { capture: true, passive: false })
       }
-      // overlay blocker (stronger) - if element injected in template exists, attach direct handlers
-      // Note: do NOT attach pointer/pointerdown handlers to the visual overlay.
-      // The overlay element exists only to positionally cover the calendar when
-      // needed, but it must allow clicks to pass through so date selection still
-      // works. We rely on root+document-level wheel/touchmove handlers to block
-      // scroll-based week navigation instead.
-      // also attach a document-level blocker to catch events the library may listen for elsewhere
       this._documentCalendarBlocker = (e) => {
         try {
           const path = e.composedPath ? e.composedPath() : (e.path || [])
-          // if any element in the event path is inside our calendar-area, block
           const hit = Array.from(path || []).some(el => {
             try { return el && el.classList && (el.classList.contains && el.classList.contains('calendar-area') || el.classList.contains('cv-wrapper') || el.classList.contains('calendar-wrapper')) } catch (err) { return false }
           })
           if (!hit) {
-            // fallback: check target.closest
             const tgt = e.target || (e.srcElement || null)
             if (tgt && tgt.closest) {
               const found = tgt.closest && (tgt.closest('.calendar-area') || tgt.closest('.cv-wrapper') || tgt.closest('.calendar-wrapper'))
@@ -432,7 +400,6 @@ export default {
         cv.removeEventListener('wheel', this._calendarWheelHandler, { capture: true })
         cv.removeEventListener('touchmove', this._calendarWheelHandler, { capture: true })
       }
-      // overlay had no pointer handlers attached (clicks must be allowed through)
       if (this._documentCalendarBlocker) {
         document.removeEventListener('wheel', this._documentCalendarBlocker, { capture: true })
         document.removeEventListener('touchmove', this._documentCalendarBlocker, { capture: true })
@@ -460,27 +427,23 @@ export default {
         const s = it.startDate ? new Date(it.startDate) : null
         const e = it.endDate ? new Date(it.endDate) : null
         if (!s) return ''
-        // if start and end exist and both are midnight (00:00:00) or identical date-times, show date only
         const isMidnight = (d) => d && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
         if (e && s.getTime() === e.getTime()) {
           if (isMidnight(s)) return s.toLocaleDateString()
           return s.toLocaleTimeString()
         }
         if (e && isMidnight(s) && isMidnight(e)) {
-          // multi-day/date range where both are dates (no times)
           return `${s.toLocaleDateString()} ~ ${e.toLocaleDateString()}`
         }
         if (!e) {
           if (isMidnight(s)) return s.toLocaleDateString()
           return s.toLocaleTimeString()
         }
-        // default: show time range
         return `${s.toLocaleTimeString()} - ${e.toLocaleTimeString()}`
       } catch (e) {
         return ''
       }
     },
-    // temporary debug helper: prints current lists and normalized dates to console
     dumpDebugState(hint) {
       try {
         console.groupCollapsed('[Onboarding] DEBUG SNAPSHOT', hint || '')
@@ -508,13 +471,9 @@ export default {
         const resp = await http.get(`/api/v1/admin/programs/${this.programId}`)
         this.program = resp?.data ?? resp
         if (this.program && this.program.startDate) this.internalShowDate = new Date(this.program.startDate)
-        // fetch trainings for this program
         this.fetchTrainings()
         this.fetchProgramTasks()
-        // fetch enrollments (mentors & mentees)
         this.fetchEnrollments()
-        // fetch program-scoped task mappings and enrich them
-        // debug log
         console.log('[Onboarding] program loaded', this.program)
         console.log('[Onboarding] calendarItems after program load', this.calendarItems)
         console.log('[Onboarding] allDayItems after program load', this.allDayItems)
@@ -527,8 +486,7 @@ export default {
       if (!this.programId) return
       try {
         const resp = await http.get(`/api/v1/admin/programs/${this.programId}/trainings`)
-        // Debug: inspect raw response shape to ensure we pick the right field
-        const body = resp?.data ?? resp
+       const body = resp?.data ?? resp
         if (this.showDebug) {
           console.debug('[Onboarding] fetchTrainings resp', resp)
           console.debug('[Onboarding] fetchTrainings body keys', body && typeof body === 'object' ? Object.keys(body) : typeof body)
@@ -544,7 +502,6 @@ export default {
         })
         console.log('[Onboarding] trainings loaded', this.trainings.length, (this.trainings || []).slice(0,5))
         console.log('[Onboarding] allDayItems after trainings load', this.allDayItems, 'allDayItems.length', (this.allDayItems || []).length)
-        // ensure DOM badges reflect loaded trainings (in case slot isn't invoked)
         this.$nextTick(() => {
           try {
             this.applyDomBadges()
@@ -563,9 +520,7 @@ export default {
         const resp = await http.get(`/api/v1/admin/programs/${this.programId}/tasks`)
         const body = resp?.data ?? resp
         if (this.showDebug) console.debug('[Onboarding] fetchProgramTasks raw', body)
-        // Support multiple response shapes: body.data.tasks, body.tasks, body.tasksList, body.data
         const mappings = (body && (body.data && Array.isArray(body.data.tasks) ? body.data.tasks : (Array.isArray(body.tasks) ? body.tasks : (Array.isArray(body.data) ? body.data : [])))) || []
-        // normalize mappings: ensure array of objects with taskId and dueDate
         const unique = []
         const seen = new Set()
         mappings.forEach(m => {
@@ -576,8 +531,7 @@ export default {
           unique.push(m)
         })
         console.log('[Onboarding] program task mappings unique', unique.length, unique.slice(0,3))
-        // enrich details
-        const enriched = await Promise.all(unique.map(async (m) => {
+       const enriched = await Promise.all(unique.map(async (m) => {
           const tid = m.taskId || m.task_id || m.id || m.task
           try {
             const dresp = await tasksService.get(tid)
@@ -588,7 +542,6 @@ export default {
             let due = null
             this.applyDomBadges()
             if (dueRaw) {
-              // normalize YYYY-MM-DD to YYYY-MM-DDT00:00:00 to avoid Safari/older browser parsing issues
               if (/^\d{4}-\d{2}-\d{2}$/.test(String(dueRaw))) {
                 due = String(dueRaw) + 'T00:00:00'
               } else {
@@ -604,7 +557,6 @@ export default {
               meta: { mapping: m, detail }
             }
           } catch (err) {
-            // fallback to mapping-only item
             const title = m.title || m.name || `task-${tid}`
             let dueRaw = m.dueDate || m.due_date || m.assignedDate || m.assigned_at || null
             let due = null
@@ -620,7 +572,6 @@ export default {
         }))
         this.programTasks = enriched.filter(Boolean)
         if (this.showDebug) console.debug('[Onboarding] programTasks enriched', this.programTasks)
-        // ensure calendar badges are refreshed after programTasks load
         this.$nextTick(() => {
           try {
             this.applyDomBadges()
@@ -666,7 +617,6 @@ export default {
                 ? body.data
                 : []
         this.enrollments = items
-        // filter out withdrawn enrollments for display/processing
         const activeEnrollments = (items || []).filter(en => {
           try {
             const status = (en.enrollmentStatus || en.status || en.enrollment_status || (en.user && (en.user.enrollmentStatus || en.user.status)) || '').toString().toUpperCase()
@@ -676,20 +626,17 @@ export default {
           }
         })
         if (this.showDebug) console.log('[Onboarding] enrollments parsed', { count: items.length, sample: items.slice(0,3) })
-        // populate a quick fallback list so UI shows immediately (labels are userId until user detail resolves)
-        try {
+       try {
           const quick = (activeEnrollments || []).map(en => {
             const uid = this.extractEnrollmentUserId(en)
             return this.buildPersonFromData({ userId: uid, id: uid }, `#${uid}`)
           }).filter(Boolean)
-          // by default enrollments are mentees for onboarding programs
           this.mentorProfiles = []
           this.menteeProfiles = quick
         } catch (e) {
           // ignore
         }
-        // then enrich with real user data where possible
-        await this.populateEnrollmentUsers(activeEnrollments)
+       await this.populateEnrollmentUsers(activeEnrollments)
       } catch (e) {
         console.error('프로그램 등록 정보 조회 실패', e)
         this.enrollments = []
@@ -740,8 +687,7 @@ export default {
         } else if (role === 'mentee') {
           mentees.push(person)
         } else {
-          // fallback to mentee when role undefined
-          mentees.push(person)
+         mentees.push(person)
         }
       })
       this.mentorProfiles = mentors
@@ -767,7 +713,6 @@ export default {
         const label = String(value)
         return { id: label, label, name: label }
       }
-      // try common user fields
       const id = value.id || value.userId || value.user_id || (value.user && (value.user.id || value.user.userId)) || null
       const name = value.name || value.fullName || value.full_name || value.displayName || `${value.firstName || ''} ${value.lastName || ''}`.trim() || null
       const email = value.email || value.username || null
@@ -786,7 +731,6 @@ export default {
     },
     openUserDetail(user) {
       if (!user) return
-      // ensure we pass the raw meta object if available for the detail popup
       const payload = user && user.meta ? user.meta : user
       this.selectedUser = payload || user
       this.showUserDetail = true
@@ -797,22 +741,19 @@ export default {
     async onAddMenteeConfirmed(user) {
       if (!user) return
       const person = this.buildPersonFromData(user)
-      // avoid duplicates
       const exists = (this.menteeProfiles || []).some(p => String(p.id) === String(person.id) || (p.meta && String(p.meta.id) === String(person.id)))
       if (exists) {
         window.alert('이미 멘티 목록에 존재합니다.')
         return
       }
       this.menteeProfiles = Array.isArray(this.menteeProfiles) ? [...this.menteeProfiles, person] : [person]
-      // persist single add to server
       const uid = person.id || (person.meta && person.meta.id)
       if (uid) {
         try {
           try {
             await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, [uid])
           } catch (err) {
-            // fallback to wrapped payload
-            await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, { userIds: [uid] })
+           await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, { userIds: [uid] })
           }
         } catch (err) {
           console.error('Failed to persist single enrollment add', err)
@@ -829,7 +770,6 @@ export default {
       }
       let added = Array.isArray(payload.added) ? payload.added.map(String).filter(Boolean) : []
       const removed = Array.isArray(payload.removed) ? payload.removed.filter(Boolean) : []
-      // filter out already-enrolled users from `added` by comparing to current enrollments' userId
       const existingUserIds = new Set((this.enrollments || []).map(e => String(this.extractEnrollmentUserId(e))).filter(Boolean))
       const beforeFilterCount = added.length
       added = added.filter(id => !existingUserIds.has(String(id)))
@@ -842,7 +782,6 @@ export default {
         return
       }
       try {
-        // POST added userIds (try plain array, then wrapped)
         if (added.length) {
           try {
             await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, added)
@@ -850,7 +789,6 @@ export default {
             try {
               await http.post(`/api/v1/admin/programs/${this.programId}/enrollments`, { userIds: added })
             } catch (err2) {
-              // if server complains that some users already enrolled, ignore and continue
               const errMsg = err2 && err2.response && err2.response.data && (err2.response.data.message || JSON.stringify(err2.response.data)) || err2.message || String(err2)
               console.error('Failed to add enrollments', err, err2)
               if (/already registered|이미 등록|already enrolled/i.test(errMsg)) {
@@ -862,7 +800,6 @@ export default {
           }
         }
 
-        // For removals, backend expects enrollmentId (not userId). Map userId -> enrollmentId from this.enrollments
         if (removed.length) {
           const enrollmentIds = (removed || []).map(uid => {
             const en = (this.enrollments || []).find(e => String(this.extractEnrollmentUserId(e)) === String(uid))
@@ -872,7 +809,6 @@ export default {
           const missingCount = removed.length - enrollmentIds.length
           if (missingCount > 0) {
             console.warn('[Onboarding] some removals could not be mapped to enrollmentId', { removed, enrollmentIds })
-            // inform user but continue with mapped deletions
             window.alert(`일부 삭제 항목을 찾을 수 없어 건너뛰었습니다 (${missingCount}건).`)
           }
           if (enrollmentIds.length) {
@@ -893,7 +829,6 @@ export default {
         this.selectedUser = null
         return
       }
-      // merge updates into mentor/mentee lists where applicable
       const merge = (arr) => arr.map(p => {
         if (!p) return p
         if (String(p.id) === String(updated.id) || (p.meta && String(p.meta.id) === String(updated.id))) {
@@ -903,7 +838,6 @@ export default {
       })
       this.mentorProfiles = merge(this.mentorProfiles || [])
       this.menteeProfiles = merge(this.menteeProfiles || [])
-      // also close modal
       this.showUserDetail = false
       this.selectedUser = null
     },
@@ -912,14 +846,11 @@ export default {
     },
     onCalendarDateClick(d) {
       this.selectedDate = d ? new Date(d) : null
-      // popup open on date click
       console.log('date clicked', this.selectedDate)
       try { this.dumpDebugState && this.dumpDebugState('onCalendarDateClick') } catch(e){ console.debug('[Onboarding] dumpDebugState error', e) }
     },
     countItemsForDate(d) {
-      // Accept various input shapes: Date/string or slot object
       if (!d) return 0
-      // extract date value if d is an object
       let candidate = d
       if (typeof d === 'object') {
         candidate = d.date || d.day || d.value || d.raw || d.dateObj || d
@@ -928,10 +859,8 @@ export default {
       if (isNaN(target.getTime())) return 0
       target.setHours(0,0,0,0)
 
-      // Debug: log incoming candidate and trainings length to help trace why badge isn't shown
       if (this.showDebug) {
         try {
-          // limit output size
           const sampleTrainings = (this.trainings || []).slice(0,3).map(t => ({ id: t.trainingId || t.id, title: t.title }))
           console.debug('[Onboarding] countItemsForDate', { candidate, target: target.toDateString(), trainingsCount: (this.trainings || []).length, sampleTrainings })
         } catch (e) {
@@ -946,29 +875,23 @@ export default {
         return acc + (sd.getTime() === target.getTime() ? 1 : 0)
       }, 0)
     },
-    // New: use precomputed dateCountMap for more reliable badge counts
     countItemsForDateKey(slotProps) {
       if (!slotProps) return 0
-      // extract candidate like earlier helper
       let candidate = slotProps
       if (typeof slotProps === 'object') {
         candidate = slotProps.date || slotProps.day || slotProps.value || slotProps.raw || slotProps.dateObj || slotProps
       }
-      // compute target key
       const toKey = (d) => {
         if (!d) return null
         try {
-          // If it's a Date object, use its components
           if (d instanceof Date) {
             const dt = new Date(d.getTime())
             dt.setHours(0,0,0,0)
             return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
           }
           const s = String(d)
-          // If the string contains an ISO-like date, extract YYYY-MM-DD directly to avoid timezone parsing issues
           const m = s.match(/(\d{4}-\d{2}-\d{2})/)
           if (m && m[1]) return m[1]
-          // fallback: attempt Date parse (less reliable across browsers)
           const dt = new Date(s)
           if (isNaN(dt.getTime())) return null
           dt.setHours(0,0,0,0)
@@ -980,14 +903,12 @@ export default {
         if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey invalid candidate', { candidate, slotProps })
         return 0
       }
-      // compute by scanning allDayItems (trainings + tasks) with tolerant date parsing
       let cnt = 0
       try {
         const items = this.allDayItems || []
         for (let i = 0; i < items.length; i++) {
           try {
             const it = items[i]
-            // consider multiple possible date sources including enriched detail and mapping due dates
             const cand = it.startDate || it.scheduledAt || it.scheduled_at || (it.meta && it.meta.detail && (it.meta.detail.startDate || it.meta.detail.scheduledAt || it.meta.detail.scheduled_at || it.meta.detail.dueDate || it.meta.detail.due_date)) || (it.meta && it.meta.mapping && (it.meta.mapping.dueDate || it.meta.mapping.due_date)) || null
             const k = toKey(cand)
             if (k === targetKey) cnt += 1
@@ -996,13 +917,10 @@ export default {
       } catch (e) {
         if (this.showDebug) console.debug('[Onboarding] countItemsForDateKey scan failed', e)
       }
-      // Quick override (user option 2): if this slot's date equals the currently selectedDate,
-      // use the right-side `dayItems` length so badge matches the list the user sees.
       try {
         if (this.selectedDate) {
           const selKey = toKey(this.selectedDate)
           if (selKey && selKey === targetKey) {
-            // ensure dayItems is available and use its length
             cnt = Array.isArray(this.dayItems) ? this.dayItems.length : cnt
           }
         }
@@ -1023,8 +941,7 @@ export default {
       if (!t.endDate) t.endDate = t.startDate
       const newId = t.trainingId || t.id || t.training_id || t.taskId || t.task_id
 
-      // If this appears to be a training, merge into trainings list
-      if (t.trainingId || t.training_id || (!t.taskId && !t.task_id && newId)) {
+       if (t.trainingId || t.training_id || (!t.taskId && !t.task_id && newId)) {
         if (newId) {
           const idx = this.trainings.findIndex(x => (x.trainingId || x.id || x.training_id) === newId)
           if (idx !== -1) {
@@ -1038,7 +955,6 @@ export default {
         }
       }
 
-      // If this looks like a task/assignment (no trainingId, but has task id), try to enrich immediately into programTasks
       try {
         const isLikelyTask = !(t.trainingId || t.training_id) && (t.taskId || t.task_id || (!t.trainingId && !t.training_id && t.id))
         if (isLikelyTask) {
@@ -1070,21 +986,16 @@ export default {
         // ignore
       }
 
-      // refresh program tasks as a safety net (server-side mapping list may differ)
       this.fetchProgramTasks()
     },
     onTrainingRemoved(payload) {
-      // payload: { trainingId }
       const tid = payload && (payload.trainingId || payload.id)
       if (!tid) return
-      // remove locally if present
       this.trainings = (this.trainings || []).filter(t => {
         const id = t.trainingId || t.id || t.training_id
         return String(id) !== String(tid)
       })
-      // refresh from server to ensure consistency
       this.fetchTrainings()
-      // refresh program task mappings as well
       this.fetchProgramTasks()
     },
     openDateModal(d) {
@@ -1092,13 +1003,11 @@ export default {
       if (this.selectedDate) this.showSetScheduleModal = true
     },
     getDayPills(date) {
-      // Use allDayItems (computed) to ensure items are available once trainings/program load
       if (!date || !this.program) return []
       const items = []
       const dStr = new Date(date).toDateString()
       const idBase = this.program.programId || this.program.id || 'prog'
 
-      // Program Start/End pills and trainings are already represented in allDayItems
       const arr = this.allDayItems || []
       arr.forEach((it, idx) => {
         if (!it || !it.startDate) return
@@ -1111,7 +1020,6 @@ export default {
       return items
     },
     badgeStyle(count) {
-      // return inline style object for slot-rendered badges
       const text = String(count || '')
       if (text.length === 1) {
         return {
@@ -1122,40 +1030,30 @@ export default {
         position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
       }
     },
-    // Inject badges into calendar day DOM elements as a fallback
     applyDomBadges() {
-      // if the schedule modal is open, do not render/inject badges
       if (this.showSetScheduleModal) {
-        // ensure any previously injected badges are removed
         try { document.querySelectorAll('.day-badge-dom').forEach(n => n.remove()) } catch (e) { /* ignore */ }
         return
       }
       const map = this.dateCountMap || {}
-      // remove existing dom badges
       document.querySelectorAll('.day-badge-dom').forEach(n => n.remove())
-      // find calendar day cells
       const cells = document.querySelectorAll('.calendar-area .cv-day')
       if (!cells || !cells.length) return
 
-      // try to read current header month/year (various formats)
       let headerText = ''
       try {
         const headerEl = document.querySelector('.calendar-area .cv-header .periodLabel') || document.querySelector('.calendar-area .cv-header')
         if (headerEl) headerText = headerEl.textContent && headerEl.textContent.trim()
       } catch (e) { headerText = '' }
 
-      // parse year and month from header if possible
       let headerYear = null, headerMonth = null
       if (headerText) {
-        // try YYYY first
         const yMatch = headerText.match(/(\d{4})/)
         if (yMatch) headerYear = parseInt(yMatch[1], 10)
-        // try Korean '10월 2025' or '2025년 10월' or english 'October 2025'
         const mMatch = headerText.match(/(\d{1,2})\s*월/) || headerText.match(/(\d{1,2})\s*(?=\D*$)/) || headerText.match(/(January|February|March|April|May|June|July|August|September|October|November|December)/i)
         if (mMatch) {
           if (mMatch[1] && /\D/.test(mMatch[1])) {
-            // month name
-            const names = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12 }
+             const names = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12 }
             headerMonth = names[mMatch[1].toLowerCase()] || null
           } else {
             headerMonth = parseInt(mMatch[1], 10)
@@ -1165,13 +1063,11 @@ export default {
 
       cells.forEach(cell => {
         try {
-          // prefer explicit data-date attribute if provided by calendar
           let dateAttr = cell.getAttribute('data-date') || cell.dataset && cell.dataset.date
           let dayNum = null
           const numEl = cell.querySelector('.cv-day-number') || cell.querySelector('.cv-day-num')
           if (numEl) dayNum = numEl.textContent && numEl.textContent.trim()
 
-          // determine year/month/day
           let yyyy=null, mm=null, dd=null
           if (dateAttr) {
             const d = new Date(dateAttr)
@@ -1180,21 +1076,16 @@ export default {
             }
           }
           if (!yyyy && dayNum && headerYear && headerMonth) {
-            // check if cell belongs to previous/next month by presence of 'outside' class
             const txt = String(dayNum).replace(/[^0-9]/g,'')
             dd = parseInt(txt,10)
             yyyy = headerYear
             mm = headerMonth
             const cls = (cell.className || '')
-            // heuristics: if cell is marked as outside (common class names), adjust month
             if (/outside|cv-day--outside|cv-day-outside|other-month/i.test(cls)) {
-              // if day number > 10 likely previous month, else next month — approximate
               if (dd > 15) {
-                // previous month
                 mm = mm - 1
                 if (mm < 1) { mm = 12; yyyy = yyyy - 1 }
               } else {
-                // next month
                 mm = mm + 1
                 if (mm > 12) { mm = 1; yyyy = yyyy + 1 }
               }
@@ -1209,7 +1100,6 @@ export default {
             const text = String(cnt)
             badge.className = 'day-badge day-badge-dom ' + (text.length === 1 ? 'single' : 'pill')
             badge.textContent = text
-            // strong inline styles to force correct circle/pill regardless of scoped CSS
             if (text.length === 1) {
               Object.assign(badge.style, {
                 position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', width: '24px', height: '24px', lineHeight: '24px', padding: '0', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
@@ -1219,17 +1109,15 @@ export default {
                 position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
               })
             }
-            // ensure cell positioned
             if (!cell.style.position) cell.style.position = 'relative'
             cell.appendChild(badge)
           }
         } catch (e) {
-          // ignore per-cell errors
+          // ignore
         }
       })
     },
-    // No per-day modal handlers — simplified UI uses OnboardingSetschedulePopup on date click
-  }
+    }
 }
 </script>
 
@@ -1257,7 +1145,6 @@ export default {
 }
 .btn-outline { background: transparent; border: 1px solid #d0d7e2; padding: 8px 14px; border-radius: 8px }
 
-/* Adopt modal calendar styles but target the page's calendar area */
 .calendar-area ::v-deep .cv-wrapper {
   width: 100%;
   min-height: 540px;
@@ -1307,13 +1194,11 @@ export default {
   transform: translateY(0) !important;
 }
 
-/* Hide the 'current period' (today/current date) button in the header inside the page calendar */
 .calendar-area ::v-deep .cv-header .currentPeriod {
   display: none !important;
   margin-left: 50px;
 }
 
-/* Remove/hide current date (today) highlighting completely inside the page calendar */
 .calendar-area ::v-deep .cv-day.today,
 .calendar-area ::v-deep .cv-day.is-today,
 .calendar-area ::v-deep .cv-day.current {
@@ -1344,8 +1229,7 @@ export default {
   border-color: transparent !important;
 }
 .calendar-area ::v-deep .cv-day {
-  position: relative !important; /* allow badge absolute positioning (fixed invalid 'block' value) */
-  flex: 1 1 0 !important;
+  position: relative !important; 
   min-height: 80px !important;
   height: 88px !important;
   box-sizing: border-box !important;
@@ -1354,19 +1238,15 @@ export default {
   flex-direction: column !important;
   justify-content: flex-start !important;
 }
-/* ensure calendar day is positioned for absolute badges */
 .calendar-area ::v-deep .cv-day { position: relative !important }
-/* simplified day indicator (no pill UI) */
+
 .day-simple { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px }
 .day-indicator { width: 10px; height: 10px; border-radius: 50%; background: #294594; box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset }
 
-/* ensure our day-empty cell centers the indicator at bottom */
 .day-empty { width:100%; height:100%; display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px }
 .day-empty .day-indicator { width:10px; height:10px; border-radius:50%; background:#294594 }
-/* debug count in cell */
 .dbg-count { position: absolute; left: 6px; bottom: 6px; color: #c53030; font-weight:700; font-size:12px; z-index:200 }
 
-/* small badge near the top-right of the day cell showing count */
 .day-badge {
   position: absolute !important;
   right: 6px !important;
@@ -1380,15 +1260,14 @@ export default {
   color: #fff !important;
   font-size: 12px !important;
   text-align: center !important;
-  z-index: 300; /* max z-index to ensure visibility */
-  border: 1px solid #fff !important; /* white border to separate from colored cells */
+  z-index: 300; 
+  border: 1px solid #fff !important; 
   box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   transform: translateY(0) !important;
 }
-/* single-digit -> perfect circle */
 .day-badge.single {
   width: 24px !important;
   min-width: 0 !important;
@@ -1405,21 +1284,17 @@ export default {
   overflow: visible !important;
 }
 
-/* multi-digit -> pill */
 .day-badge.pill {
   min-width: 24px !important;
   padding: 0 6px !important;
   border-radius: 999px !important;
 }
-/* Show only start/end pill blocks; hide all other cv-item blocks (including duration) */
 .calendar-area ::v-deep .cv-item.program-duration { display: none !important }
 
-/* Highlight day cells within the program period */
 ::v-deep .cv-day.program-date {
   background-color: rgba(41, 69, 148, 0.12);
 }
 
-/* Styles for additional cv-item types: tesk (task?) and training */
 .calendar-area ::v-deep .cv-item.tesk {
   background-color: rgba(255, 165, 0, 0.18) !important;
   border-color: rgba(255, 165, 0, 0.22) !important;
@@ -1441,7 +1316,6 @@ export default {
   width: 6.4rem !important;
 }
 
-/* Multi-day visible bar for trainings */
 .calendar-area ::v-deep .cv-item.training-duration {
   background-color: rgba(0, 123, 255, 0.12) !important;
   border: 1px solid rgba(0, 123, 255, 0.18) !important;
@@ -1452,14 +1326,12 @@ export default {
   z-index: 0 !important;
 }
 
-/* Ensure pills (single-day items) appear above duration bars */
 .calendar-area ::v-deep .cv-item.training,
 .calendar-area ::v-deep .cv-item.program-start-item,
 .calendar-area ::v-deep .cv-item.program-end-item {
   z-index: 2 !important;
 }
 
-/* stronger highlight for start/end dates */
 ::v-deep .cv-day.program-start {
   background-color: rgba(76, 255, 59, 0.24);
   border-top-left-radius: 8px;
@@ -1508,7 +1380,6 @@ export default {
 }
 .modal-title { font-size: 31px; font-weight: bold }
 
-/* close button in header */
 .modal-close-btn, .close-btn {
   position: absolute;
   right: 12px;
@@ -1538,11 +1409,10 @@ export default {
 
 .fade-enter-active, .fade-leave-active { transition: opacity .2s }
 .fade-enter-from, .fade-leave-to { opacity: 0 }
-.cv-day .day-scroll-area { display: none } /* legacy selector - hide */
+.cv-day .day-scroll-area { display: none } 
 
-  .calendar-area .calendar-wrapper { touch-action: auto } /* allow touch swipe scrolling inside calendar wrapper */
+  .calendar-area .calendar-wrapper { touch-action: auto } 
 
-/* Two-column layout: calendar + right-side list */
 .calendar-and-list { display: flex; gap: 18px; align-items: stretch; margin-bottom: 16px }
 .calendar-area { width: 65%; display: flex; flex-direction: column; }
 .calendar-area .calendar-wrapper { flex: 1 1 auto; display: flex; flex-direction: column; }
@@ -1552,7 +1422,7 @@ export default {
 .selected-date { font-weight:800; color:#294594; font-size:20px }
 .header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px }
 .add-btn { align-self:flex-end }
-.list-body { /* let the list-body fill remaining space and scroll independently */
+.list-body { 
   flex: 1 1 auto;
   max-height: none;
   overflow: auto;
@@ -1565,15 +1435,11 @@ export default {
 .day-item .actions { margin-left:12px; flex:0 0 auto }
 .day-list .empty { color:#6b7280; padding:12px }
 
-/* Small button variant used inside the side panel */
 .btn-small { padding:6px 10px; font-size:13px; border-radius:10px }
 .btn-outline.btn-small { background: transparent; border: 1px solid #e2e8f0; color: #1f2937 }
 .btn-outline.btn-small:hover { background: rgba(41,69,148,0.04) }
 
 .program-info {
-  /* make the bottom program-info stretch full width of the page container
-     compensate for the .page-container padding (20px) so the frame appears
-     edge-to-edge inside the page area */
   max-width: none;
   width: calc(100% + 40px);
   margin-left: -20px;
@@ -1625,12 +1491,10 @@ export default {
 .people-list li { padding:8px 0; border-bottom:1px dashed #eef3fb }
 .people-list li.empty { color:#6b7280; padding:10px 0 }
 
-/* Make mentee list compact and scrollable */
 .mentees-card .card-body { max-height: 240px; overflow: auto; padding-right: 8px }
 .mentees-card .people-list li { padding:8px 6px }
 .mentors-card .card-body { max-height: 320px; overflow: auto; padding-right: 8px }
 
-/* person row used for mentor/mentee compact view */
 .person-row { display:flex; align-items:center; gap:25px; margin-bottom:12px }
 .person-row .avatar { width:40px; height:40px; border-radius:50%; background:#e6eef8; display:flex; align-items:center; justify-content:center; font-weight:700; color:#294594 }
 .person-row .meta { flex:1; min-width:0 }
@@ -1639,16 +1503,12 @@ export default {
 .person-row .right { display:flex; flex-direction:column; align-items:flex-end; gap:4px }
 .person-row .right .dept { font-size:13px; color:#44546a }
 .person-row .right .join { font-size:12px; color:#94a3b8 }
-/* Hover highlight for person rows */
-.person-row { transition: all 140ms ease; border-radius:6px; }
-.person-row:hover { background: rgba(41,69,148,0.04); cursor: pointer; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(3,10,18,0.04); }
-.person-row:active { transform: translateY(0); }
+.person-row { transition: all 140ms ease; border-radius:6px; cursor: default; }
+.person-row:active { transform: none; }
 
-/* Lightweight tooltip container (optional content can be injected) */
 .person-row .tooltip { display:none; position:absolute; transform:translateY(-8px); background:#fff; border:1px solid rgba(16,36,59,0.06); padding:8px 10px; border-radius:8px; box-shadow:0 8px 30px rgba(3,10,18,0.06); font-size:13px; color:#10243b; white-space:nowrap; z-index:1200 }
 .person-row:hover .tooltip { display:block }
 
-/* small circular add button shown on the mentee card title */
 .btn-add-mentee {
   float: right;
   width: 30px;
