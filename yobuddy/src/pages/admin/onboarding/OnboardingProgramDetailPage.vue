@@ -3,6 +3,9 @@
     <header class="page-top">
       <h1 class="page-title">온보딩 프로그램 상세</h1>
       <div class="actions">
+        <button class="btn-primary" @click="showEditModal = true">
+      정보 수정
+    </button>
         <button class="btn-outline" @click="goBack">목록으로</button>
       </div>
     </header>
@@ -75,41 +78,12 @@
             <div class="program-period">{{ formattedPeriod }}</div>
           </div>
           <div class="program-actions">
-            <select class="program-team">
-              <option>개발팀</option>
-            </select>
+            <div class="program-status" :class="getStatusClass(program?.status)">{{ statusText }}</div>
           </div>
         </div>
 
         <div class="program-grid">
-          <div class="card chart-card">
-            <div class="card-title">위험도 분포</div>
-            <div class="card-body chart-placeholder">&nbsp;</div>
-          </div>
-          <div class="card chart-card">
-            <div class="card-title">KPI 점수</div>
-            <div class="card-body chart-placeholder">&nbsp;</div>
-          </div>
-          <div class="card list-card mentors-card">
-            <div class="card-title">멘토 목록</div>
-            <div class="card-body">
-                <ul class="people-list">
-                  <li v-if="mentorDisplayList.length === 0" class="empty">멘토 정보 없음</li>
-                  <li v-else v-for="(mentor, i) in mentorDisplayList" :key="mentor.id || i">
-                    <div class="person-row" @click="openUserDetail(mentor)">
-                      <div class="avatar">{{ initials(mentor.name || mentor.label) }}</div>
-                      <div class="meta">
-                        <div class="name">{{ mentor.name || mentor.label }}</div>
-                        <div class="email">{{ mentor.email || '' }}</div>
-                      </div>
-                      <div class="right">
-                        <div class="dept">{{ mentor.department || '' }}</div>
-                      </div>
-                    </div>
-                  </li>
-                </ul>
-            </div>
-          </div>
+          <!-- Left Column: Mentee List -->
           <div class="card list-card mentees-card">
             <div class="card-title">멘티 목록
               <button class="btn-add-mentee" @click="onAddMentee" title="멘티 추가">+</button>
@@ -131,6 +105,18 @@
                     </div>
                   </li>
                 </ul>
+            </div>
+          </div>
+
+          <!-- Right Column: Charts -->
+          <div class="right-column">
+            <div class="card chart-card">
+              <div class="card-title">KPI 점수</div>
+              <div class="card-body chart-placeholder">&nbsp;</div>
+            </div>
+            <div class="card chart-card">
+              <div class="card-title">위험도 분포</div>
+              <div class="card-body chart-placeholder">&nbsp;</div>
             </div>
           </div>
         </div>
@@ -163,6 +149,12 @@
       @training-assigned="onTrainingAssigned"
       @training-removed="onTrainingRemoved"
     />
+    <OnboardingProgramEditModal
+  :visible="showEditModal"
+  :program="program"
+  @close="showEditModal = false"
+  @save="onProgramUpdated"
+/>
   </div>
 </template>
 
@@ -175,10 +167,11 @@ import tasksService from '@/services/tasksService'
 import OnboardingSetschedulePopup from '@/pages/admin/onboarding/onboardingSetschedulePopup.vue'
 import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue'
 import OnboardingProgramAddUserPopup from '@/pages/admin/onboarding/OnboardingProgramAddUserPopup.vue'
+import OnboardingProgramEditModal from '@/pages/admin/onboarding/OnboardingProgramEditModal.vue'
 
 export default {
   name: 'OnboardingProgramDetailPage',
-  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup, UserDetailpopup, OnboardingProgramAddUserPopup },
+  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup, UserDetailpopup, OnboardingProgramAddUserPopup, OnboardingProgramEditModal, },
   data() {
     return {
       programId: this.$route.params.programId || null,
@@ -195,6 +188,7 @@ export default {
       showUserDetail: false,
       selectedUser: null,
       menteeProfiles: [],
+      showEditModal: false,
     }
   },
   computed: {
@@ -448,6 +442,14 @@ export default {
     }
   },
   methods: {
+    getStatusClass(status) {
+      const classMap = {
+        ACTIVE: 'active',
+        UPCOMING: 'upcoming',
+        COMPLETED: 'completed',
+      };
+      return classMap[status] || 'default';
+    },
     initials(name) {
       if (!name) return ''
       const parts = String(name).split('')
@@ -630,6 +632,21 @@ export default {
       } catch (err) {
         console.warn('[Onboarding] fetchProgramTasks failed', err)
         this.programTasks = []
+      }
+    },
+      async onProgramUpdated(updatedProgram) {
+      if (!updatedProgram) {
+        this.showEditModal = false;
+        return;
+      }
+      try {
+        await http.patch(`/api/v1/admin/programs/${this.programId}`, updatedProgram);
+      } catch (e) {
+        console.error('프로그램 업데이트 실패', e);
+        alert('프로그램 업데이트에 실패했습니다.');
+      } finally {
+        await this.loadProgram();
+        this.showEditModal = false;
       }
     },
     async fetchEnrollments() {
@@ -1219,12 +1236,25 @@ export default {
 <style scoped>
 .page-container { padding: 20px }
 .page-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px }
+.actions { display: flex; gap: 8px; }
 .page-title { font-size:24px; font-weight:700;}
 .program-info { text-align:center; margin-bottom:14px;  }
 .calendar-area { max-width:1100px; margin:0; width: 70%; background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1) }
 .calendar-wrapper { max-height: 540px; overflow: hidden; }
 .calendar-wrapper { position: relative; }
 .calendar-blocker { position: absolute; inset: 0; z-index: 100; background: transparent; pointer-events: none; }
+.btn-primary {
+  background-color: var(--color-primary, #294594);
+  color: var(--color-surface, #ffffff);
+  border: none;
+  padding: 9px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-accent, #2b57a0);
+}
 .btn-outline { background: transparent; border: 1px solid #d0d7e2; padding: 8px 14px; border-radius: 8px }
 
 /* Adopt modal calendar styles but target the page's calendar area */
@@ -1441,6 +1471,36 @@ export default {
   border-bottom-right-radius: 8px;
 }
 
+::v-deep .cv-day.program-start::after {
+  content: '시작일';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e40af;
+  background-color: rgba(219, 234, 254, 0.8);
+  padding: 2px 5px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+::v-deep .cv-day.program-end::after {
+  content: '종료일';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #991b1b;
+  background-color: rgba(254, 226, 226, 0.8);
+  padding: 2px 5px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
 .modal-top {
   text-align: center;
   position: relative;
@@ -1534,9 +1594,29 @@ export default {
 .program-name { margin:0; font-size:20px; font-weight:800; color:#10305e }
 .program-period { color:#44546a; font-size:14px; margin-top:6px }
 .program-actions { display:flex; align-items:center }
-.program-team { padding:6px 10px; border-radius:8px; border:1px solid #e6eef8; background:#fff }
+.program-status {
+  padding: 5px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.program-status.active { background: #d1fae5; color: #059669; }
+.program-status.upcoming { background: #fef3c7; color: #92400e; }
+.program-status.completed { background: #e0e7ff; color: #3730a3; }
+.program-status.default { background: #e5e7eb; color: #4b5563; }
 
-.program-grid { display:grid; grid-template-columns: 1fr 1fr; gap:18px }
+.program-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 .card { background:#fbfdff; border:1px solid #eef3fb; border-radius:10px; padding:14px; box-sizing:border-box; min-height:150px }
 .card-title { font-weight:700; color:#18335a; margin-bottom:10px }
 .card-body { background:transparent }

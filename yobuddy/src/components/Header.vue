@@ -119,41 +119,52 @@ export default {
 
     const pageTitle = computed(() => pageTitleMap[route.path] || 'YoBuddy')
 
-    const breadcrumbItems = computed(() => {
-      const hiddenSegments = ['user', 'admin', 'mentor']
-      const renameMap = { edit: '수정', create: '생성', new: '생성' }
+const breadcrumbItems = computed(() => {
+  const roleSegments = ['admin', 'mentor', 'user']
+  const renameMap = { edit: '수정', create: '생성', new: '생성' }
 
-      const segments = route.path
-        .split('/')
-        .filter(Boolean)
-        .filter(seg => !hiddenSegments.includes(seg))
+  const segments = route.path.split('/').filter(Boolean)
 
-      const items = []
-      let path = ''
+  const items = []
+  let realPath = ''
+  let labelPath = ''
 
-      segments.forEach(seg => {
-        path += '/' + seg
+  segments.forEach(seg => {
+    realPath += '/' + seg
 
-        if (/^\d+$/.test(seg)) {
-          items.push({ label: '상세보기', to: path })
-          return
-        }
+    // label용 path에서는 role prefix 제거
+    if (!roleSegments.includes(seg)) {
+      labelPath += '/' + seg
+    }
 
-        if (renameMap[seg]) {
-          items.push({ label: renameMap[seg], to: path })
-          return
-        }
+    // role 자체는 breadcrumb에 표시 안 함
+    if (roleSegments.includes(seg)) return
 
-        if (pageTitleMap[path]) {
-          items.push({ label: pageTitleMap[path], to: path })
-          return
-        }
+    // 숫자 ID
+    if (/^\d+$/.test(seg)) {
+      items.push({ label: '상세보기', to: realPath })
+      return
+    }
 
-        items.push({ label: seg, to: path })
-      })
+    // edit / create / new
+    if (renameMap[seg]) {
+      items.push({ label: renameMap[seg], to: realPath })
+      return
+    }
 
-      return items
-    })
+    // 한글 타이틀 매핑 (labelPath 기준!)
+    if (pageTitleMap[labelPath]) {
+      items.push({ label: pageTitleMap[labelPath], to: realPath })
+      return
+    }
+
+    // fallback
+    items.push({ label: seg, to: realPath })
+  })
+
+  return items
+})
+
 
     const toggleMenu = () => {
       showChatbotCard.value = !showChatbotCard.value

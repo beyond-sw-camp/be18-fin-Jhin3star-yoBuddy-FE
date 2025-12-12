@@ -171,8 +171,7 @@ const goToOverview = () => {
 
 const goToUserDetail = () => {
   activeTab.value = 'user'
-  // 기본적으로 사용자 선택 페이지 필요 → 우선 목록 페이지로 이동
-  router.push('/organization/usermanagement')
+  router.push('/kpi/user') // userId 없이 진입
 }
 
 /* --- 기존 코드 그대로 유지 --- */

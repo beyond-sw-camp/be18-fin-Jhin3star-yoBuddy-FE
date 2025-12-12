@@ -74,10 +74,14 @@ const routes = [
       meta: { requiresAuth: true, adminOnly: true }
     },
     {
-      path: '/kpi/user/:userId',
-      component: () => import('@/pages/admin/kpi/UserKPIDetail.vue'),
-      meta: { requiresAuth: true, adminOnly: true },
-      props: true
+        path: '/kpi/user/:userId?',
+        component: () => import('@/pages/admin/kpi/UserKPIDetail.vue'),
+        meta: { requiresAuth: true, adminOnly: true },
+        props: true
+      },
+      {
+      path: '/kpi/:userId(\\d+)',
+      redirect: to => `/kpi/user/${to.params.userId}`
     },
   {
     path: '/organization/usermanagement',
@@ -228,24 +232,36 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
-  // 인증 필요한 페이지면 user 없을 때만 /me 호출
+  if (to.path === '/' && !auth.user) {
+    try {
+      await auth.fetchMe()
+      auth.initSSEAndNotifications()
+    } catch (e) {
+      return next()
+    }
+  }
+
+  if (to.path === '/' && auth.user) {
+    if (auth.isAdmin) return next('/kpi')
+    if (auth.isMentor) return next('/mentor/dashboard')
+    if (auth.isUser) return next('/user/dashboard')
+  }
+
   if (to.meta.requiresAuth && !auth.user) {
     try {
       await auth.fetchMe()
       auth.initSSEAndNotifications()
-    } catch(e) {
+    } catch (e) {
       return next('/login')
     }
   }
 
-  // 이미 로그인한 사람이 public 페이지로 접근할 때 redirect
   if (!to.meta.requiresAuth && auth.user) {
     if (auth.isAdmin) return next('/kpi')
     if (auth.isMentor) return next('/mentor/dashboard')
     if (auth.isUser) return next('/user/dashboard')
   }
 
-  // 역할 제한
   if (to.meta.adminOnly && !auth.isAdmin) return next('/login')
   if (to.meta.mentorOnly && !auth.isMentor) return next('/login')
   if (to.meta.userOnly && !auth.isUser) return next('/login')

@@ -1,34 +1,89 @@
 <template>
   <div class="user-kpi-page page-container">
-    <div class="header-row">
-      <h2>개인 성과 조회</h2>
+    <!-- ================= KPI 탭 ================= -->
+    <div class="kpi-tabs">
       <button
-        class="pdf-btn"
-        @click="exportPdf"
-        :disabled="exporting"
-        :aria-busy="exporting"
+        class="kpi-tab"
+        :class="{ active: isOverview }"
+        @click="goToOverview"
       >
-        {{ exporting ? '내보내는 중...' : 'PDF' }}
+        통합조회
+      </button>
+
+      <button
+        class="kpi-tab"
+        :class="{ active: !isOverview }"
+        @click="goToUser"
+      >
+        개별조회
       </button>
     </div>
 
-    <div>
-      <!-- user header card -->
+    <!-- ================= 검색 ================= -->
+    <template v-if="!userId">
+      <h2>개인 성과 조회</h2>
+
+      <div class="search-box card">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M21 20l-5.6-5.6a7 7 0 10-1.4 1.4L20 21zM10 16a6 6 0 110-12 6 6 0 010 12z"
+            />
+          </svg>
+
+          <input
+            v-model="searchKeyword"
+            placeholder="이름 또는 이메일로 검색"
+            @keyup.enter="searchUsers"
+          />
+        </div>
+
+        <button class="search-btn" @click="searchUsers" :disabled="searching">
+          {{ searching ? '검색중…' : '검색' }}
+        </button>
+      </div>
+
+      <div class="search-result">
+        <div
+          v-for="u in searchResult"
+          :key="u.userId"
+          class="search-item"
+          @click="selectUser(u)"
+        >
+          <div class="name">{{ u.name }}</div>
+          <div class="meta">{{ u.email }} · {{ u.departmentName }}</div>
+        </div>
+
+        <div v-if="!searching && searchResult.length === 0" class="empty">
+          검색 결과가 없습니다.
+        </div>
+      </div>
+    </template>
+
+    <!-- ================= 개인 KPI ================= -->
+    <template v-else>
+      <div class="header-row">
+        <h2>개인 성과 조회</h2>
+        <button class="pdf-btn" @click="exportPdf" :disabled="exporting">
+          {{ exporting ? '내보내는 중…' : 'PDF' }}
+        </button>
+      </div>
+
+      <!-- 사용자 카드 -->
       <section class="section-block">
         <div class="user-card card">
-          <div class="left">
-            <div class="avatar">{{ userInitial }}</div>
-          </div>
+          <div class="avatar">{{ userInitial }}</div>
           <div class="center">
             <div class="name">{{ userDisplay }}</div>
             <div class="subtitle">{{ departmentName }}</div>
           </div>
-          <div class="right stats">
-            <div class="stat">
+          <div class="stats">
+            <div>
               <div class="label">평균 과제 점수</div>
-              <div class="value">{{ teskgrade }}</div>
+              <div class="value">{{ taskAvg }}</div>
             </div>
-            <div class="stat">
+            <div>
               <div class="label">KPI 점수</div>
               <div class="value">{{ totalKpiScore }}</div>
             </div>
@@ -36,539 +91,309 @@
         </div>
       </section>
 
-      <!-- radar charts row -->
-      <section class="section-block">
-        <div class="charts-row">
-          <div class="card radar-wrap">
-            <div class="card-title">KPI 점수 상세</div>
-            <div class="card-body">
-              <VueApexCharts
-                type="radar"
-                :options="userRadarOptions"
-                :series="userRadarSeries"
-                height="260"
-              />
-            </div>
-          </div>
-          <div class="card radar-wrap">
-            <div class="card-title">부서 KPI 평균 점수</div>
-            <div class="card-body">
-              <VueApexCharts
-                type="radar"
-                :options="userRadarOptions"
-                :series="deptRadarSeries"
-                height="260"
-              />
-            </div>
-          </div>
-        </div>
+      <!-- 레이더 차트 -->
+      <section class="section-block charts-row">
+        <VueApexCharts
+          type="radar"
+          height="260"
+          :options="radarOptions"
+          :series="userRadarSeries"
+        />
+        <VueApexCharts
+          type="radar"
+          height="260"
+          :options="radarOptions"
+          :series="deptRadarSeries"
+        />
       </section>
 
-      <!-- lower summary: two small cards -->
+      <!-- 주간 리포트 -->
       <section class="section-block">
-        <div class="summary-row">
-          <div class="card small-card">
-            <div class="card-title">과제 제출 현황</div>
-            <div class="card-body small-body">
-              <div class="progress-labels">
-                <div>제출 완료 <strong>{{ tesksdetail.completedcount }}</strong></div>
-                <div>남은 과제 <strong>{{ tesksdetail.penddingcount }}</strong></div>
-              </div>
-              <div class="small-chart">
-                <VueApexCharts
-                  type="donut"
-                  :options="tasksmallDonutOptions"
-                  :series="smallDonutSeries"
-                  height="140"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="card small-card">
-            <div class="card-title">교육 이수 현황</div>
-            <div class="card-body small-body">
-              <div class="progress-labels">
-                <div>이수 완료 <strong>{{ trainingsDetail.COMPLETED.length }}</strong></div>
-                <div>진행 중 <strong>{{ trainingsDetail.IN_PROGRESS.length }}</strong></div>
-                <div>미이수 <strong>{{ trainingsDetail.MISSED.length }}</strong></div>
-                <div>남은 교육 <strong>{{ trainingsDetail.PENDING.length }}</strong></div>
-              </div>
-              <div class="small-chart">
-                <VueApexCharts
-                  type="donut"
-                  :options="trainingsmallDonutOptions"
-                  :series="[trainingsDetail.COMPLETED.length, trainingsDetail.IN_PROGRESS.length, trainingsDetail.MISSED.length, trainingsDetail.PENDING.length]"
-                  height="140"
-                />
-              </div>
-            </div>
-          </div>
+        <h3>주간 리포트</h3>
+        <div
+          v-for="r in weeklyReports"
+          :key="r.weeklyReportId"
+          class="report-item"
+        >
+          {{ r.weekNumber }}주차 · {{ formatDate(r.createdAt) }}
         </div>
       </section>
-
-      <!-- weekly reports -->
-      <section class="section-block">
-        <div class="card reports-card">
-          <div class="card-title">주간 리포트 평가</div>
-          <div class="card-body reports-list">
-            <div
-              class="report-item"
-              v-for="(r, idx) in weeklyreport"
-              :key="r.weeklyReportId || idx"
-              @click="openReport(r)"
-              role="button"
-              tabindex="0"
-            >
-              <div class="week">
-                {{ r.weekNumber ? (r.weekNumber + '주차') : '' }}
-                ·
-                {{ formatDate(r.startDate) }} ~ {{ formatDate(r.endDate) }}
-              </div>
-              <div class="meta">
-                제출일자: {{ formatDate(r.updatedAt || r.createdAt) }} · 멘티: {{ r.menteeName }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Weekly Report Modal (click a report to open) -->
-      <div
-        v-if="reportModalVisible"
-        class="modal-overlay"
-        @click.self="closeReport"
-      >
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title">
-              {{ selectedReport.weekNumber ? (selectedReport.weekNumber + '주차 주간 리포트') : '주간 리포트' }}
-            </div>
-            <span
-              :class="['modal-status', 'status-' + ((selectedReport.status || '').toString().toUpperCase())]"
-            >
-              {{ selectedReport.status }}
-            </span>
-            <div class="modal-dates">
-              ({{ formatDate(selectedReport.startDate) }} ~ {{ formatDate(selectedReport.endDate) }})
-            </div>
-            <div class="modal-createdate">
-              제출일자 : {{ formatDate(selectedReport.createdAt || selectedReport.updatedAt) }}
-            </div>
-            <button class="modal-close" @click="closeReport">✕</button>
-          </div>
-          <div class="modal-body">
-            <h4>성과</h4>
-            <p class="modal-text">{{ selectedReport.accomplishments }}</p>
-
-            <h4>어려웠던 점</h4>
-            <p class="modal-text">{{ selectedReport.challenges }}</p>
-
-            <h4>배운 점</h4>
-            <p class="modal-text">{{ selectedReport.learnings }}</p>
-
-            <div class="mentor-box">
-              <div class="mentor-title">멘토 피드백</div>
-              <div class="mentor-meta">{{ formatDate(selectedReport.updatedAt) }}</div>
-              <div class="mentor-body">{{ selectedReport.mentorFeedback }}</div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeReport">취소</button>
-            <button class="btn btn-primary" @click="closeReport">확인</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
-import { useRoute } from 'vue-router'
+
 import userService from '@/services/user'
 import kpiService from '@/services/kpiService'
 import tasksService from '@/services/tasksService'
-import userTrainingService from '@/services/userTrainingService'
 
+/* ================= Router ================= */
 const route = useRoute()
-const userId = route.params.userId
+const router = useRouter()
 
-const user = ref({})
-const dashboard = ref(null)
+const userId = computed(() => route.params.userId || null)
+const departmentIdFromQuery = computed(() =>
+  route.query.departmentId ? Number(route.query.departmentId) : null
+)
 
-const tasks = ref([])
-const tesksdetail = ref({ penddingcount: 0, completedcount: 0 })
-const teskgrade = ref(null)
+const isOverview = computed(() => route.path === '/kpi')
 
-const training = ref([])
-const trainingsDetail = ref({
-  PENDING: [],
-  IN_PROGRESS: [],
-  COMPLETED: [],
-  MISSED: []
-})
-
-const weeklyreport = ref([])
-
-const exporting = ref(false)
-
-// modal state for weekly report
-const reportModalVisible = ref(false)
-const selectedReport = ref({})
-
-function openReport(r) {
-  selectedReport.value = r || {}
-  reportModalVisible.value = true
+function goToOverview() {
+  router.push('/kpi')
+}
+function goToUser() {
+  router.push('/kpi/user')
 }
 
-function closeReport() {
-  reportModalVisible.value = false
-  selectedReport.value = {}
-}
+/* ================= 검색 ================= */
+const searchKeyword = ref('')
+const searchResult = ref([])
+const searching = ref(false)
 
-onMounted(async () => {
-  // 1) 사용자 정보
-  await loaduserinfo(userId)
+async function searchUsers() {
+  if (!searchKeyword.value.trim()) return
 
-  // 2) 해당 사용자의 부서 KPI 대시보드 호출
-  if (user.value && user.value.departmentId) {
-    await loadDashboard(user.value.departmentId)
-  }
-
-  // 3) 과제 / 교육 / 주간리포트 로딩
-  const uidForTasks =
-    (user.value && (user.value.userId || user.value.id || user.value._id)) || userId
-  await loadTasks(uidForTasks)
-  await loadtraining(userId)
-  await getweeklyreport(userId)
-})
-
-async function loaduserinfo(userId) {
+  searching.value = true
   try {
-    const u = await userService.getUserById(userId)
-    user.value = u && u.data ? u.data : u || null
-    console.log('User fetched:', user.value)
-  } catch (e) {
-    console.error('Failed to load user info', e)
-  }
-}
-
-async function loadDashboard(departmentId) {
-  try {
-    const resp = await kpiService.getDashboard(departmentId)
-    const body = resp && resp.data ? resp.data : resp
-    dashboard.value = body || null
-    console.log('Dashboard loaded:', dashboard.value)
-  } catch (e) {
-    console.error('Failed to load KPI dashboard', e)
-    dashboard.value = null
-  }
-}
-
-async function loadTasks(userIdForTasks) {
-  try {
-    if (!userIdForTasks) {
-      tasks.value = []
-      return
-    }
-    const resp = await tasksService.getuser(userIdForTasks)
-    const body = resp && resp.data ? resp.data : resp || {}
-    let arr = body && body.data && Array.isArray(body.data.tasks) ? body.data.tasks : []
-    tasks.value = arr
-
-    const gradetasks = tasks.value.filter(t => t.status === 'GRADED')
-    teskgrade.value = gradetasks.length
-      ? (gradetasks.reduce((sum, t) => sum + (parseFloat(t.grade) || 0), 0) / gradetasks.length).toFixed(2)
-      : '0.00'
-
-    const penddingcount = tasks.value.filter(
-      t => t.status === 'PENDING' || t.status === 'MISSING'
-    ).length
-    const completedcount = tasks.value.filter(
-      t => t.status !== 'PENDING' && t.status !== 'MISSING'
-    ).length
-    tesksdetail.value = { penddingcount, completedcount }
-  } catch (e) {
-    console.error('Failed to load tasks', e)
-    tasks.value = []
-  }
-}
-
-async function loadtraining(userId) {
-  try {
-    if (!userId) {
-      training.value = []
-      trainingsDetail.value = {
-        PENDING: [],
-        IN_PROGRESS: [],
-        COMPLETED: [],
-        MISSED: []
-      }
-      return
-    }
-    const resp = await userTrainingService.getTraingingbyuser(userId)
-    const body = resp && resp.data ? resp.data : resp || {}
-    let arr = []
-    if (Array.isArray(body)) arr = body
-    else if (Array.isArray(body.data)) arr = body.data
-    else if (Array.isArray(body.items)) arr = body.items
-    else if (Array.isArray(body.trainings)) arr = body.trainings
-    else if (Array.isArray(body.payload)) arr = body.payload
-    training.value = arr
-
-    const groups = {
-      PENDING: [],
-      IN_PROGRESS: [],
-      COMPLETED: [],
-      MISSED: []
-    }
-    for (const t of arr) {
-      const rawStatus = t && (t.status || t.state || t.progress || '')
-      const s = String(rawStatus).toUpperCase()
-      if (s === 'PENDING') groups.PENDING.push(t)
-      else if (s === 'IN_PROGRESS' || s === 'INPROGRESS' || s === 'RUNNING')
-        groups.IN_PROGRESS.push(t)
-      else if (
-        s === 'COMPLETED' ||
-        s === 'DONE' ||
-        s === 'FINISHED' ||
-        s === 'PASS' ||
-        s === 'SUBMITTED'
-      )
-        groups.COMPLETED.push(t)
-      else if (s === 'MISSED' || s === 'SKIPPED' || s === 'ABSENT')
-        groups.MISSED.push(t)
-      else groups.PENDING.push(t)
-    }
-    trainingsDetail.value = groups
-  } catch (e) {
-    console.error('Failed to load trainings', e)
-    training.value = []
-    trainingsDetail.value = {
-      PENDING: [],
-      IN_PROGRESS: [],
-      COMPLETED: [],
-      MISSED: []
-    }
-  }
-}
-
-async function getweeklyreport(userId) {
-  try {
-    const resp = await kpiService.getweeklyreports(userId)
-    const body = resp && resp.data ? resp.data : resp || {}
-    let arr = []
-    if (Array.isArray(body)) arr = body
-    else if (Array.isArray(body.data)) arr = body.data
-    else if (Array.isArray(body.items)) arr = body.items
-    else if (Array.isArray(body.results)) arr = body.results
-    else if (body && typeof body === 'object' && Object.keys(body).length) arr = [body]
-    else arr = []
-
-    const mapped = arr.map(it => ({
-      accomplishments: it.accomplishments ?? it.accomplishment ?? it.summary ?? '',
-      challenges: it.challenges ?? it.challenge ?? '',
-      createdAt:
-        it.createdAt ?? it.created_at ?? it.timestamp ?? it.updatedAt ?? it.updated_at ?? null,
-      endDate: it.endDate ?? it.end_date ?? it.end ?? null,
-      learnings: it.learnings ?? it.learning ?? it.lessons ?? '',
-      menteeId: it.menteeId ?? it.mentee_id ?? it.userId ?? it.user_id ?? null,
-      menteeName:
-        it.menteeName ?? it.mentee_name ?? it.name ?? it.userName ?? it.user_name ?? '',
-      mentorFeedback: it.mentorFeedback ?? it.mentor_feedback ?? it.feedback ?? '',
-      startDate: it.startDate ?? it.start_date ?? it.start ?? null,
-      status: it.status ?? it.state ?? it.progress ?? '',
-      updatedAt: it.updatedAt ?? it.updated_at ?? null,
-      weekNumber: it.weekNumber ?? it.week_number ?? it.week ?? null,
-      weeklyReportId: it.weeklyReportId ?? it.weekly_report_id ?? it.id ?? null
-    }))
-
-    mapped.sort((a, b) => {
-      const aw = Number(a.weekNumber)
-      const bw = Number(b.weekNumber)
-      if (!Number.isNaN(aw) && !Number.isNaN(bw)) return bw - aw
-      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
-      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
-      return bt - at
+    const resp = await userService.searchUsers({
+      keyword: searchKeyword.value
     })
 
-    weeklyreport.value = mapped
+    searchResult.value =``
+      Array.isArray(resp?.data?.content)
+        ? resp.data.content
+        : []
+
   } catch (e) {
-    console.error('Failed to load weekly report', e)
-    weeklyreport.value = []
+    console.error('유저 검색 실패', e)
+    searchResult.value = []
+  } finally {
+    searching.value = false
   }
 }
 
-function formatDate(v) {
-  if (!v) return ''
-  try {
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return String(v)
-    return d.toLocaleDateString()
-  } catch (e) {
-    return String(v)
-  }
+function selectUser(u) {
+  router.push({
+    path: `/kpi/user/${u.userId}`,
+    query: { departmentId: u.departmentId }
+  })
 }
 
-function parseNumeric(v) {
-  if (v === null || v === undefined) return NaN
-  if (typeof v === 'number') return v
-  const s = String(v).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/)
-  return s ? Number(s[0]) : NaN
+/* ================= 데이터 ================= */
+const user = ref(null)
+const dashboard = ref(null)
+const tasks = ref([])
+const weeklyReports = ref([])
+const exporting = ref(false)
+
+watch(
+  userId,
+  async id => {
+    reset()
+    if (!id) return
+    await loadDetail(id)
+  },
+  { immediate: true }
+)
+
+function reset() {
+  user.value = null
+  dashboard.value = null
+  tasks.value = []
+  weeklyReports.value = []
 }
 
-/* ---------- computed들 ---------- */
+async function loadDetail(id) {
+  const departmentId = departmentIdFromQuery.value
+  if (!departmentId) return
 
-const userDisplay = computed(() => {
-  if (!user.value) return '알 수 없는 사용자'
-  return user.value.name || user.value.username || user.value.fullName || '무명'
+  const d = await kpiService.getDashboard(departmentId)
+  dashboard.value = d.data
+
+  const u = dashboard.value.users?.find(v => v.userId === Number(id))
+  user.value = u ?? null
+
+  const t = await tasksService.getuser(id)
+  tasks.value = t.data?.tasks ?? []
+
+  const w = await kpiService.getweeklyreports(id)
+  weeklyReports.value = w.data ?? []
+}
+
+/* ================= computed ================= */
+const userDisplay = computed(() => user.value?.name || '')
+const userInitial = computed(() => userDisplay.value.charAt(0))
+const departmentName = computed(() => dashboard.value?.departmentName || '')
+
+const taskAvg = computed(() => {
+  const graded = tasks.value.filter(t => t.status === 'GRADED')
+  if (!graded.length) return '0.0'
+  return (
+    graded.reduce((a, b) => a + Number(b.grade || 0), 0) / graded.length
+  ).toFixed(1)
 })
 
-const userInitial = computed(() => (userDisplay.value || '유').slice(0, 1))
+const totalKpiScore = computed(() =>
+  user.value?.totalScore?.toFixed(1) || '0.0'
+)
 
-const departmentName = computed(() => {
-  return (dashboard.value && (dashboard.value.departmentName || '')) || ''
-})
-
-const routeUserIdNum = computed(() => Number(userId))
-
-const dashboardUser = computed(() => {
-  const d = dashboard.value
-  if (!d || !Array.isArray(d.users)) return null
-  return d.users.find(u => Number(u.userId ?? u.id ?? u._id) === routeUserIdNum.value) || null
-})
-
-const totalKpiScore = computed(() => {
-  const u = dashboardUser.value
-  if (!u) return 0
-  const raw = u.totalScore ?? u.total ?? 0
-  const num = parseNumeric(raw)
-  return Number.isFinite(num) ? num.toFixed(2) : raw
-})
-
-const goalLabels = computed(() => {
-  const goals = (dashboard.value && dashboard.value.goals) || []
-  return goals.map(g => g.description || g.name || g.title || g.kpiName || '무제')
-})
-
-const userRadarSeries = computed(() => {
-  const goals = (dashboard.value && dashboard.value.goals) || []
-  const u = dashboardUser.value
-  const userResults = (u && Array.isArray(u.results) ? u.results : []) || []
-
-  const data = goals.map(g => {
-    const gid = g.kpiGoalId ?? g.goalId ?? g.id
-    if (gid == null) return 0
-    const scores = userResults
-      .filter(r => {
-        const rgid = r.kpiGoalId ?? r.goalId ?? r.GoalId ?? r.kpiId ?? r.goal_id
-        return Number(rgid) === Number(gid)
-      })
-      .map(r => parseNumeric(r.score ?? r.scoreValue ?? r.value ?? r.result))
-      .filter(s => Number.isFinite(s))
-
-    if (!scores.length) return 0
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-    return Math.round(avg * 100) / 100
-  })
-
-  return [{ name: '목표별 개인 점수', data }]
-})
-
-const deptRadarSeries = computed(() => {
-  const goals = (dashboard.value && dashboard.value.goals) || []
-  const radar = (dashboard.value && dashboard.value.chart && dashboard.value.chart.radar) || []
-
-  const data = goals.map(g => {
-    const gid = g.kpiGoalId ?? g.goalId ?? g.id
-    if (gid == null) return 0
-    const found = radar.find(r => Number(r.kpiGoalId ?? r.goalId ?? r.id) === Number(gid))
-    const raw = found ? found.avgScore ?? found.score ?? 0 : 0
-    const num = parseNumeric(raw)
-    return Number.isFinite(num) ? Math.round(num * 100) / 100 : 0
-  })
-
-  return [{ name: '목표별 부서 평균', data }]
-})
-
-const userRadarOptions = computed(() => ({
-  chart: { toolbar: { show: false }, type: 'radar' },
-  xaxis: { categories: goalLabels.value },
-  stroke: { show: true, width: 1 },
-  fill: { opacity: 0.4 },
+/* ================= Radar Chart (핵심) ================= */
+const radarOptions = computed(() => ({
+  chart: { type: 'radar', toolbar: { show: false } },
+  xaxis: {
+    categories: dashboard.value?.chart?.years?.map(y => `${y}년`) ?? []
+  },
+  stroke: { width: 2 },
+  fill: { opacity: 0.35 },
   markers: { size: 4 },
-  colors: ['#294594'],
   legend: { show: false }
 }))
 
-const smallDonutSeries = computed(() => [
-  tesksdetail.value.completedcount,
-  tesksdetail.value.penddingcount
-])
+const userRadarSeries = computed(() => [{
+  name: '개인 KPI',
+  data: dashboard.value?.chart?.achievementPerYear ?? []
+}])
 
-const tasksmallDonutOptions = computed(() => ({
-  chart: { toolbar: { show: false }, type: 'donut' },
-  labels: ['제출', '미제출'],
-  colors: ['#2563eb', '#e5e7eb'],
-  legend: { show: false },
-  dataLabels: { enabled: true }
-}))
+const deptRadarSeries = computed(() => [{
+  name: '부서 평균',
+  data: dashboard.value?.chart?.achievementPerYear ?? []
+}])
 
-const trainingsmallDonutOptions = computed(() => ({
-  chart: { toolbar: { show: false }, type: 'donut', animations: { enabled: true } },
-  labels: ['이수완료', '진행중', '미이수', '남은교육'],
-  colors: ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'],
-  legend: {
-    show: false,
-    position: 'bottom',
-    horizontalAlign: 'center',
-    markers: { width: 12, height: 12, radius: 6 }
-  },
-  stroke: { colors: ['#ffffff'], width: 2 },
-  dataLabels: { enabled: true, formatter: val => `${val.toFixed(2)} %` },
-  tooltip: { y: { formatter: val => `${val} 개` } },
-  responsive: [{ breakpoint: 480, options: { legend: { show: false } } }]
-}))
+function formatDate(v) {
+  return new Date(v).toLocaleDateString()
+}
 
 async function exportPdf() {
   const el = document.querySelector('.user-kpi-page')
-  if (!el) {
-    alert('PDF로 내보낼 영역을 찾을 수 없습니다.')
-    return
-  }
+  const html2pdf = (await import('html2pdf.js')).default
   exporting.value = true
-  try {
-    const mod = await import('html2pdf.js')
-    const html2pdf = (mod && (mod.default || mod))
-    const filename = `yobuddy-user-${userId || 'unknown'}-${new Date()
-      .toISOString()
-      .slice(0, 10)}.pdf`
-    const opt = {
-      margin: 8,
-      filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }
-    await html2pdf().set(opt).from(el).save()
-  } catch (e) {
-    console.error('UserKPIDetail export failed', e)
-    alert('PDF 내보내기 실패: ' + (e && e.message ? e.message : String(e)))
-  } finally {
-    exporting.value = false
-  }
+  await html2pdf().from(el).save()
+  exporting.value = false
 }
 </script>
 
 <style scoped>
+  .kpi-tabs {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 16px;
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.kpi-tab {
+  background: transparent;
+  border: none;
+  padding: 14px 22px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+}
+
+.kpi-tab.active {
+  color: #294594;
+  font-weight: 700;
+}
+
+.kpi-tab.active::after {
+  content: "";
+  width: 100%;
+  height: 3px;
+  background: #294594;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+}
+/* ================= 검색 박스 (KPI 스타일) ================= */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+/* input 래퍼 */
+.search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-input-wrap:focus-within {
+  border-color: #294594;
+  box-shadow: 0 0 0 3px rgba(41, 69, 148, 0.12);
+}
+
+/* 돋보기 아이콘 */
+.search-icon {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* input */
+.search-input-wrap input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  color: #111827;
+}
+
+.search-input-wrap input::placeholder {
+  color: #9ca3af;
+}
+
+/* 검색 버튼 */
+.search-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #294594;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.search-btn:hover {
+  background: #1f3a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(41, 69, 148, 0.25);
+}
+
+.search-btn:disabled {
+  background: #c7d2fe;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+.empty {
+  color: #888;
+  margin-top: 12px;
+}
 /* Align styles with KPIView for consistent dashboard look */
 .user-kpi-page {
   padding: 18px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
     Arial;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 .header-row {
@@ -684,7 +509,8 @@ async function exportPdf() {
 }
 
 .charts-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
