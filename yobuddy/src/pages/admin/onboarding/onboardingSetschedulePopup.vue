@@ -652,8 +652,8 @@ export default {
       return `(${type.toLowerCase()})`
     },
     save() {
-      // On save, assign selectedTrainings to program (call API for each) then emit assigned events
       const toSave = this.selectedTrainings || []
+
       if ((this.selectedTrainings || []).length !== toSave.length) {
         console.debug('[OnboardingSetschedulePopup] save: filtered already-assigned items', {
           total: this.selectedTrainings.length,
@@ -662,141 +662,165 @@ export default {
       }
 
       const assignedList = []
+
       const promises = toSave.map(async (t) => {
         const isAssignment = !!(t._isAssignment || t.assignmentId || t.assignment_id || t.taskId || t.task_id)
         const id = isAssignment
           ? (t.assignmentId || t.id || t.taskId || t.task_id)
           : (t.trainingId || t.id)
 
-        if (this.programId && id) {
-          try {
-            const payload = {}
+        if (!this.programId || !id) {
+          assignedList.push({ ...t })
+          return
+        }
 
-            // 🔹 1) 과제일 경우: 제출일 + 제출 시간 → dueDate(LocalDateTime)
-            if (isAssignment) {
-              // 우선순위: 사용자가 수정한 날짜/시간 > 기존 dueDate 값 > 선택한 날짜
-              const datePart =
+        try {
+          const payload = {}
+
+          // 🔹 1) 과제일 경우: dueDate(LocalDateTime) + assignedAt(LocalDate)
+          if (isAssignment) {
+            const datePart =
+              t._editDate ||
+              (t.dueDate ? this.getLocalDatePart(t.dueDate) : null) ||
+              this.getLocalDatePart(this.date)
+
+            const timePart =
+              t._dueTime ||
+              (t.dueDate && typeof t.dueDate === 'string' ? t.dueDate.substring(11, 16) : null) ||
+              '18:00'
+
+            if (datePart) {
+              const due = this.combineLocalDateTime(datePart, timePart)
+              payload.dueDate = due
+              payload.due_date = due
+              // payload.due_date = due     // 백엔드가 snake_case면 이 줄로 교체
+            }
+
+            // 캘린더에서 선택한 날짜를 기본 assignedAt 으로 사용
+            const assignedBaseDate =
+              this.getLocalDatePart(this.date) ||   // 캘린더에서 선택한 날짜
+              datePart ||
+              this.formattedDateISO ||
+              null
+
+            if (assignedBaseDate) {
+              const assignedAt = this.combineLocalDateTime(assignedBaseDate, '00:00')
+              payload.assignedAt = assignedAt
+              // payload.assigned_at = assignedAt   // snake_case면 이 줄 사용
+            }
+            // 혹시라도 아무 것도 안 들어가면 안전하게 채워주기
+            if (Object.keys(payload).length === 0) {
+              const fallbackDate = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
+              const due = this.combineLocalDateTime(fallbackDate, '18:00')
+              payload.dueDate = due
+              payload.due_date = due
+              payload.assignedAt = fallbackDate
+              payload.assigned_at = fallbackDate
+            }
+          }
+
+          // 🔹 2) 교육일 경우
+          else {
+            const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
+
+            if (rawType === 'ONLINE') {
+              const sdDate =
+                t._onlineStartDate ||
                 t._editDate ||
-                (t.dueDate ? this.getLocalDatePart(t.dueDate) : null) ||
-                this.getLocalDatePart(this.date)
+                (t.startDate ? this.getLocalDatePart(t.startDate) : null)
 
-              // "HH:mm" 형태 유지. 없으면 18:00 기본값
-              const timePart =
-                t._dueTime ||
-                (t.dueDate && typeof t.dueDate === 'string' ? t.dueDate.substring(11, 16) : null) ||
-                '18:00'
+              const edDate =
+                t._onlineEndDate ||
+                t._editDate ||
+                (t.endDate ? this.getLocalDatePart(t.endDate) : null)
 
-              if (datePart) {
-                const due = this.combineLocalDateTime(datePart, timePart)
-                // 백엔드 DTO가 camelCase라면 이걸 사용
-                payload.dueDate = due
-                // 만약 snake_case(JSON)이면 아래 사용
-                // payload.due_date = due
-              }
-
-              // 혹시라도 datePart가 없어서 payload가 비면, 선택한 날짜 기준으로라도 채워주기
-              if (Object.keys(payload).length === 0) {
-                const fallbackDate = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
-                const due = this.combineLocalDateTime(fallbackDate, '18:00')
-                payload.dueDate = due
-                // payload.due_date = due
-              }
+              if (sdDate) payload.startDate = sdDate   // "YYYY-MM-DD"
+              if (edDate) payload.endDate = edDate
+            } else {
+              const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+              const timePart = t._startTime || '09:00'
+              const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
+              if (sched) payload.scheduledAt = sched
             }
 
-            // 🔹 2) 교육일 경우: 기존 로직 유지
-            else {
-              const rawType = (t && (t.type || t.trainingType || t.training_type) || '').toString().toUpperCase()
+            if (Object.keys(payload).length === 0) {
+              const assigned = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
+              payload.assignedDate = assigned
+              payload.assigned_date = assigned
+            }
+          }
 
-              if (rawType === 'ONLINE') {
-                const sdDate =
-                  t._onlineStartDate ||
-                  t._editDate ||
-                  (t.startDate ? this.getLocalDatePart(t.startDate) : null)
+          // 🔹 3) URL 구성
+          const url = isAssignment
+            ? `/api/v1/admin/programs/${this.programId}/tasks/${id}`
+            : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
 
-                const edDate =
-                  t._onlineEndDate ||
-                  t._editDate ||
-                  (t.endDate ? this.getLocalDatePart(t.endDate) : null)
+          let resp
 
-                if (sdDate) payload.startDate = sdDate   // "YYYY-MM-DD"
-                if (edDate) payload.endDate = edDate
+          // 🔹 4) 기본은 POST
+          try {
+            resp = await http.post(url, payload)
+          } catch (e) {
+            const respErr = e?.response
+            const status = respErr?.status
+            const data = respErr?.data
+            const msg = (data && (data.message || data.error || data.msg)) || ''
+            const msgStr = String(msg || '')
+
+            const alreadyMapped =
+              status === 400 &&
+              (msgStr.includes('이미 매핑') || msgStr.includes('이미 등록') || msgStr.includes('이미 맵'))
+
+            if (alreadyMapped) {
+              if (isAssignment) {
+                // ✅ 과제 PATCH: @PatchMapping("/{programId}/tasks/{taskId}")
+                const patchPayload = {
+                  dueDate: payload.dueDate || null,
+                  due_date: payload.dueDate || null,
+                  assignedAt: payload.assignedAt || this.getLocalDatePart(this.date) || null,
+                  assigned_at: payload.assignedAt || this.getLocalDatePart(this.date) || null,
+                }
+                console.debug('[OnboardingSetschedulePopup] TASK PATCH', url, patchPayload)
+                resp = await http.patch(url, patchPayload)
               } else {
-                // 기존 OFFLINE/기타 교육 로직 그대로
-                const datePart = t._editDate || (t.startDate ? this.getLocalDatePart(t.startDate) : null)
-                const timePart = t._startTime || '09:00'
-                const sched = datePart ? this.combineLocalDateTime(datePart, timePart) : null
-                if (sched) payload.scheduledAt = sched
-              }
-
-              if (Object.keys(payload).length === 0) {
-                // ensure we send a plain YYYY-MM-DD string for assigned date (avoid Date objects)
-                const assigned = this.getLocalDatePart(this.date) || this.formattedDateISO || this.date
-                payload.assignedDate = assigned
-                payload.assigned_date = assigned
-              }
-            }
-
-            // 🔹 3) URL: 과제 / 교육 분기
-            const url = isAssignment
-              ? `/api/v1/admin/programs/${this.programId}/tasks/${id}`
-              : `/api/v1/admin/programs/${this.programId}/trainings/${id}`
-
-            let resp
-            try {
-              resp = await http.post(url, payload)
-            } catch (e) {
-              // 🔥 "이미 매핑"된 교육이면 PATCH로 일정 수정 (과제에는 적용 안 함)
-              const respErr = e?.response
-              const status = respErr?.status
-              const data = respErr?.data
-              const msg = (data && (data.message || data.error || data.msg)) || ''
-
-              if (!isAssignment && status === 400 && typeof msg === 'string'
-                && (msg.includes('이미 매핑') || msg.includes('이미 등록') || msg.includes('이미 맵'))) {
-                console.warn('[OnboardingSetschedulePopup] 이미 매핑된 교육 → PATCH로 일정 수정 시도')
-
-                // PATCH payload는 ProgramTrainingUpdateRequest와 맞춰서: { scheduledAt, startDate, endDate }
+                // ✅ 교육 PATCH (기존 로직)
                 const patchPayload = {
                   scheduledAt: payload.scheduledAt || null,
                   startDate: payload.startDate || null,
                   endDate: payload.endDate || null,
                 }
-
-                console.debug('[OnboardingSetschedulePopup] PATCH', url, patchPayload)
+                console.debug('[OnboardingSetschedulePopup] TRAINING PATCH', url, patchPayload)
                 resp = await http.patch(url, patchPayload)
-              } else {
-                console.error('일정 할당 실패', e)
-                const fallbackMsg = msg || (data ? JSON.stringify(data) : '') || e.message
-                window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
-                assignedList.push(Object.assign({}, t))
-                return
               }
-            }
-
-            // 🔹 4) POST/PATCH 성공 후 할당 리스트에 추가
-            console.debug('[OnboardingSetschedulePopup] POST/PATCH resp', resp)
-            const body = resp?.data ?? resp
-            const assigned = body || Object.assign({}, t)
-
-            if (isAssignment) {
-              // 과제는 dueDate 기준으로 반영
-              assigned.dueDate = assigned.dueDate || assigned.due_date || t.dueDate || payload.dueDate
             } else {
-              // 교육은 기존 start/end 유지
-              assigned.startDate = assigned.startDate || t.startDate
-              assigned.endDate = assigned.endDate || t.endDate
-              if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) {
-                assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
-              }
+              console.error('일정 할당 실패', e)
+              const fallbackMsg = msgStr || (data ? JSON.stringify(data) : '') || e.message
+              window.alert(`할당 실패: ${status || ''}\n${fallbackMsg}`)
+              assignedList.push({ ...t })
+              return
             }
-
-            assignedList.push(assigned)
-          } catch (e) {
-            console.error('일정 처리 실패', e)
-            assignedList.push(Object.assign({}, t))
           }
-        } else {
-          assignedList.push(Object.assign({}, t))
+
+          // 🔹 5) POST/PATCH 성공 후 리스트에 반영
+          console.debug('[OnboardingSetschedulePopup] POST/PATCH resp', resp)
+          const body = resp?.data ?? resp
+          const assigned = body || { ...t }
+
+          if (isAssignment) {
+            assigned.dueDate = assigned.dueDate || assigned.due_date || t.dueDate || payload.dueDate
+            assigned.assignedAt = assigned.assignedAt || assigned.assigned_at || payload.assignedAt
+          } else {
+            assigned.startDate = assigned.startDate || t.startDate
+            assigned.endDate = assigned.endDate || t.endDate
+            if (!assigned.startDate && (assigned.scheduledAt || assigned.scheduled_at)) {
+              assigned.startDate = assigned.scheduledAt || assigned.scheduled_at
+            }
+          }
+
+          assignedList.push(assigned)
+        } catch (e) {
+          console.error('일정 처리 실패', e)
+          assignedList.push({ ...t })
         }
       })
 
