@@ -212,7 +212,7 @@ export default {
       if (type === "TRAINING") {
         // UserTrainingStatus: PENDING, IN_PROGRESS, COMPLETED, MISSED
         const map = {
-          PENDING: "대기",
+          PENDING: "예정",
           IN_PROGRESS: "진행중",
           COMPLETED: "완료",
           MISSED: "미참석",
@@ -223,7 +223,7 @@ export default {
       if (type === "TASK") {
         // UserTaskStatus: PENDING, SUBMITTED, LATE, MISSING, GRADED
         const map = {
-          PENDING: "대기",
+          PENDING: "예정",
           SUBMITTED: "제출 완료",
           LATE: "지각 제출",
           MISSING: "미제출",
