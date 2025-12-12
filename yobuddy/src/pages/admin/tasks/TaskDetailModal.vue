@@ -233,7 +233,7 @@ const isDragging = ref(false);   // 모달 외부 드래그 판단용 (닫힘 �
 async function fetchTask() {
   try {
     loading.value = true;
-    const resp = await tasksService.get(props.taskId);
+    const resp = await tasksService.get(props.taskId, { forceRefresh: true });
     task.value = resp.data.data;
 
     editForm.value = {
