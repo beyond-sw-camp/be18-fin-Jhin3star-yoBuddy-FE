@@ -616,12 +616,12 @@ export default {
         if (!e || s === e) {
           // 시작/종료 같은 날이면 한 번만
           const [yyyy, mm, dd] = s.split('-')
-          return `${yyyy}.${mm}.${dd}`         // 예: 2025.12.18
+          return `${yyyy}.${mm}.${dd}`         
         }
 
         const [sy, sm, sd] = s.split('-')
         const [ey, em, ed] = e.split('-')
-        return `${sy}.${sm}.${sd} ~ ${ey}.${em}.${ed}`  // 예: 2025.12.18 ~ 2025.12.19
+        return `${sy}.${sm}.${sd} ~ ${ey}.${em}.${ed}`
       }
 
       // 🔹 그 외 교육(OFFLINE 등): 시간 범위 그대로
