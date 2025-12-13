@@ -1,61 +1,60 @@
 <template>
   <div class="org-page">
-
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-      <button 
-        :class="['tab-item', { active: activeTab === 'mentees' }]" 
-        @click="setActiveTab('mentees')"
-      >
-        담당 신입
-      </button>
-      <button 
-        :class="['tab-item', { active: activeTab === 'schedule' }]" 
-        @click="setActiveTab('schedule')"
-      >
-        스케줄
-      </button>
-      <button 
-        :class="['tab-item', { active: activeTab === 'performance' }]" 
-        @click="setActiveTab('performance')"
-      >
-        온보딩 성과
-      </button>
-    </div>
-
-    <!-- Tab Content: Assigned Mentees -->
-    <div v-if="activeTab === 'mentees'" class="content-card">
+    <div class="content-card">
       <div class="card-header">
         <div class="title-wrap">
-          <h2 class="card-title">담당 신입</h2>
+          <h2 class="card-title">과제 관리</h2>
+          <p class="card-sub">과제 목록 조회 및 관리</p>
         </div>
-
-        <!-- ✅ 오른쪽 액션: 필터 + 등록 버튼 -->
-        <div class="header-actions">
+        <div class="task-controls">
           <select v-model="statusFilter" class="dept-select">
-            <option value="inProgress">진행 중</option>
-            <option value="completed">완료</option>
-            <option value="all">전체</option>
+            <option value="">전체</option>
+            <option value="PENDING">제출 대기</option>
+            <option value="SUBMITTED">제출 완료</option>
+            <option value="LATE">지각제출</option>
+            <option value="MISSING">미제출</option>
+            <option value="GRADED">채점 완료</option>
           </select>
 
-          <button class="btn-primary" @click="openRegisterPopup">
-            + 멘티 등록
-          </button>
+          <input
+            v-model="q"
+            type="search"
+            placeholder="검색"
+            :style="{ backgroundImage: `url(${logoSearch})` }"
+            class="search-input"
+          />
         </div>
       </div>
 
       <div class="card-body">
-        <div v-if="paginatedMentees.length" class="mentee-list">
-          <MenteeSummaryCard
-            v-for="m in paginatedMentees"
-            :key="`${mentorId}-${m.menteeId}`"
-            :mentee="m"
-            @select="openMenteeDetail"
-          />
-        </div>
+        <div v-if="loading" class="empty-state">불러오는 중...</div>
+        <div v-else class="task-table">
+          <div class="table-head">
+            <div class="col mentee-col">이름</div>
+            <div class="col name-col">과제명</div>
+            <div class="col date-col">마감일</div>
+            <div class="col status-col">상태</div>
+          </div>
 
-        <div v-else class="empty-state">
-          배정된 신입사원이 없습니다.
+          <div class="table-body">
+            <div
+              v-for="task in paginatedTasks"
+              :key="task.userTaskId"
+              class="table-row"
+              @click="openTask(task)"
+            >
+              <div class="col mentee-col">{{ task.menteeName }}</div>
+              <div class="col name-col">{{ task.title }}</div>
+              <div class="col date-col">{{ formatDate(task.dueDate) }}</div>
+              <div class="col status-col">
+                <span :class="['status', task.status.toLowerCase()]">
+                  {{ statusLabel(task.status) }}
+                </span>
+              </div>
+            </div>
+
+            <div v-if="!paginatedTasks.length" class="empty">해당 과제가 없습니다.</div>
+          </div>
         </div>
       </div>
 
@@ -70,13 +69,13 @@
           </button>
 
           <button
-            v-for="p in visiblePages"
-            :key="p"
+            v-for="page in visiblePages"
+            :key="page"
             class="page-num"
-            :class="{ active: p === currentPage }"
-            @click="goToPage(p)"
+            :class="{ active: page === currentPage }"
+            @click="goToPage(page)"
           >
-            {{ p }}
+            {{ page }}
           </button>
 
           <button
@@ -90,313 +89,172 @@
       </div>
     </div>
 
-    <!-- Tab Content: Mentor Schedule -->
-    <div v-if="activeTab === 'schedule'" class="mentor-schedule-tab-content">
-      <MentorSchedule @open-session-detail="handleOpenSessionDetail" />
-    </div>
+    <GradeMentorTaskModal
+    v-if="showGradeModal"
+    :show="showGradeModal"
+    :userTaskId="selectedTask.userTaskId"
+    @close="showGradeModal = false"
+    @graded="fetchMentorTasks"  
+    />
 
-    <!-- Tab Content: Performance -->
-    <div v-if="activeTab === 'performance'" class="mentor-performance-tab-content">
-      <MenteeOnboardingPerformance
-        v-if="mentees.length && mentorId"
-        :mentor-id="mentorId"
-        :mentees="mentees"
-      />
-    </div>
 
+    <MentorTaskDetailModal
+      v-if="showDetailModal"
+      :show="showDetailModal"
+      :userTaskId="selectedTask.userTaskId"
+      @close="showDetailModal = false"
+      @submitted="fetchMentorTasks"
+    />
   </div>
-
-  <!-- 멘티 등록 팝업 -->
-  <MenteeRegisterPopup
-    :show="showRegister"
-    :mentor-id="mentorId"
-    @close="showRegister = false"
-    @registered="fetchMentees"
-  />
-
-  <!-- 멘티 상세 팝업 -->
-  <MenteeDetailPopup
-    :show="showMenteeDetail"
-    :user="selectedMentee"
-    :allowUnassign="true"
-    @close="showMenteeDetail = false"
-    @unassign="removeMentee"
-  />
 </template>
 
-<script>
-import http from "@/services/http"
-import mentoringService from "@/services/mentoringService"
-import MenteeSummaryCard from "@/components/mentor/MenteeSummaryCard.vue"
-import MenteeRegisterPopup from "@/pages/mentor/MenteeRegisterPopup.vue"
-import MenteeDetailPopup from "@/pages/mentor/MenteeDetailPopup.vue"
-import MentorSchedule from "@/components/mentor/MentorSchedule.vue"
-import MenteeOnboardingPerformance from "@/components/mentor/MenteeOnboardingPerformance.vue"
+<script setup>
+import { ref, computed, onMounted, watch } from "vue"
 import { useAuthStore } from "@/store/authStore"
-import { watch } from "vue"
+import tasksService from "@/services/tasksService"
+import logoSearch from "@/assets/icon_search.svg"
+import GradeMentorTaskModal from '@/pages/mentor/tasks/GradeMentorTaskModal.vue'
+import MentorTaskDetailModal from "@/pages/mentor/tasks/MentorTaskDetailModal.vue"
 
-export default {
-  name: "MentorDashboard",
-  components: {
-    MenteeSummaryCard,
-    MenteeRegisterPopup,
-    MenteeDetailPopup,
-    MentorSchedule,
-    MenteeOnboardingPerformance,
-  },
+const auth = useAuthStore()
 
-  data() {
-    return {
-      mentees: [],
-      mentorId: null,
-      mentorSummary: {},
+const tasks = ref([])
+const q = ref("")
+const statusFilter = ref("")
+const loading = ref(true)
 
-      showMenteeDetail: false,
-      selectedMentee: null,
+const showGradeModal = ref(false)
+const selectedTask = ref(null)
+const showDetailModal = ref(false)
 
-      showRegister: false,
-      activeTab: "mentees",
+const currentPage = ref(1)
+const pageSize = ref(10)
+const MAX_VISIBLE_PAGES = 5
 
-      // ✅ 필터 (기본: 진행 중)
-      statusFilter: "inProgress",
+async function fetchMentorTasks() {
+  loading.value = true
 
-      currentPage: 1,
-      pageSize: 8,
-      MAX_VISIBLE_PAGES: 5,
-    }
-  },
+  if (!auth.user) {
+    await auth.loadUser()
+  }
 
-  watch: {
-    // ✅ 필터 바뀌면 1페이지로
-    statusFilter() {
-      this.currentPage = 1
-    }
-  },
+  const mentorId = auth.user?.userId
 
-  computed: {
-    // ✅ 입사일 기준 100일 필터링
-    filteredMentees() {
-      const list = this.mentees || []
+  if (!mentorId) {
+    console.warn("멘토 정보가 없습니다.", auth.user)
+    loading.value = false
+    return
+  }
 
-      const today = new Date()
-      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  try {
+    const resp = await tasksService.getMentorTasks(mentorId)
+    const list = resp.data?.data?.tasks || []
 
-      const isCompleted = (m) => {
-        const joinedAt = m?.joinedAt
-        if (!joinedAt) return false
+    tasks.value = list.map(t => ({
+      userTaskId: t.userTaskId,
+      menteeId: t.menteeId,
+      menteeName: t.menteeName,
+      taskId: t.onboardingTaskId,
+      title: t.taskTitle,
+      dueDate: t.dueDate,
+      status: t.status,
+    }))
+  } catch (e) {
+    console.error("멘토 과제 목록 불러오기 실패:", e)
+  }
 
-        // "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" 대응
-        const joinDate = new Date(joinedAt.slice(0, 10) + "T00:00:00")
-        if (Number.isNaN(joinDate.getTime())) return false
+  loading.value = false
+}
 
-        const diffDays = Math.floor((todayMidnight.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24))
-        return diffDays >= 100
-      }
+onMounted(fetchMentorTasks)
 
-      if (this.statusFilter === "completed") {
-        return list.filter(isCompleted)
-      }
-      if (this.statusFilter === "inProgress") {
-        return list.filter((m) => !isCompleted(m))
-      }
-      return list // all
-    },
+const filteredTasks = computed(() => {
+  let list = tasks.value
 
-    totalPages() {
-      return Math.ceil((this.filteredMentees?.length || 0) / this.pageSize)
-    },
+  if (statusFilter.value) {
+    list = list.filter(t => t.status === statusFilter.value)
+  }
 
-    paginatedMentees() {
-      const start = (this.currentPage - 1) * this.pageSize
-      return (this.filteredMentees || []).slice(start, start + this.pageSize)
-    },
-
-    visiblePages() {
-      const total = this.totalPages
-      const current = this.currentPage
-      const maxVisible = this.MAX_VISIBLE_PAGES
-      if (!total) return []
-
-      const start = Math.max(1, Math.min(current, total - maxVisible + 1))
-      const end = Math.min(total, start + maxVisible - 1)
-
-      const pages = []
-      for (let i = start; i <= end; i++) pages.push(i)
-      return pages
-    },
-  },
-
-  mounted() {
-    const auth = useAuthStore()
-    this.mentorId = auth.user?.userId
-
-    watch(
-      () => auth.user,
-      (newUser) => {
-        if (newUser) {
-          this.mentorId = newUser.userId
-          this.fetchMentees()
-          this.fetchMentorSummary()
-        }
-      },
-      { immediate: true }
+  if (q.value) {
+    const query = q.value.toLowerCase()
+    list = list.filter(
+      t =>
+        (t.title && t.title.toLowerCase().includes(query)) ||
+        (t.menteeName && t.menteeName.toLowerCase().includes(query))
     )
-  },
+  }
 
-  methods: {
-    async fetchMentees() {
-      if (!this.mentorId) return
-      try {
-        this.mentees = await mentoringService.getMenteesForMentor(this.mentorId)
-        this.currentPage = 1
-      } catch (e) {
-        console.error("멘티 목록 조회 실패", e)
-      }
-    },
+  return list.slice().sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+})
 
-    async fetchMentorSummary() {
-      if (!this.mentorId) return
-      try {
-        this.mentorSummary = await mentoringService.getMentorSummary(this.mentorId)
-      } catch (e) {
-        console.error("멘토 요약 정보 조회 실패", e)
-        this.mentorSummary = {}
-      }
-    },
+const totalPages = computed(() =>
+  Math.ceil(filteredTasks.value.length / pageSize.value)
+)
 
-    openRegisterPopup() {
-      this.showRegister = true
-    },
+const paginatedTasks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredTasks.value.slice(start, start + pageSize.value)
+})
 
-    async openMenteeDetail(mentee) {
-      try {
-        const resp = await http.get(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
-        this.selectedMentee = resp.data
-        this.showMenteeDetail = true
-      } catch (e) {
-        console.error("멘티 상세 조회 실패", e)
-      }
-    },
+const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  if (!total) return []
+  const start = Math.max(1, Math.min(current, total - MAX_VISIBLE_PAGES + 1))
+  const end = Math.min(total, start + MAX_VISIBLE_PAGES - 1)
+  const pages = []
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
-    async removeMentee(mentee) {
-      try {
-        await http.delete(
-          `/api/v1/mentors/${this.mentorId}/mentees/${mentee.menteeId}`
-        )
-        this.showMenteeDetail = false
-        this.fetchMentees()
-      } catch (e) {
-        console.error("멘티 배정 해제 실패", e)
-      }
-    },
+watch([q, statusFilter], () => {
+  currentPage.value = 1
+})
 
-    setActiveTab(tabName) {
-      this.activeTab = tabName
-      if (tabName === "mentees") {
-        this.currentPage = 1
-        this.fetchMentees()
-      }
-    },
+function formatDate(iso) {
+  if (!iso) return "-"
+  return new Date(iso).toLocaleDateString()
+}
 
-    goToPage(page) {
-      const total = this.totalPages
-      if (total < 1) return
-      const next = Math.min(Math.max(page, 1), total)
-      if (next !== this.currentPage) this.currentPage = next
-    },
+function openTask(task) {
+  selectedTask.value = task
 
-    handleOpenSessionDetail(sessionId) {
-      this.$router.push(`/mentor/sessions/${sessionId}`)
-    },
-  },
+  if (task.status === "SUBMITTED" || task.status === "LATE" || task.status === "GRADED") {
+    showGradeModal.value = true
+  } else {
+    showDetailModal.value = true
+  }
+}
+
+function statusLabel(s) {
+  const map = {
+    PENDING: "제출 대기",
+    SUBMITTED: "제출 완료",
+    LATE: "지각제출",
+    MISSING: "미제출",
+    GRADED: "채점 완료",
+  }
+  return map[s] || s
+}
+
+function goToPage(page) {
+  const total = totalPages.value
+  if (total < 1) return
+  const next = Math.min(Math.max(page, 1), total)
+  if (next !== currentPage.value) currentPage.value = next
 }
 </script>
 
 <style scoped>
-.org-page {
-  padding: 0px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Tab Navigation Styles */
-.tab-navigation {
-  width: 100%;
-  max-width: 1200px;
-  display: flex;
-  border-bottom: 1px solid #eef2f7;
-  margin-bottom: 1px;
-}
-
-.tab-item {
-  background: transparent;
-  border: none;
-  padding: 15px 25px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #7d93ad;
-  cursor: pointer;
-  position: relative;
-  transition: color 0.2s, border-bottom-color 0.2s;
-  min-height: 52px;
-}
-
-.tab-item.active {
-  color: #294594;
-  font-weight: 700;
-}
-
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background-color: #294594;
-  transition: width 0.2s ease-in-out;
-}
-
-.content-card {
-  width: 100%;
-  max-width: 1200px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(9,30,66,0.08);
-  overflow: hidden;
-}
-
-.mentor-schedule-tab-content {
-  width: 100%;
-  max-width: 1200px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 28px;
-  border-bottom: 1px solid #eef2f7;
-}
-
-.card-title {
-  margin: 0;
-  font-size: 20px;
-  color: #10243b;
-}
-
-/* ✅ 필터 + 버튼 감싸는 래퍼 */
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+.org-page { padding: 28px 40px; display:flex; justify-content:center; }
+.content-card { width: 1100px; max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(9,30,66,0.08); overflow: hidden; }
+.card-header { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; padding: 20px 28px; border-bottom: 1px solid #eef2f7; flex-wrap:wrap; }
+.title-wrap { display:flex; flex-direction:column; gap:4px; }
+.card-title { margin:0; font-size:20px; color:#10243b }
+.card-sub { margin: 4px 0 0; color:#7d93ad; font-size:13px }
+.task-controls { display: flex; gap: 10px; align-items: center; width: auto; flex-wrap: wrap; justify-content: flex-end; }
 .dept-select {
   width: 170px;
   height: 40px;
@@ -416,80 +274,123 @@ export default {
   background-size: 16px;
   cursor: pointer;
 }
-
-.btn-primary {
-  background: #294594;
-  color: #fff;
-  padding: 10px 16px;
+.search-input {
+  width: 320px;
+  height: 40px;
+  padding: 8px 12px 8px 48px;
   border-radius: 10px;
-  border: none;
-  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background-repeat: no-repeat;
+  background-position: left 14px center;
+  background-size: 18px;
+  box-sizing: border-box;
+}
+
+.card-body { padding: 22px 28px; }
+.task-table {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.table-head {
+  display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #6f6f6f;
   font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  font-weight: bold;
+}
+.table-body {
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+.table-row {
+  display: flex;
+  padding: 12px 0;
+  cursor: pointer;
+  align-items: center;
+}
+.table-row:hover {
+  background: #f8fbff;
 }
 
-.btn-primary:hover {
-  background: #1e3a8a;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(41, 69, 148, 0.3);
-}
-
-.card-body {
-  padding: 22px 28px;
-}
-
-.mentee-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  column-gap: 18px;
-  row-gap: 24px;
-}
-
-.empty-state {
+.col {
+  flex: 1;
   text-align: center;
-  padding: 40px 0;
-  color: #7d93ad;
 }
+.mentee-col {
+  flex: 0.8;
+}
+.name-col {
+  flex: 1.6;
+}
+.date-col {
+  flex: 1;
+}
+.status-col {
+  flex: 1;
+}
+.empty {
+  padding: 18px;
+  color: #64748b;
+  text-align: center;
+}
+.empty-state { padding: 32px 0; text-align: center; color: #7d93ad; font-weight: 600; }
+
+.status {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+}
+.status.pending { background: #d8d8d8; color: #6f6f6f;}
+.status.submitted { background: #e9f0ff;  color: #294594;}
+.status.late,.status.missing { background: #f8e3e2; color: #ae5e62;}
+.status.graded { background: #e3f7e9; color: #0a9a52;}
 
 .pagination.numeric {
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
 }
 .page-nav {
-  background:transparent;
-  border:none;
-  color:#4b5563;
-  font-size:18px;
-  padding:8px;
-  cursor:pointer;
-  transition: color 0.15s ease, opacity 0.15s ease
+  background: transparent;
+  border: none;
+  color: #4b5563;
+  font-size: 18px;
+  padding: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 .page-nav:disabled {
   color: #c5c9d6;
   opacity: 0.7;
-  cursor: default
+  cursor: default;
 }
 .page-num {
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:none;
-  background:transparent;
-  color:#4b5563;
-  font-weight:700;
-  cursor:pointer
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-weight: 700;
+  cursor: pointer;
 }
 .page-num.active {
-  background:#3b4aa0;
-  color:#fff;
-  box-shadow: 0 6px 18px rgba(59,74,160,0.18)
+  background: #3b4aa0;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(59,74,160,0.18);
 }
-.card-footer {
-  padding: 16px 0;
-  display:flex;
-  justify-content:center
+.card-footer { padding: 16px 28px; border-top: 1px solid #eef2f7; display:flex; justify-content:center }
+
+@media (max-width: 980px) {
+  .content-card { width: 100%; margin: 0 16px }
+  .task-controls { width:100%; justify-content:flex-start }
+  .search-input { width: 100%; max-width: 260px }
 }
 </style>

@@ -127,14 +127,6 @@
             <div class="file-name">
               {{ task.fileName ?? "첨부파일 없음" }}
             </div>
-
-            <button
-              v-if="task.fileUrl"
-              class="download-btn"
-              @click="openFile(task.fileUrl)"
-            >
-              다운로드
-            </button>
           </div>
 
           <!-- 새 파일 업로드 드롭존 -->
