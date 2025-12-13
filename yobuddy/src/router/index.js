@@ -134,7 +134,7 @@ const routes = [
 
     path: '/admin/trainings/results',
     component: () => import('@/pages/admin/training/trainingresult/TrainingResultList.vue'),
-     meta: { requiresAuth: true, adminOnly: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
   // --- 멘토 기능 ---
   {
