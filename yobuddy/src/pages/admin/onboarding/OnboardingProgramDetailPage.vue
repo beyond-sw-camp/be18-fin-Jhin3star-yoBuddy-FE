@@ -208,18 +208,23 @@ export default {
       const target = new Date(this.selectedDate)
       target.setHours(0,0,0,0)
       const trainingItems = (this.trainings || []).filter(t => {
-        const sd = t.startDate ? new Date(t.startDate) : (t.scheduledAt ? new Date(t.scheduledAt) : null)
+        const startRaw = t.startDate || t.start_date || t.scheduledAt || t.scheduled_at || null
+        const sd = startRaw ? new Date(startRaw) : null
         if (!sd) return false
         sd.setHours(0,0,0,0)
         return sd.getTime() === target.getTime()
       }).map(t => {
+        const startRaw = t.startDate || t.start_date || t.scheduledAt || t.scheduled_at || null
+        const endRaw = t.endDate || t.end_date || t.end || null
+        const type = t.type || t.trainingType || t.training_type || null
         return {
-          id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
+          id: t.trainingId || t.id || t.training_id || `${t.title}-${startRaw}`,
           title: t.title || t.name || t.trainingTitle || '일정',
-          startDate: t.startDate || t.scheduledAt || t.scheduled_at || null,
-          endDate: t.endDate || t.end || null,
-          classes: (t.type ? [String(t.type).toLowerCase()] : []),
-          kind: 'training'
+          startDate: startRaw,
+          endDate: endRaw,
+          classes: (type ? [String(type).toLowerCase()] : []),
+          kind: 'training',
+          type,
         }
       })
 
@@ -236,14 +241,20 @@ export default {
       return [...trainingItems, ...taskItemsMarked]
     },
     allDayItems() {
-      const trainingItems = (this.trainings || []).map(t => ({
-        id: t.trainingId || t.id || t.training_id || `${t.title}-${t.startDate}`,
-        title: t.title || t.name || t.trainingTitle || '일정',
-        startDate: t.startDate || t.scheduledAt || t.scheduled_at || null,
-        endDate: t.endDate || t.end || null,
-        classes: (t.type ? [String(t.type).toLowerCase()] : []),
-        kind: 'training'
-      }))
+      const trainingItems = (this.trainings || []).map(t => {
+        const startRaw = t.startDate || t.start_date || t.scheduledAt || t.scheduled_at || null
+        const endRaw = t.endDate || t.end_date || t.end || null
+        const type = t.type || t.trainingType || t.training_type || null
+        return {
+          id: t.trainingId || t.id || t.training_id || `${t.title}-${startRaw}`,
+          title: t.title || t.name || t.trainingTitle || '일정',
+          startDate: startRaw,
+          endDate: endRaw,
+          classes: (type ? [String(type).toLowerCase()] : []),
+          kind: 'training',
+          type,
+        }
+      })
       const taskItems = (this.programTasks || []).map(p => ({
         id: p.id,
         title: p.title || '과제',
@@ -424,22 +435,33 @@ export default {
     },
     formatItemTime(it) {
       try {
-        const s = it.startDate ? new Date(it.startDate) : null
-        const e = it.endDate ? new Date(it.endDate) : null
-        if (!s) return ''
+        const rawStart = it.startDate || it.start_date || it.scheduledAt || it.scheduled_at || null
+        const rawEnd = it.endDate || it.end_date || it.end || null
+        if (!rawStart) return ''
+        const start = new Date(rawStart)
+        const end = rawEnd ? new Date(rawEnd) : null
+        const formatMonthDay = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+        const type = (it.type || it.trainingType || it.training_type || '').toString().toUpperCase()
+        const isOnlineTraining = (it.kind === 'training') && (type === 'ONLINE' || (Array.isArray(it.classes) && it.classes.includes('online')))
+        if (isOnlineTraining && rawEnd) {
+          if (!isNaN(start.getTime()) && end && !isNaN(end.getTime())) {
+            return `${formatMonthDay(start)} ~ ${formatMonthDay(end)}`
+          }
+          return `${rawStart} ~ ${rawEnd}`
+        }
         const isMidnight = (d) => d && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
-        if (e && s.getTime() === e.getTime()) {
-          if (isMidnight(s)) return s.toLocaleDateString()
-          return s.toLocaleTimeString()
+        if (end && start.getTime() === end.getTime()) {
+          if (isMidnight(start)) return start.toLocaleDateString()
+          return start.toLocaleTimeString()
         }
-        if (e && isMidnight(s) && isMidnight(e)) {
-          return `${s.toLocaleDateString()} ~ ${e.toLocaleDateString()}`
+        if (end && isMidnight(start) && isMidnight(end)) {
+          return `${start.toLocaleDateString()} ~ ${end.toLocaleDateString()}`
         }
-        if (!e) {
-          if (isMidnight(s)) return s.toLocaleDateString()
-          return s.toLocaleTimeString()
+        if (!end) {
+          if (isMidnight(start)) return start.toLocaleDateString()
+          return start.toLocaleTimeString()
         }
-        return `${s.toLocaleTimeString()} - ${e.toLocaleTimeString()}`
+        return `${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`
       } catch (e) {
         return ''
       }

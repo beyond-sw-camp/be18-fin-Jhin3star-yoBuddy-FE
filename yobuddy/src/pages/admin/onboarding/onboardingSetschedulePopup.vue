@@ -599,38 +599,45 @@ export default {
       training.endDate = this.combineDateTime(d, et)
     },
     formatItemTime(it) {
-      if (it._isAssignment || it.taskId || it.task_id) {
+      try {
+        if (it._isAssignment || it.taskId || it.task_id) {
           const date = it._editDate || (it.dueDate ? this.getLocalDatePart(it.dueDate) : null)
           const time = it._dueTime || (it.dueDate ? it.dueDate.substring(11, 16) : null)
           if (!date || !time) return ''
           const [yyyy, mm, dd] = date.split('-')
-          return `${yyyy}.${mm}.${dd} ${time}`   // 예: 2025.12.18 18:00
-      }
-
-      // ✅ 기존 교육 로직은 그대로
-      if (this.isOnline(it)) {
-        const s = it._onlineStartDate || (it.startDate ? this.getLocalDatePart(it.startDate) : null)
-        const e = it._onlineEndDate || (it.endDate ? this.getLocalDatePart(it.endDate) : null)
-
-        if (!s && !e) return ''
-        if (!e || s === e) {
-          // 시작/종료 같은 날이면 한 번만
-          const [yyyy, mm, dd] = s.split('-')
-          return `${yyyy}.${mm}.${dd}`         
+          return `${yyyy}.${mm}.${dd} ${time}`
         }
 
-        const [sy, sm, sd] = s.split('-')
-        const [ey, em, ed] = e.split('-')
-        return `${sy}.${sm}.${sd} ~ ${ey}.${em}.${ed}`
-      }
+        const rawStart = it._onlineStartDate || it.startDate || it.start_date || it.scheduledAt || it.scheduled_at || null
+        const rawEnd = it._onlineEndDate || it.endDate || it.end_date || it.end || null
+        if (!rawStart) return ''
+        const start = new Date(rawStart)
+        const end = rawEnd ? new Date(rawEnd) : null
+        const formatMonthDay = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+        const type = (it.type || it.trainingType || it.training_type || '').toString().toUpperCase()
+        const classes = Array.isArray(it.classes) ? it.classes : []
+        const isTrainingLike = it.kind === 'training' || (!it.kind && !(it._isAssignment || it.taskId || it.task_id))
+        const isOnlineTraining = isTrainingLike && (type === 'ONLINE' || classes.includes('online'))
+        if (isOnlineTraining && rawEnd) {
+          if (!isNaN(start.getTime()) && end && !isNaN(end.getTime())) {
+            return `${formatMonthDay(start)} ~ ${formatMonthDay(end)}`
+          }
+          return `${rawStart} ~ ${rawEnd}`
+        }
 
-      // 🔹 그 외 교육(OFFLINE 등): 시간 범위 그대로
-      try {
-        const s = it.startDate ? new Date(it.startDate) : null
-        const e = it.endDate ? new Date(it.endDate) : null
-        if (!s) return ''
-        if (!e || s.getTime() === e.getTime()) return s.toLocaleTimeString()
-        return `${s.toLocaleTimeString()} - ${e.toLocaleTimeString()}`
+        const isMidnight = (d) => d && d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
+        if (end && start.getTime() === end.getTime()) {
+          if (isMidnight(start)) return start.toLocaleDateString()
+          return start.toLocaleTimeString()
+        }
+        if (end && isMidnight(start) && isMidnight(end)) {
+          return `${start.toLocaleDateString()} ~ ${end.toLocaleDateString()}`
+        }
+        if (!end) {
+          if (isMidnight(start)) return start.toLocaleDateString()
+          return start.toLocaleTimeString()
+        }
+        return `${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`
       } catch (e) {
         return ''
       }
