@@ -72,12 +72,14 @@
 
       <div v-if="activeTab === 'weeklyActivities'" class="tab-content-wrapper">
         <WeeklyActivitiesList
-          :activities="weeklyActivities"
-          :weekly-range-text="weeklyRangeText"
-          @view-activity-detail="handleViewActivityDetail"
-          @go-prev-week="goToPreviousWeek"
-          @go-next-week="goToNextWeek"
-          @go-current-week="goToCurrentWeek"
+        :activities="weeklyActivities"
+        :weekly-range-text="weeklyRangeText"
+        :week-base-date="weekBaseDate"
+        @view-activity-detail="handleViewActivityDetail"
+        @go-prev-week="goToPreviousWeek"
+        @go-next-week="goToNextWeek"
+        @go-current-week="goToCurrentWeek"
+        @jump-to-week="jumpToWeek"
         />
       </div>
 
@@ -189,6 +191,73 @@ export default {
     const selectedTraining = ref(null);
     const selectedMentoringSessionId = ref(null);
 
+    const jumpToWeek = (dateString) => {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return;
+      weekBaseDate.value = d;
+      fetchWeeklyActivities();
+    };
+
+
+
+    /* ------------------------------
+       STATUS LABEL (KOR)
+       - 파일 새로 안 만들고 이 컴포넌트 내부에서만 처리
+       - weeklyReports/weeklyActivities/overview 일정 모두 status 덮어씀
+    ------------------------------- */
+    const getStatusLabel = (type, status) => {
+      if (!status) return "";
+      const s = String(status).toUpperCase();
+
+      if (type === "TRAINING") {
+        // UserTrainingStatus: PENDING, IN_PROGRESS, COMPLETED, MISSED
+        const map = {
+          PENDING: "예정",
+          IN_PROGRESS: "진행중",
+          COMPLETED: "완료",
+          MISSED: "미참석",
+        };
+        return map[s] || status;
+      }
+
+      if (type === "TASK") {
+        // UserTaskStatus: PENDING, SUBMITTED, LATE, MISSING, GRADED
+        const map = {
+          PENDING: "예정",
+          SUBMITTED: "제출 완료",
+          LATE: "지각 제출",
+          MISSING: "미제출",
+          GRADED: "채점 완료",
+        };
+        return map[s] || status;
+      }
+
+      if (type === "MENTORING") {
+        // MentoringStatus: SCHEDULED, COMPLETED, NO_SHOW, CANCELLED
+        const map = {
+          SCHEDULED: "예정",
+          COMPLETED: "완료",
+          NO_SHOW: "불참",
+          CANCELLED: "취소",
+        };
+        return map[s] || status;
+      }
+
+      if (type === "REPORT") {
+        // WeeklyReportStatus: DRAFT, SUBMITTED, REVIEWED, OVERDUE, FEEDBACK_OVERDUE
+        const map = {
+          DRAFT: "임시저장",
+          SUBMITTED: "제출 완료",
+          REVIEWED: "검토 완료",
+          OVERDUE: "미제출(기한 초과)",
+          FEEDBACK_OVERDUE: "피드백 기한 초과",
+        };
+        return map[s] || status;
+      }
+
+      return status;
+    };
+
     /* ------------------------------
        CALENDAR EVENT TITLE
     ------------------------------- */
@@ -198,13 +267,10 @@ export default {
       switch (item.type) {
         case "MENTORING":
           return `멘토링 ${time}`;
-
         case "TASK":
           return item.taskTitle || "과제";
-
         case "TRAINING":
           return item.trainingTitle || "교육";
-
         default:
           return "일정";
       }
@@ -231,12 +297,17 @@ export default {
         schedules.forEach((item) => {
           if (!grouped[item.date]) grouped[item.date] = [];
 
+          const id =
+            item.type === "TRAINING"
+              ? item.trainingId
+              : item.sessionId || item.userTaskId || item.userTrainingId;
+
           grouped[item.date].push({
-            id: item.type === "TRAINING" ? item.trainingId : (item.sessionId || item.userTaskId || item.userTrainingId),
+            id,
             type: item.type,
             title: getEventTitle(item),
             time: item.time?.substring(0, 5) || "",
-            status: item.status,
+            status: getStatusLabel(item.type, item.status), // ✅ 한글로 변환
           });
         });
 
@@ -253,7 +324,6 @@ export default {
       const y = selectedDate.value.getFullYear();
       const m = String(selectedDate.value.getMonth() + 1).padStart(2, "0");
       const d = String(selectedDate.value.getDate()).padStart(2, "0");
-
       return eventsByDate.value[`${y}-${m}-${d}`] || [];
     });
 
@@ -322,7 +392,7 @@ export default {
           title: task.title,
           date: task.dueDate,
           time: "",
-          status: task.status,
+          status: getStatusLabel("TASK", task.status), // ✅ 덮어쓰기
           activityDate: new Date(task.dueDate),
         }));
 
@@ -344,7 +414,7 @@ export default {
             title: training.title,
             date,
             time,
-            status: training.status,
+            status: getStatusLabel("TRAINING", training.status), // ✅ 덮어쓰기
             activityDate: new Date(date),
           };
         });
@@ -358,18 +428,20 @@ export default {
             title: "멘토링",
             date: s.date,
             time: s.time?.substring(0, 5) || "",
-            status: s.status || "SCHEDULED",
+            status: getStatusLabel("MENTORING", s.status || "SCHEDULED"), // ✅ 덮어쓰기
             activityDate: new Date(s.date),
           }));
 
         // 주간 필터링
-        const weekly = [...taskActivities, ...trainingActivities, ...mentoringActivities].filter(
-          (a) => {
-            const d = new Date(a.activityDate);
-            d.setHours(0, 0, 0, 0);
-            return d >= startOfWeek && d <= endOfWeek;
-          }
-        );
+        const weekly = [
+          ...taskActivities,
+          ...trainingActivities,
+          ...mentoringActivities,
+        ].filter((a) => {
+          const d = new Date(a.activityDate);
+          d.setHours(0, 0, 0, 0);
+          return d >= startOfWeek && d <= endOfWeek;
+        });
 
         weeklyActivities.value = weekly;
       } catch (err) {
@@ -450,16 +522,16 @@ export default {
       }
 
       if (event.type === "TRAINING") {
-    console.log("Opening TRAINING event:", event);
-    console.log("userId:", userId.value, "trainingId (event.id):", event.id);
-    try {
-      const res = await userTrainingService.detail(userId.value, event.id);
-      selectedTraining.value = res.data; // detail 결과 그대로 저장
-      showTrainingDetailModal.value = true;
-    } catch (e) {
-      console.error("Failed to load training detail:", e);
-    }
-  }
+        console.log("Opening TRAINING event:", event);
+        console.log("userId:", userId.value, "trainingId (event.id):", event.id);
+        try {
+          const res = await userTrainingService.detail(userId.value, event.id);
+          selectedTraining.value = res.data;
+          showTrainingDetailModal.value = true;
+        } catch (e) {
+          console.error("Failed to load training detail:", e);
+        }
+      }
     };
 
     /* ------------------------------
@@ -468,7 +540,13 @@ export default {
     const fetchWeeklyReports = () =>
       dashboardService
         .getWeeklyReports(userId.value, { page: 0, size: 12 })
-        .then((res) => (weeklyReports.value = res.data.content));
+        .then((res) => {
+          const list = res.data.content || [];
+          weeklyReports.value = list.map((r) => ({
+            ...r,
+            status: r.status
+          }));
+        });
 
     const fetchAllDashboardData = async () => {
       loading.value = true;
@@ -541,6 +619,7 @@ export default {
     const setActiveTab = (tabName) => {
       activeTab.value = tabName;
       if (tabName === "weeklyActivities") fetchWeeklyActivities();
+      if (tabName === "reports") fetchWeeklyReports();
     };
 
     watch(userId, () => {
@@ -579,6 +658,8 @@ export default {
       goToPreviousWeek,
       goToNextWeek,
       goToCurrentWeek,
+      weekBaseDate,
+      jumpToWeek,
 
       showReportDetailModal,
       selectedReport,
@@ -602,6 +683,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .user-dashboard-page {

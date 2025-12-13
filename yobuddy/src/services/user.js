@@ -96,6 +96,14 @@ const userService = {
 		};
 		const resp = await http.get(`/api/v1/users/${userId}/mentors/${mentorId}/onboarding-performance`, { params });
 		return resp && resp.data ? resp.data : null;
+	},
+
+	async requestPasswordReset(email) {
+		return http.post('/api/v1/auth/password/reset/request', { email });
+	},
+
+	async resetPassword(token, newPassword) {
+		return http.post('/api/v1/auth/password/reset', { token, newPassword });
 	}
 }
 

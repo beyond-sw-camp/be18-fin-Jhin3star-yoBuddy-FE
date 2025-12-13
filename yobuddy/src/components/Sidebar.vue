@@ -98,11 +98,13 @@
           <p class="user-role">{{ userRole }}</p>
         </div>
 
-        <button class="logout-btn action-btn" @click.stop="logout()" title="로그아웃">
-          <span class="action-icon">
-            <img src="@/assets/logo_logout.svg" width="80%" height="80%">
+        <button class="logout-btn Btn" @click.stop="logout()" type="button">
+          <span class="sign" aria-hidden="true">
+            <img src="@/assets/logo_logout.svg" class="logout-icon" alt="" />
           </span>
+          <span class="text">로그아웃</span>
         </button>
+
       </div>
     </div>
     <my-info-modal v-if="showMyInfoModal" @close="showMyInfoModal = false" />
@@ -823,23 +825,6 @@ export default {
   text-overflow: ellipsis;
 }
 
-.logout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.06);
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.18s ease;
-  flex-shrink: 0;
-  margin-top: 0;
-}
-
 .settings-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 14px rgba(0,0,0,0.28);
@@ -919,6 +904,73 @@ export default {
 }
 .user-detail-btn:hover {
   background: #3a5ad9;
+}
+
+.logout-btn.Btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  width: 44px;          
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: width .5s ease, transform .12s ease, box-shadow .18s ease;
+
+  background: #294594;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+}
+
+.logout-btn.Btn:hover {
+  width: 132px;
+}
+
+.logout-btn.Btn:active {
+  transform: translate(1px, 1px);
+}
+
+.logout-btn.Btn .sign {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width .25s ease, padding-left .25s ease;
+}
+
+.logout-btn.Btn:hover .sign {
+  width: 46px;
+  padding-left: 6px;
+}
+
+.logout-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+.logout-btn.Btn .text {
+  position: absolute;
+  right: 10px;
+  width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity .2s ease, width .25s ease;
+
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.logout-btn.Btn:hover .text {
+  opacity: 1;
+  width: 70px;
 }
 
 @media (max-width: 768px) {

@@ -46,6 +46,16 @@ const onboardingService = {
       throw e
     }
   },
+
+  async updateProgram(programId, updateRequest) {
+    try {
+      const resp = await http.patch(`/api/v1/admin/programs/${programId}`, updateRequest);
+      return resp.data;
+    } catch (e) {
+      console.error(`온보딩 프로그램 업데이트 실패 (id=${programId})`, e);
+      throw e;
+    }
+  },
 }
 
 export default onboardingService

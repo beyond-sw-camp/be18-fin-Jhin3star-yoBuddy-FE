@@ -8,11 +8,10 @@
         </div>
 
         <div class="search-wrap">
-          <select v-model="searchFilter" class="search-select">
+          <select v-model="resultFilter" class="dept-select" @change="onFilterChange">
             <option value="ALL">전체</option>
-            <option value="USER">사원명</option>
-            <option value="TRAINING">교육명</option>
-            <option value="PROGRAM">프로그램명</option>
+            <option value="PASS">합격</option>
+            <option value="FAIL">불합격</option>
           </select>
 
           <input
@@ -38,20 +37,92 @@
 
           <template v-else>
             <button class="btn btn-secondary" @click="cancelDeleteMode">취소</button>
-            <button
-              class="btn btn-danger"
-              :disabled="selectedIds.length === 0"
-              @click="confirmDelete"
-            >
+            <button class="btn btn-danger" :disabled="selectedIds.length === 0" @click="confirmDelete">
               삭제
             </button>
           </template>
         </div>
       </div>
 
-      <div class="card-body">
-        <div v-if="trainingresults && trainingresults.length" class="result-grid">
-          <div class="result-card" v-for="tr in trainingresults" :key="tr.formResultId">
+      <div class="card-body"> 
+        <div v-if="isLoading" class="loading-state">
+          <div class="loader" aria-label="불러오는 중">
+            <div class="wrapper">
+              <div class="catContainer">
+                <svg
+                class="catbody"
+                viewBox="0 0 120 120"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                >
+                <path
+                d="M22 70c0-18 16-32 38-32s38 14 38 32-16 32-38 32-38-14-38-32z"
+                fill="#294594"
+                />
+                <circle cx="48" cy="66" r="4" fill="#fff"/>
+                <circle cx="72" cy="66" r="4" fill="#fff"/>
+                <path d="M56 78c4 4 8 4 12 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M38 48l-10-10v18z" fill="#294594"/>
+                <path d="M82 48l10-10v18z" fill="#294594"/>
+              </svg>
+              <svg
+              class="tail"
+              viewBox="0 0 30 120"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              >
+              <path
+              d="M15 5c-2 18-3 32-3 46 0 18 3 34 3 64"
+              stroke="#294594"
+              stroke-width="8"
+              stroke-linecap="round"
+              fill="none"
+              />
+            </svg>
+            <svg
+            class="wall"
+            viewBox="0 0 320 120"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            >
+            <rect x="0" y="70" width="320" height="14" fill="#e6eef8"/>
+            <rect x="0" y="84" width="320" height="6" fill="#cbd5e1"/>
+          </svg>
+
+          
+          <div class="text" aria-hidden="true">
+            <span class="zzz">Z</span>
+            <span class="bigzzz">Z</span>
+            <span class="zzz">Z</span>
+          </div>
+        </div>
+
+        <div class="loading-text">불러오는 중입니다…</div>
+      </div>
+    </div>
+  </div>
+        
+
+        <div v-else-if="trainingresults && trainingresults.length" class="result-grid">
+          <div
+            class="result-card"
+            v-for="tr in trainingresults"
+            :key="tr.formResultId"
+            :class="{
+              'delete-mode': isDeleteMode,
+              selected: isDeleteMode && isSelected(tr.formResultId)
+            }"
+            @click="onCardClick(tr.formResultId)"
+          >
+            <div
+              v-if="isDeleteMode"
+              class="select-indicator"
+              :class="{ selected: isSelected(tr.formResultId) }"
+              aria-hidden="true"
+            >
+              ✓
+            </div>
+
             <div class="result-top">
               <div class="who">
                 <div class="avatar">{{ (tr.userName || '?').slice(0, 1) }}</div>
@@ -82,18 +153,8 @@
               <div class="bar-wrap">
                 <div class="bar-label">점수</div>
                 <div class="bar">
-                  <div
-                    class="bar-fill"
-                    :style="{ width: Math.min(100, Math.max(0, tr.score)) + '%' }"
-                  ></div>
+                  <div class="bar-fill" :style="{ width: Math.min(100, Math.max(0, tr.score)) + '%' }"></div>
                 </div>
-              </div>
-
-              <div v-if="isDeleteMode" class="select-wrap">
-                <label class="check">
-                  <input type="checkbox" :value="tr.formResultId" v-model="selectedIds" />
-                  <span>선택</span>
-                </label>
               </div>
             </div>
           </div>
@@ -104,12 +165,7 @@
 
       <div class="card-footer">
         <div class="pagination numeric">
-          <button
-            class="page-nav"
-            @click="setPage(page - 1)"
-            :disabled="page <= 0"
-            aria-label="이전 페이지"
-          >
+          <button class="page-nav" @click="setPage(page - 1)" :disabled="page <= 0" aria-label="이전 페이지">
             &lt;
           </button>
 
@@ -145,29 +201,45 @@ export default {
     return {
       page: 0,
       size: 10,
-      searchFilter: 'ALL',
+      backendSize: 100,
+
       searchKeyword: '',
-      trainingresults: [],
-      loading: false,
-      totalPages: 1,
-      error: null,
+      resultFilter: 'ALL',
+
+      allResults: [],
+
+      isLoading: false,
+
       isDeleteMode: false,
       selectedIds: []
     }
   },
 
   created() {
-    this.fetchTrainingResults()
+    this.fetchAllResults()
   },
 
   computed: {
+    filteredResults() {
+      if (this.resultFilter === 'ALL') return this.allResults
+      return this.allResults.filter((x) => x.result === this.resultFilter)
+    },
+
+    totalPages() {
+      return Math.max(1, Math.ceil(this.filteredResults.length / this.size))
+    },
+
+    trainingresults() {
+      const start = this.page * this.size
+      return this.filteredResults.slice(start, start + this.size)
+    },
+
     pageList() {
-      const total = this.totalPages || 0
-      const current = this.page || 0
+      const total = this.totalPages
+      const current = this.page
       const maxVisible = 5
       const pages = []
 
-      if (total <= 0) return pages
       if (total <= maxVisible) {
         for (let i = 0; i < total; i++) pages.push(i)
         return pages
@@ -193,42 +265,86 @@ export default {
   },
 
   methods: {
-    async fetchTrainingResults() {
-      this.loading = true
-      this.error = null
-      try {
-        const payload = { page: this.page, size: this.size }
+    sortLatest(items) {
+      return [...items].sort((a, b) => {
+        const av = new Date(a.submittedAt || 0).getTime()
+        const bv = new Date(b.submittedAt || 0).getTime()
+        if (av === bv) return (b.formResultId ?? 0) - (a.formResultId ?? 0)
+        return bv - av
+      })
+    },
 
-        if (this.searchKeyword) {
-          if (this.searchFilter === 'ALL') {
-            payload.userName = this.searchKeyword
-            payload.trainingName = this.searchKeyword
-            payload.onboardingName = this.searchKeyword
-          } else if (this.searchFilter === 'USER') {
-            payload.userName = this.searchKeyword
-          } else if (this.searchFilter === 'TRAINING') {
-            payload.trainingName = this.searchKeyword
-          } else if (this.searchFilter === 'PROGRAM') {
-            payload.onboardingName = this.searchKeyword
+    ensureValidPage() {
+      const last = this.totalPages - 1
+      if (this.page > last) this.page = Math.max(0, last)
+      if (this.page < 0) this.page = 0
+    },
+
+    async fetchAllResults(preservePage = false) {
+      const keep = preservePage ? this.page : 0
+
+      this.isLoading = true
+
+      try {
+        const items = []
+        const MAX_PAGES = 300
+        let p = 0
+
+        for (let i = 0; i < MAX_PAGES; i++) {
+          const payload = {
+            page: p,
+            size: this.backendSize,
+            sort: 'submittedAt,desc'
           }
+
+          const k = (this.searchKeyword || '').trim()
+          if (k) {
+            payload.userName = k
+            payload.trainingName = k
+            payload.onboardingName = k
+          }
+
+          const pageData = await trainingResultService.getTrainingResultList(payload)
+          const content = pageData.content || []
+          if (content.length) items.push(...content)
+
+          const total = pageData.totalPages ?? 0
+          const last =
+            pageData.last === true ||
+            (total ? p >= total - 1 : content.length < this.backendSize)
+
+          if (last) break
+          p += 1
         }
 
-        const pageData = await trainingResultService.getTrainingResultList(payload)
-
-        this.trainingresults = pageData.content || []
-        this.totalPages = Math.max(1, pageData.totalPages ?? 0)
-        this.page = pageData.number ?? this.page
+        this.allResults = this.sortLatest(items)
+        this.page = keep
+        this.ensureValidPage()
       } catch (e) {
         console.error(e)
-        this.error = '교육 평가 조회에 실패했습니다.'
-      } finally {
-        this.loading = false
+        alert('교육 평가 조회에 실패했습니다.')
+        this.allResults = []
+        this.page = 0
+      }finally {
+        this.isLoading = false
       }
+    },
+
+    onFilterChange() {
+      this.page = 0
+      if (this.isDeleteMode) this.selectedIds = []
     },
 
     onSearch() {
       this.page = 0
-      this.fetchTrainingResults()
+      if (this.isDeleteMode) this.selectedIds = []
+      this.fetchAllResults(false)
+    },
+
+    setPage(newPage) {
+      if (newPage < 0 || newPage >= this.totalPages || newPage === this.page) return
+      this.page = newPage
+      if (this.isDeleteMode) this.selectedIds = []
     },
 
     formatDate(dateStr) {
@@ -242,32 +358,16 @@ export default {
       return `${yyyy}년 ${mm}월 ${dd}일 ${hh}시 ${min}분`
     },
 
-    setPage(newPage) {
-      if (newPage < 0 || newPage >= this.totalPages || newPage === this.page) return
-      this.page = newPage
-      this.fetchTrainingResults()
-    },
-
     statusClass(status) {
-      switch (status) {
-        case 'PASS':
-          return 'tag-success'
-        case 'FAIL':
-          return 'tag-danger'
-        default:
-          return ''
-      }
+      if (status === 'PASS') return 'tag-success'
+      if (status === 'FAIL') return 'tag-danger'
+      return ''
     },
 
     statusLabel(status) {
-      switch (status) {
-        case 'PASS':
-          return '합격'
-        case 'FAIL':
-          return '불합격'
-        default:
-          return status
-      }
+      if (status === 'PASS') return '합격'
+      if (status === 'FAIL') return '불합격'
+      return status
     },
 
     enterDeleteMode() {
@@ -280,6 +380,17 @@ export default {
       this.selectedIds = []
     },
 
+    isSelected(id) {
+      return this.selectedIds.includes(id)
+    },
+
+    onCardClick(id) {
+      if (!this.isDeleteMode) return
+      const idx = this.selectedIds.indexOf(id)
+      if (idx >= 0) this.selectedIds.splice(idx, 1)
+      else this.selectedIds.push(id)
+    },
+
     async confirmDelete() {
       if (this.selectedIds.length === 0) return
       if (!confirm(`선택한 ${this.selectedIds.length}개의 교육 평가를 삭제하시겠습니까?`)) return
@@ -288,11 +399,11 @@ export default {
         for (const id of this.selectedIds) {
           await trainingResultService.deleteTrainingResult(id)
         }
-        await this.fetchTrainingResults()
         this.cancelDeleteMode()
+        await this.fetchAllResults(true)
       } catch (e) {
-        alert('삭제 중 오류가 발생했습니다.')
         console.error(e)
+        alert('삭제 중 오류가 발생했습니다.')
       }
     }
   }
@@ -300,6 +411,7 @@ export default {
 </script>
 
 <style scoped>
+/* CSS 그대로 */
 .org-page {
   padding: 28px 40px;
   display: flex;
@@ -360,12 +472,6 @@ export default {
   justify-content: flex-end;
 }
 
-.search-select {
-  min-width: 120px;
-  border-radius: 10px;
-  padding: 10px 16px;
-}
-
 .search-input {
   min-width: 220px;
   border-radius: 10px;
@@ -416,11 +522,46 @@ export default {
 }
 
 .result-card {
+  position: relative;
   background: #ffffff;
   border: 1px solid #eef2f7;
   border-radius: 14px;
   padding: 16px 16px;
   box-shadow: 0 6px 18px rgba(9, 30, 66, 0.06);
+}
+
+.result-card.delete-mode {
+  cursor: pointer;
+  user-select: none;
+}
+
+.result-card.selected {
+  border-color: rgba(41, 69, 148, 0.45);
+  box-shadow: 0 10px 26px rgba(41, 69, 148, 0.14);
+}
+
+.select-indicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: transparent;
+  background: #fff;
+  transition: all 0.12s ease;
+}
+
+.select-indicator.selected {
+  border-color: #294594;
+  background: #294594;
+  color: #fff;
 }
 
 .result-top {
@@ -547,23 +688,6 @@ export default {
   background: #294594;
 }
 
-.select-wrap {
-  flex-shrink: 0;
-}
-
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #e6eef8;
-  background: #ffffff;
-  color: #334155;
-  font-weight: 700;
-  font-size: 12px;
-}
-
 .tag {
   padding: 6px 10px;
   border-radius: 10px;
@@ -633,6 +757,127 @@ export default {
   display: flex;
   justify-content: center;
 }
+
+.dept-select {
+  width: 100px;
+  height: 40px;
+  padding: 8px 12px;
+  padding-right: 32px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background-color: #fff;
+  box-sizing: border-box;
+  text-align: center;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: #10243b;
+
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dept-select:focus {
+  outline: none;
+  border-color: #294594;
+  box-shadow: 0 0 0 3px rgba(41, 69, 148, 0.15);
+}
+
+.loading-state {
+  padding: 34px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.loading-text {
+  margin-top: 10px;
+  color: #7d93ad;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.loader {
+  width: fit-content;
+  height: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wrapper {
+  width: fit-content;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.catContainer {
+  width: 100%;
+  height: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.catbody {
+  width: 80px;
+  z-index: 2;
+}
+.tail {
+  position: absolute;
+  width: 17px;
+  top: 50%;
+  left: 50%;
+  margin-left: 42px;
+  z-index: 1;
+  animation: tail 0.5s ease-in infinite alternate-reverse;
+  transform-origin: top;
+}
+@keyframes tail {
+  0% { transform: rotateZ(60deg); }
+  50% { transform: rotateZ(0deg); }
+  100% { transform: rotateZ(-20deg); }
+}
+.wall {
+  width: 300px;
+  position: absolute;
+  bottom: -6px;
+  z-index: 0;
+}
+.text {
+  display: flex;
+  flex-direction: column;
+  width: 50px;
+  position: absolute;
+  margin: 0px 0px 100px 120px;
+}
+.zzz {
+  color: black;
+  font-weight: 700;
+  font-size: 15px;
+  animation: zzz 2s linear infinite;
+}
+.bigzzz {
+  color: black;
+  font-weight: 700;
+  font-size: 25px;
+  margin-left: 10px;
+  animation: zzz 2.3s linear infinite;
+}
+@keyframes zzz {
+  0% { color: transparent; }
+  50% { color: black; }
+  100% { color: transparent; }
+}
+
 
 @media (max-width: 980px) {
   .result-grid {
