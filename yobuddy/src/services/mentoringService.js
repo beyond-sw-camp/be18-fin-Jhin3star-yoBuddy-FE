@@ -199,6 +199,8 @@ const mentoringService = {
       reportId: r.weeklyReportId,
       authorName: menteeName,
       label: `Week ${r.weekNumber} (${r.startDate} ~ ${r.endDate})`,
+      startDate: r.startDate,
+      endDate: r.endDate,
       writtenDate: r.updatedAt ? r.updatedAt.substring(0, 10) : '-',
       submitStatus: ['SUBMITTED', 'REVIEWED', 'FEEDBACK_OVERDUE'].includes(r.status) ? 'SUBMITTED' : 'MISSING',
       feedbackStatus: r.status === 'REVIEWED' ? 'WRITTEN' : 'PENDING',

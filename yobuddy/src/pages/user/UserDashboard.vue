@@ -58,7 +58,7 @@
                     <span class="event-time-label">{{ event.time }}</span>
                   </div>
                   <div class="event-title-display">{{ event.title }}</div>
-                  <div class="event-status-display">{{ event.status }}</div>
+                  <div class="event-status-display">{{ formatStatus(event.status) }}</div>
                 </div>
               </div>
 
@@ -493,6 +493,21 @@ export default {
 
     const getEventClass = (type) => (type ? `event-${type.toLowerCase()}` : "");
 
+    const formatStatus = (status) => {
+      const up = String(status || "").toUpperCase();
+      const map = {
+        COMPLETED: "완료됨",
+        GRADED: "평가됨",
+        PENDING: "진행 중",
+        SUBMITTED: "제출됨",
+        LATE: "지연 제출",
+        MISSING: "미제출",
+        SCHEDULED: "예정",
+        REVIEWED: "피드백 완료",
+      };
+      return map[up] || status || "";
+    };
+
     const openEvent = async (event) => {
       if (event.type === "MENTORING") {
         selectedMentoringSessionId.value = event.id;
@@ -535,6 +550,7 @@ export default {
 
     const fetchAllDashboardData = async () => {
       loading.value = true;
+      error.value = null;
       try {
         await Promise.all([
           dashboardService
@@ -544,6 +560,15 @@ export default {
           fetchWeeklyActivities(),
           fetchScheduleForMonth(new Date()),
         ]);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+        const status = err?.response?.status;
+        const message =
+          err?.response?.data?.message ||
+          (status === 403
+            ? "접근 권한이 없습니다. 다시 로그인해 주세요."
+            : "대시보드 데이터를 불러오지 못했습니다.");
+        error.value = message;
       } finally {
         loading.value = false;
       }
@@ -622,6 +647,7 @@ export default {
       selectedDateFormatted,
       getTypeLabel,
       getEventClass,
+      formatStatus,
 
       onSelectDate,
       onChangedMonth,

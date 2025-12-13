@@ -69,7 +69,8 @@ export default {
       const up = String(s).toUpperCase();
       if(up==='UPCOMING') return '예정';
       if(up==='ACTIVE' || up==='IN_PROGRESS') return '진행 중';
-      if(up==='COMPLETED') return '완료';
+      if(up==='COMPLETED') return '완료됨';
+      if(up==='GRADED') return '평가됨';
       return s;
     };
 

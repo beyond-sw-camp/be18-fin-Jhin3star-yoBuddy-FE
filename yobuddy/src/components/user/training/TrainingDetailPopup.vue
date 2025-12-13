@@ -145,7 +145,14 @@ export default {
       return baseStatus || '값 없음'
     },
     currentStatus() {
-      return String(this.localStatus || this.training?.status || '').toUpperCase()
+      const base = String(this.localStatus || this.training?.status || '').toUpperCase()
+      if (base === 'TARDY') return 'TARDY'
+      if (this.training?.type === 'ONLINE') {
+        const endDate = this.toDate(this.training?.endDate)
+        const completedAt = this.toDate(this.certificateUploadedAt || this.training?.completedAt)
+        if (endDate && completedAt && completedAt > endDate) return 'TARDY'
+      }
+      return base
     },
     isOnlineCompleted() {
       const status = this.currentStatus
@@ -248,6 +255,12 @@ export default {
       const endStr = end ? this.formatDateYMD(end) : '—'
       return `${startStr} ~ ${endStr}`
     },
+    toDate(val) {
+      if (!val) return null
+      const dt = new Date(val)
+      if (Number.isNaN(dt.getTime())) return null
+      return dt
+    },
     statusLabel(s) {
       if (!s) return '할당 전'
       const up = String(s).toUpperCase()
@@ -255,6 +268,7 @@ export default {
       if (up === 'COMPLETED') return '완료'
       if (up === 'UPCOMING' || up === 'PENDING') return '예정'
       if (up === 'MISSED') return '미이수'
+      if (up === 'TARDY') return '지각'
       return s
     },
     statusClass(s) {
