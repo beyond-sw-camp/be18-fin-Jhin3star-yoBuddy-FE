@@ -252,7 +252,7 @@ export default {
 .user-table tbody tr { border-top:1px solid #f0f4fb }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
 .tag.noshow { background:#ffe9e9; color:#c94242 }
-.tag.schduled { background:#f6f8d1; color:#b0b900 }
+.tag.scheduled { background:#f6f8d1; color:#b0b900 }
 .tag.completed { background:#f0fff6; color:#0a9a52 }
 .tag.cancelled { background: #e5e7eb; color: #4b5563; }
 .user-table tbody td { padding:16px 10px; vertical-align:middle; color:#123 }
