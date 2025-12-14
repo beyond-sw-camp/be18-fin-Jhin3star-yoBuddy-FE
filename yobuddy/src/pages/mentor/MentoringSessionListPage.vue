@@ -87,9 +87,9 @@
 </template>
 
 <script>
+import http from '@/services/http';
 import mentoringService from "@/services/mentoringService";
 import { useAuthStore } from "@/store/authStore";
-import http from '@/services/http';
 
 export default {
   name: "MentoringSessionListPage",
@@ -186,10 +186,10 @@ export default {
     },
     statusClass(status) {
       const classMap = {
-        SCHEDULED: 'tag-newbie',
-        COMPLETED: 'tag-admin',
-        NO_SHOW: 'tag-mentor',
-        CANCELLED: 'tag-default'
+        SCHEDULED: 'scheduled',
+        COMPLETED: 'completed',
+        NO_SHOW: 'noshow',
+        CANCELLED: 'cancelled'
       };
       return classMap[status] || 'tag-default';
     },
@@ -251,10 +251,10 @@ export default {
 .user-table thead th { text-align:left; color:#7c96b3; font-weight:700; padding:12px 10px; font-size:13px }
 .user-table tbody tr { border-top:1px solid #f0f4fb }
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700 }
-.tag-admin { background:#ffe9e9; color:#c94242 }
-.tag-mentor { background:#f6f8d1; color:#b0b900 }
-.tag-newbie { background:#f0fff6; color:#0a9a52 }
-.tag-default { background: #e5e7eb; color: #4b5563; }
+.tag.noshow { background:#ffe9e9; color:#c94242 }
+.tag.schduled { background:#f6f8d1; color:#b0b900 }
+.tag.completed { background:#f0fff6; color:#0a9a52 }
+.tag.cancelled { background: #e5e7eb; color: #4b5563; }
 .user-table tbody td { padding:16px 10px; vertical-align:middle; color:#123 }
 .name-col { display:flex; gap:12px; align-items:center }
 .avatar { width:36px; height:36px; border-radius:50%; background:#294594; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; overflow: hidden; }
@@ -273,12 +273,12 @@ export default {
   font-weight: 600;
 }
 .stat-item.completed {
-  background-color: #d1fae5; /* Light green */
-  color: #059669; /* Darker green */
-}
-.stat-item.pending {
   background-color: #fef3c7; /* Light yellow */
   color: #92400e; /* Darker yellow */
+}
+.stat-item.pending {
+  background-color: #d1fae5; /* Light green */
+  color: #059669; /* Darker green */
 }
 .pagination.numeric { display:flex; gap:10px; align-items:center }
 .page-nav { background:transparent; border:none; color:#4b5563; font-size:18px; padding:8px; cursor:pointer; transition: color 0.15s ease, opacity 0.15s ease }

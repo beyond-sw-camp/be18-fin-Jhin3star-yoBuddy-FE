@@ -95,9 +95,9 @@
 </template>
 
 <script>
+import http from '@/services/http';
 import mentoringService from "@/services/mentoringService";
 import { useAuthStore } from "@/store/authStore";
-import http from '@/services/http';
 
 export default {
   name: "MentorSessionDetailPage",
@@ -192,10 +192,10 @@ export default {
     },
     getStatusClass(status) {
       const classMap = {
-        SCHEDULED: 'tag-newbie',
-        COMPLETED: 'tag-admin',
-        NO_SHOW: 'tag-mentor',
-        CANCELLED: 'tag-default'
+        SCHEDULED: 'scheduled',
+        COMPLETED: 'completed',
+        NO_SHOW: 'noshow',
+        CANCELLED: 'cancelled'
       };
       return classMap[status] || 'default';
     }
@@ -331,8 +331,8 @@ export default {
 }
 
 .tag { padding:6px 10px; border-radius:14px; font-size:12px; font-weight:700; display: inline-block; }
-.tag-admin { background:#ffe9e9; color:#c94242 }
-.tag-mentor { background:#f6f8d1; color:#b0b900 }
-.tag-newbie { background:#f0fff6; color:#0a9a52 }
-.tag-default { background: #e5e7eb; color: #4b5563; }
+.tag.noshow { background:#ffe9e9; color:#c94242 }
+.tag.schduled { background:#f6f8d1; color:#b0b900 }
+.tag.completed { background:#f0fff6; color:#0a9a52 }
+.tag.cancelled { background: #e5e7eb; color: #4b5563; }
 </style>

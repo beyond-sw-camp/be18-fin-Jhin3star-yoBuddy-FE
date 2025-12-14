@@ -12,7 +12,7 @@
         :class="['tab-item', { active: activeTab === 'schedule' }]"
         @click="setActiveTab('schedule')"
       >
-        스케줄
+        멘토링 스케줄
       </button>
       <button
         :class="['tab-item', { active: activeTab === 'performance' }]"
@@ -114,13 +114,13 @@
 </template>
 
 <script>
+import MenteeOnboardingPerformance from "@/components/mentor/MenteeOnboardingPerformance.vue"
+import MenteeSummaryCard from "@/components/mentor/MenteeSummaryCard.vue"
+import MentorSchedule from "@/components/mentor/MentorSchedule.vue"
+import MenteeDetailPopup from "@/pages/mentor/MenteeDetailPopup.vue"
+import MenteeRegisterPopup from "@/pages/mentor/MenteeRegisterPopup.vue"
 import http from "@/services/http"
 import mentoringService from "@/services/mentoringService"
-import MenteeSummaryCard from "@/components/mentor/MenteeSummaryCard.vue"
-import MenteeRegisterPopup from "@/pages/mentor/MenteeRegisterPopup.vue"
-import MenteeDetailPopup from "@/pages/mentor/MenteeDetailPopup.vue"
-import MentorSchedule from "@/components/mentor/MentorSchedule.vue"
-import MenteeOnboardingPerformance from "@/components/mentor/MenteeOnboardingPerformance.vue"
 import { useAuthStore } from "@/store/authStore"
 import { watch } from "vue"
 
