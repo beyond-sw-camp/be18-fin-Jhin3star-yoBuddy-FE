@@ -13,6 +13,7 @@ if (isProd) {
   console.info = () => {}
   console.warn = () => {}
   console.table = () => {}
+  console.groupCollapsed = () => {}
 }
 
 const app = createApp(App)
