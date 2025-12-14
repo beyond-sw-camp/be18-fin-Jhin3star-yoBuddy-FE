@@ -12,6 +12,7 @@ if (isProd) {
   console.debug = () => {}
   console.info = () => {}
   console.warn = () => {}
+  console.table = () => {}
 }
 
 const app = createApp(App)
