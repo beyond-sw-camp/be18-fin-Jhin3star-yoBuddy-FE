@@ -37,7 +37,7 @@ export const useNotificationStore = defineStore('notification', {
   if (this.es || this.connecting) return
   this.connecting = true
 
-  const base = process.env.VUE_APP_API_BASE || ''
+  const base = process.env.VUE_APP_API_URL || ''
   const normalizedBase = base.replace(/\/$/, '')
   const url = `${normalizedBase}/api/v1/notifications/stream`
 
