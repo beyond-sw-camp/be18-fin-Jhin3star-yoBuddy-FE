@@ -145,6 +145,17 @@
       :options="kpiChartOptions"
       :series="kpiChartSeries"
     />
+<div v-if="kpiCompare" class="kpi-summary">
+  <div class="score">
+    <span class="label">KPI 종합 점수</span>
+    <strong class="value">{{ kpiTotalScore }}점</strong>
+  </div>
+
+  <div class="grade" :class="kpiGrade">
+    <span class="badge">{{ kpiGrade }}</span>
+    <span class="desc">{{ kpiGradeText }}</span>
+  </div>
+</div>
   </div>
 </div>
             <div class="card chart-card risk-card">
@@ -207,6 +218,7 @@
 />
 
 <JobPerformanceEvaluateModal
+  :key="selectedMentee?.id || selectedMentee?.userId"
   :visible="showJobPerformanceModal"
   :user="selectedMentee"
   :department-id="selectedMentee?.departmentId"
@@ -260,6 +272,42 @@ export default {
     }
   },
   computed: {
+      kpiTotalScore() {
+    if (!this.kpiCompare?.items) return 0
+
+    const WEIGHTS = {
+      '교육 이수율': 0.1,
+      '과제 제출률': 0.2,
+      '과제 평균 점수': 0.2,
+      '주간 보고서 제출률': 0.2,
+      '오프라인 참여율': 0.05,
+      '직무 수행 능력': 0.25,
+    }
+
+    const total = this.kpiCompare.items.reduce((sum, item) => {
+      const w = WEIGHTS[item.kpiName] || 0
+      return sum + (Number(item.userScore) || 0) * w
+    }, 0)
+
+    return Math.round(total * 10) / 10
+  },
+
+  kpiGrade() {
+    const s = this.kpiTotalScore
+    if (s >= 90) return 'A'
+    if (s >= 80) return 'B'
+    if (s >= 70) return 'C'
+    return 'D'
+  },
+
+  kpiGradeText() {
+    switch (this.kpiGrade) {
+      case 'A': return '우수 – 완벽 적응한 인원'
+      case 'B': return '양호 – 정상 온보딩 완료'
+      case 'C': return '보통 – 추가 교육 필요'
+      default: return '미흡 – 부적응 가능성'
+    }
+  },
   kpiChartSeries() {
     if (!this.kpiCompare) return []
 
@@ -377,7 +425,18 @@ riskOptions() {
   },
 },
 
-
+states: {
+  hover: {
+    filter: {
+      type: 'none', 
+    }
+  },
+  active: {
+    filter: {
+      type: 'none',
+    }
+  }
+},
 
       xaxis: {
   categories: this.kpiCompare.items.map(i =>
@@ -677,7 +736,23 @@ grid: {
       removeCalendarBadges() {
     document.querySelectorAll('.day-badge-dom').forEach(el => el.remove())
   },
-    onJobPerformanceSaved() {
+async onJobPerformanceSaved() {
+  if (!this.selectedMentee) return
+
+  this.kpiLoading = true
+  try {
+    const res = await http.get('/api/v1/admin/kpi/compare', {
+      params: {
+        userId: this.selectedMentee.userId || this.selectedMentee.id,
+        programId: this.programId,
+      }
+    })
+    this.kpiCompare = res.data
+  } catch (e) {
+    console.warn('KPI 비교 재조회 실패', e)
+  } finally {
+    this.kpiLoading = false
+  }
 },
   isSelectedMentee(mentee) {
     if (!this.selectedMentee) return false
@@ -1958,4 +2033,53 @@ async openJobPerformanceModal(mentee) {
   padding: 12px;
   text-align: center;
 }
+.kpi-summary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.kpi-summary .label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.kpi-summary .value {
+  font-size: 26px;
+  font-weight: 900;
+  color: #294594;
+}
+
+.kpi-summary .grade {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kpi-summary .badge {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #fff;
+}
+
+.kpi-summary .grade.A .badge { background: #16a34a; }
+.kpi-summary .grade.B .badge { background: #2563eb; }
+.kpi-summary .grade.C .badge { background: #f59e0b; }
+.kpi-summary .grade.D .badge { background: #dc2626; }
+
+.kpi-summary .desc {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
 </style>

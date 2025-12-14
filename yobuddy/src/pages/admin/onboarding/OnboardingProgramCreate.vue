@@ -469,7 +469,6 @@ export default {
               )
             )
             .filter((id) => !Number.isNaN(id));
-
           if (userIds.length > 0) {
             try {
               await onboardingService.enrollMentees(programId, userIds);
