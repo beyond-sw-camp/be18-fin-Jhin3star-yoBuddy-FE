@@ -89,7 +89,11 @@
                 <ul class="people-list">
                   <li v-if="menteeDisplayList.length === 0" class="empty">멘티 정보 없음</li>
                   <li v-else v-for="(mentee, i) in menteeDisplayList" :key="mentee.id || i">
-                    <div class="person-row">
+<div
+  class="person-row"
+  :class="{ selected: isSelectedMentee(mentee) }"
+  @click="selectMentee(mentee)"
+>
                       <div class="avatar">{{ initials(mentee.name || mentee.label) }}</div>
                       <div class="meta">
                         <div class="name">{{ mentee.name || mentee.label }}</div>
@@ -98,7 +102,14 @@
                       <div class="right">
                         <div class="dept">{{ mentee.department || '' }}</div>
                         <div class="join">{{ mentee.joinDate ? (String(mentee.joinDate)).slice(0,10) : '' }}</div>
+
                       </div>
+<button
+  class="btn-outline btn-small"
+  @click.stop="openJobPerformanceModal(mentee)"
+>
+  평가
+</button>
                     </div>
                   </li>
                 </ul>
@@ -106,14 +117,58 @@
           </div>
 
           <div class="right-column">
-            <div class="card chart-card">
-              <div class="card-title">KPI 점수</div>
-              <div class="card-body chart-placeholder">&nbsp;</div>
-            </div>
-            <div class="card chart-card">
-              <div class="card-title">위험도 분포</div>
-              <div class="card-body chart-placeholder">&nbsp;</div>
-            </div>
+<div class="card chart-card kpi-card">
+  <div class="card-title">
+    KPI 점수 비교
+    <span v-if="selectedMentee" class="sub">
+      · {{ selectedMentee.name }}
+    </span>
+  </div>
+
+  <div class="card-body">
+
+    <!-- 로딩 -->
+    <div v-if="kpiLoading" class="kpi-loading">
+      KPI 불러오는 중…
+    </div>
+
+    <!-- 미선택 -->
+    <div v-else-if="!kpiCompare" class="kpi-empty">
+      멘티를 선택하면 KPI 비교가 표시됩니다.
+    </div>
+
+    <!-- ApexCharts -->
+    <apexchart
+      v-else
+      type="bar"
+      height="300"
+      :options="kpiChartOptions"
+      :series="kpiChartSeries"
+    />
+  </div>
+</div>
+            <div class="card chart-card risk-card">
+  <div class="card-title">위험도 분포</div>
+
+  <div class="card-body">
+    <div v-if="riskLoading" class="kpi-loading">
+      위험도 계산 중…
+    </div>
+
+    <div v-else-if="!riskDistribution" class="kpi-empty">
+      위험도 데이터가 없습니다.
+    </div>
+
+    <apexchart
+      v-else
+      type="donut"
+      height="260"
+      :options="riskOptions"
+      :series="riskSeries"
+    />
+  </div>
+</div>
+
           </div>
         </div>
       </div>
@@ -150,6 +205,15 @@
   @close="showEditModal = false"
   @save="onProgramUpdated"
 />
+
+<JobPerformanceEvaluateModal
+  :visible="showJobPerformanceModal"
+  :user="selectedMentee"
+  :department-id="selectedMentee?.departmentId"
+  :mode="jobPerformanceMode"
+  @close="showJobPerformanceModal = false"
+  @saved="onJobPerformanceSaved"
+/>
   </div>
 </template>
 
@@ -163,10 +227,12 @@ import OnboardingSetschedulePopup from '@/pages/admin/onboarding/onboardingSetsc
 import UserDetailpopup from '@/pages/admin/organization/User/UserDetailpopup.vue'
 import OnboardingProgramAddUserPopup from '@/pages/admin/onboarding/OnboardingProgramAddUserPopup.vue'
 import OnboardingProgramEditModal from '@/pages/admin/onboarding/OnboardingProgramEditModal.vue'
+import JobPerformanceEvaluateModal from '@/pages/admin/kpi/JobPerformanceEvaluateModal.vue'
+import ApexChart from 'vue3-apexcharts'
 
 export default {
   name: 'OnboardingProgramDetailPage',
-  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup, UserDetailpopup, OnboardingProgramAddUserPopup, OnboardingProgramEditModal, },
+  components: { CalendarView, CalendarViewHeader, OnboardingSetschedulePopup, UserDetailpopup, OnboardingProgramAddUserPopup, OnboardingProgramEditModal, JobPerformanceEvaluateModal, apexchart: ApexChart},
   data() {
     return {
       programId: this.$route.params.programId || null,
@@ -184,9 +250,187 @@ export default {
       selectedUser: null,
       menteeProfiles: [],
       showEditModal: false,
+      showJobPerformanceModal: false,
+      jobPerformanceMode: 'edit',
+      selectedMentee: null,
+      kpiCompare: null,
+      kpiLoading: false,
+      riskDistribution: null,
+      riskLoading: false,
     }
   },
   computed: {
+  kpiChartSeries() {
+    if (!this.kpiCompare) return []
+
+    return [
+      {
+        name: '개인 점수',
+        data: this.kpiCompare.items.map(i => i.userScore),
+      },
+      {
+        name: '부서 평균',
+        data: this.kpiCompare.items.map(i => i.departmentAvgScore),
+      },
+    ]
+  },
+riskSeries() {
+  if (!this.riskDistribution) return []
+  return [
+    this.riskDistribution.low,
+    this.riskDistribution.medium,
+    this.riskDistribution.high,
+  ]
+},
+
+riskOptions() {
+  return {
+    chart: {
+      type: 'donut',
+    },
+    labels: ['LOW', 'MEDIUM', 'HIGH'],
+    colors: ['#16a34a', '#f59e0b', '#dc2626'],
+    legend: {
+      position: 'bottom',
+      fontSize: '13px',
+      fontWeight: 700,
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => `${Math.round(val)}%`,
+      style: {
+        fontSize: '13px',
+        fontWeight: 700,
+      },
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: '전체',
+              fontSize: '14px',
+              fontWeight: 800,
+              formatter: (w) =>
+                w.globals.seriesTotals.reduce((a, b) => a + b, 0),
+            },
+          },
+        },
+      },
+    },
+    tooltip: {
+      y: {
+        formatter: (v) => `${v} 명`,
+      },
+    },
+  }
+},
+
+  kpiChartOptions() {
+    if (!this.kpiCompare) return {}
+
+    return {
+      chart: {
+        toolbar: { show: false },
+      },
+  plotOptions: {
+  bar: {
+    dataLabels: {
+      position: 'top',
+    },
+    columnWidth: '50%',
+    borderRadius: 8,
+  },
+},
+
+
+      colors: ['#1e40af', '#cbd5e1'],
+  dataLabels: {
+  enabled: false,
+  offsetY: -6,
+  style: {
+    fontSize: '13px',
+    fontWeight: 800,
+    colors: ['#111827'],
+  },
+  dropShadow: {
+    enabled: true,
+    top: 1,
+    left: 1,
+    blur: 2,
+    color: '#ffffff',
+    opacity: 1,
+  },
+  formatter: (val, opts) => {
+    const item = this.kpiCompare.items[opts.dataPointIndex]
+
+    if (
+      opts.seriesIndex === 0 &&
+      item.userScore > item.departmentAvgScore
+    ) {
+      return `▲ ${Math.round(val)}`
+    }
+    return Math.round(val)
+  },
+},
+
+
+
+      xaxis: {
+  categories: this.kpiCompare.items.map(i =>
+    i.kpiGoalId === 6 ? `${i.kpiName}` : i.kpiName
+  ),
+  labels: {
+    rotate: -35,
+    rotateAlways: true,
+    style: {
+      fontSize: '13px',
+      fontWeight: 700,
+      colors: '#374151',
+    },
+  },
+},
+yaxis: {
+  min: 0,
+  max: 100,
+  tickAmount: 5,
+  labels: {
+    formatter: (val) => Math.round(val),
+  },
+},
+grid: {
+  borderColor: '#e5e7eb',
+  strokeDashArray: 4,
+},
+
+      fill: {
+  colors: [
+    ({ seriesIndex, dataPointIndex }) => {
+      const item = this.kpiCompare.items[dataPointIndex]
+
+      if (item.kpiGoalId === 6) {
+        return seriesIndex === 0 ? '#16a34a' : '#cbd5e1'
+      }
+
+      if (seriesIndex === 0) return '#1e40af'
+      return '#cbd5e1'
+    }
+  ]
+},
+
+      tooltip: {
+        y: {
+          formatter: v => `${v} 점`,
+        },
+      },
+      legend: {
+        position: 'top',
+      },
+    }
+  },
     formattedPeriod() {
       const s = this.program?.startDate;
       const e = this.program?.endDate;
@@ -201,7 +445,8 @@ export default {
       return this.internalShowDate
     },
     anyModalOpen() {
-      return (this.showUserDetail || this.showSetScheduleModal || this.showAddMenteeModal);
+      return (this.showUserDetail || this.showSetScheduleModal || this.showAddMenteeModal ||
+    this.showJobPerformanceModal);
     },
     dayItems() {
       if (!this.selectedDate) return []
@@ -306,6 +551,15 @@ export default {
     }
   },
   watch: {
+      showJobPerformanceModal(val) {
+    if (val) {
+      this.removeCalendarBadges()
+    } else {
+      this.$nextTick(() => {
+        this.applyDomBadges()
+      })
+    }
+  },
     '$route.params.programId': {
       immediate: true,
       handler(v) {
@@ -420,6 +674,81 @@ export default {
     }
   },
   methods: {
+      removeCalendarBadges() {
+    document.querySelectorAll('.day-badge-dom').forEach(el => el.remove())
+  },
+    onJobPerformanceSaved() {
+},
+  isSelectedMentee(mentee) {
+    if (!this.selectedMentee) return false
+    return String(mentee.id || mentee.userId)
+      === String(this.selectedMentee.id || this.selectedMentee.userId)
+  },
+async fetchRiskDistribution() {
+  if (!this.programId) return
+
+  this.riskLoading = true
+  try {
+    const res = await http.get(
+      `/api/v1/admin/programs/${this.programId}/risk-distribution`
+    )
+    this.riskDistribution = res.data
+  } catch (e) {
+    console.error('위험도 분포 조회 실패', e)
+    this.riskDistribution = null
+  } finally {
+    this.riskLoading = false
+  }
+},
+
+
+async selectMentee(mentee) {
+  this.selectedMentee = mentee
+  this.kpiCompare = null
+  this.kpiLoading = true
+
+  try {
+    const res = await http.get('/api/v1/admin/kpi/compare', {
+      params: {
+        userId: mentee.userId || mentee.id,
+        programId: this.programId,
+      }
+    })
+    this.kpiCompare = res.data
+  } catch (e) {
+    console.warn('KPI 비교 조회 실패', e)
+    this.kpiCompare = null
+  } finally {
+    this.kpiLoading = false
+  }
+},
+async openJobPerformanceModal(mentee) {
+  if (this.program?.status !== 'COMPLETED') {
+    alert('프로그램 종료 후 평가할 수 있습니다.')
+    return
+  }
+
+  this.selectedMentee = mentee
+
+  try {
+    const res = await http.get('/api/v1/admin/kpi/job-performance', {
+      params: {
+        userId: mentee.userId || mentee.id,
+        departmentId: mentee.departmentId,
+      }
+    })
+
+    if (res?.data?.score !== null && res?.data?.score !== undefined) {
+      this.jobPerformanceMode = 'view'
+    } else {
+      this.jobPerformanceMode = 'edit'
+    }
+  } catch (e) {
+    this.jobPerformanceMode = 'edit'
+  }
+
+  this.showJobPerformanceModal = true
+},
     getStatusClass(status) {
       const classMap = {
         ACTIVE: 'active',
@@ -503,6 +832,8 @@ export default {
         console.error('프로그램 조회 실패', e)
         this.program = null
       }
+      await this.fetchEnrollments()
+      await this.fetchRiskDistribution()
     },
     async fetchTrainings() {
       if (!this.programId) return
@@ -745,7 +1076,8 @@ export default {
       const department = value.departmentName || value.department || (value.team && value.team.name) || null
       const joinDate = value.joinedAt || value.joinDate || value.hireDate || null
       const label = name || email || id || fallbackName || `#${id}`
-      return { id, label, name, email, phone, role, roleLabel, department, joinDate, meta: value }
+      const departmentId = value.departmentId || (value.department && value.department.departmentId)
+      return { id, label, name, email, phone, role, roleLabel, department, departmentId, joinDate, meta: value }
     },
     normalizeProgramPeople(list) {
       if (!Array.isArray(list) || !list.length) return []
@@ -1045,11 +1377,11 @@ export default {
       const text = String(count || '')
       if (text.length === 1) {
         return {
-          position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', width: '24px', height: '24px', lineHeight: '24px', padding: '0px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
+          position: 'absolute', right: '6px', top: '6px', zIndex: '5', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', width: '24px', height: '24px', lineHeight: '24px', padding: '0px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
         }
       }
       return {
-        position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
+        position: 'absolute', right: '6px', top: '6px', zIndex: '5', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
       }
     },
     applyDomBadges() {
@@ -1124,11 +1456,11 @@ export default {
             badge.textContent = text
             if (text.length === 1) {
               Object.assign(badge.style, {
-                position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', width: '24px', height: '24px', lineHeight: '24px', padding: '0', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
+                position: 'absolute', right: '6px', top: '6px', zIndex: '5', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', width: '24px', height: '24px', lineHeight: '24px', padding: '0', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
               })
             } else {
               Object.assign(badge.style, {
-                position: 'absolute', right: '6px', top: '6px', zIndex: '2147483647', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
+                position: 'absolute', right: '6px', top: '6px', zIndex: '5', background: '#ff3b30', color: '#fff', fontSize: '12px', pointerEvents: 'none', minWidth: '24px', height: '24px', lineHeight: '24px', padding: '0 6px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff', boxSizing: 'border-box'
               })
             }
             if (!cell.style.position) cell.style.position = 'relative'
@@ -1496,24 +1828,38 @@ export default {
 
 .program-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.4fr 1fr;
   gap: 18px;
-  align-items: start;
 }
+
 .right-column {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 1.2fr 0.8fr;
   gap: 18px;
 }
 .card { background:#fbfdff; border:1px solid #eef3fb; border-radius:10px; padding:14px; box-sizing:border-box; min-height:150px }
 .card-title { font-weight:700; color:#18335a; margin-bottom:10px }
 .card-body { background:transparent }
+.chart-card {
+  min-height: 340px;
+}
+.chart-card.kpi-card {
+  min-height: 380px;
+}
 .chart-placeholder { height:110px; border-radius:8px; background:linear-gradient(180deg,#ffffff,#fbfdff); border:1px dashed rgba(41,69,148,0.06) }
 .people-list { list-style:none; padding:0; margin:0 }
 .people-list li { padding:8px 0; border-bottom:1px dashed #eef3fb }
 .people-list li.empty { color:#6b7280; padding:10px 0 }
-
-.mentees-card .card-body { max-height: 240px; overflow: auto; padding-right: 8px }
+.mentees-card {
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+.mentees-card {
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
 .mentees-card .people-list li { padding:8px 6px }
 .mentors-card .card-body { max-height: 320px; overflow: auto; padding-right: 8px }
 
@@ -1530,6 +1876,21 @@ export default {
 
 .person-row .tooltip { display:none; position:absolute; transform:translateY(-8px); background:#fff; border:1px solid rgba(16,36,59,0.06); padding:8px 10px; border-radius:8px; box-shadow:0 8px 30px rgba(3,10,18,0.06); font-size:13px; color:#10243b; white-space:nowrap; z-index:1200 }
 .person-row:hover .tooltip { display:block }
+.person-row.selected {
+  background: rgba(41, 69, 148, 0.08);
+  border-left: 4px solid #294594;
+  padding-left: 12px;
+}
+
+.person-row.selected .avatar {
+  background: #294594;
+  color: #fff;
+}
+
+.person-row.selected .name {
+  color: #294594;
+  font-weight: 900;
+}
 
 .btn-add-mentee {
   float: right;
@@ -1549,4 +1910,52 @@ export default {
 }
 .btn-add-mentee:hover { transform: translateY(-2px) }
 .item-type-badge { display:inline-block; background:#eef2ff; color:#294594; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700 }
+.kpi-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.kpi-row {
+  margin-bottom: 12px;
+}
+
+.kpi-name {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #0f1724;
+}
+
+.kpi-bars {
+  display: flex;
+  gap: 6px;
+}
+
+.bar {
+  height: 18px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  color: #fff;
+}
+
+.bar.user {
+  background: #294594;
+}
+
+.bar.dept {
+  background: #94a3b8;
+}
+
+.kpi-empty,
+.kpi-loading {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 12px;
+  text-align: center;
+}
 </style>

@@ -9,14 +9,6 @@
       >
         통합조회
       </button>
-
-      <button
-        class="kpi-tab"
-        :class="{ active: activeTab === 'user' }"
-        @click="goToUserDetail"
-      >
-        개별조회
-      </button>
     </div>
 
     <!-- 상단: 기간 + summary 카드 -->
@@ -71,7 +63,15 @@
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-label">KPI 종합 점수</div>
+        <div class="summary-label">
+          부서 평균 KPI 점수
+          <span
+            class="hint"
+            title="선택한 기간 동안 각 부서의 KPI 종합 점수를 평균한 값입니다."
+          >
+            ⓘ
+          </span>
+        </div>
         <div class="summary-value">
           {{ (summary.avgKpiScore ?? 0).toFixed(1) }}점
         </div>
@@ -169,23 +169,17 @@ const goToOverview = () => {
   router.push('/kpi')
 }
 
-const goToUserDetail = () => {
-  activeTab.value = 'user'
-  router.push('/kpi/user') // userId 없이 진입
-}
-
-/* --- 기존 코드 그대로 유지 --- */
 const periods = ref([
+    { label: '2025 하반기', start: '2025-07-01', end: '2025-12-31' },
   { label: '2025 상반기', start: '2025-01-01', end: '2025-06-30' },
-  { label: '2025 하반기', start: '2025-07-01', end: '2025-12-31' },
-  { label: '2024 상반기', start: '2024-01-01', end: '2024-06-30' },
   { label: '2024 하반기', start: '2024-07-01', end: '2024-12-31' },
-  { label: '2023 상반기', start: '2023-01-01', end: '2023-06-30' },
+  { label: '2024 상반기', start: '2024-01-01', end: '2024-06-30' },
   { label: '2023 하반기', start: '2023-07-01', end: '2023-12-31' },
-  { label: '2022 상반기', start: '2022-01-01', end: '2022-06-30' },
+  { label: '2023 상반기', start: '2023-01-01', end: '2023-06-30' },
   { label: '2022하반기', start: '2022-07-01', end: '2022-12-31' },
-  { label: '2021 상반기', start: '2021-01-01', end: '2021-06-30' },
-  { label: '2021하반기', start: '2021-07-01', end: '2021-12-31' }
+  { label: '2022 상반기', start: '2022-01-01', end: '2022-06-30' },
+  { label: '2021하반기', start: '2021-07-01', end: '2021-12-31' },
+  { label: '2021 상반기', start: '2021-01-01', end: '2021-06-30' }
 ])
 
 const selectedPeriod = ref(periods.value[0])
@@ -610,5 +604,15 @@ onMounted(loadOverview)
     grid-template-columns: 1fr;
   }
 }
+.hint {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+  cursor: help;
+  vertical-align: middle;
+}
 
+.hint:hover {
+  color: #374151;
+}
 </style>

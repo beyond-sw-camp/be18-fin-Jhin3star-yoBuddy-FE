@@ -39,20 +39,17 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    initSSEAndNotifications() {
-      const noti = useNotificationStore()
+      initSSEAndNotifications() {
+  const noti = useNotificationStore()
 
-      // 기존 SSE 제거
-      noti.disconnectSSE()
+  noti.fetchNotifications()
 
-      // 알림 목록 먼저 불러옴
-      noti.fetchNotifications().then(() => {
-        // SSE 연결은 user가 정상 로드된 상태에서만
-        if (this.user) {
-          noti.connectSSE()
-        }
-      })
-    },
+  if (!this.user) return
+
+  if (!noti.es) {
+    noti.connectSSE()
+  }
+},
 
     async logout() {
       try {
@@ -68,15 +65,18 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       window.location.href = '/login'
     },
-    async loadUser() {
-      // backward-compatible wrapper used by app bootstrap and other components
-      try {
-        await this.fetchMe()
-        this.initSSEAndNotifications()
-      } catch (e) {
-        // ignore silently; caller may handle
-        console.warn('loadUser failed:', e)
-      }
-    },
+async loadUser() {
+  if (this.user || this.loadingUser) return
+
+  try {
+    this.loadingUser = true
+    await this.fetchMe()
+    this.initSSEAndNotifications()
+  } catch (e) {
+    console.warn('loadUser failed:', e)
+  } finally {
+    this.loadingUser = false
+  }
+},
   },
 })

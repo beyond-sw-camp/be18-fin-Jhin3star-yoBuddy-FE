@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
 import http from '@/services/http'
-import { EventSourcePolyfill } from 'event-source-polyfill';
 
 export const useNotificationStore = defineStore('notification', {
   state: () => ({
     notifications: [],
     unreadCount: 0,
     es: null,
+    connecting: false
   }),
 
   getters: {
@@ -15,120 +15,93 @@ export const useNotificationStore = defineStore('notification', {
   },
 
   actions: {
+    /* =========================
+     * REST: 기존 알림 조회
+     * ========================= */
     async fetchNotifications() {
-      try {
-        const res = await http.get('/api/v1/notifications')
-        this.notifications = res.data.map(n => ({ ...n, read: n.isRead }))
-        this.unreadCount = this.notifications.filter(n => !n.read).length
-      } catch (err) {
-        console.error('❌ 초기 알림 로드 실패:', err)
-      }
+      const res = await http.get('/api/v1/notifications')
+
+      this.notifications = res.data.map(n => ({
+        ...n,
+        type: n.type?.toLowerCase(), // 🔑 enum → 소문자
+        read: n.isRead,
+      }))
+
+      this.unreadCount = this.notifications.filter(n => !n.read).length
     },
 
+    /* =========================
+     * SSE 연결
+     * ========================= */
     connectSSE() {
-      if (this.es) return
+  if (this.es || this.connecting) return
+  this.connecting = true
 
-      // baseURL may be undefined (e.g., during tests or unusual http wrapper configs)
-      let base = null
-      try {
-        if (http && http.defaults && http.defaults.baseURL) {
-          base = String(http.defaults.baseURL)
-        }
-      } catch (e) {
-        base = null
-      }
+  const base = process.env.VUE_APP_API_BASE || ''
+  const normalizedBase = base.replace(/\/$/, '')
+  const url = `${normalizedBase}/api/v1/notifications/stream`
 
-      if (!base) {
-        // fallback to current origin
-        base = window && window.location && window.location.origin ? window.location.origin : ''
-      }
+  const es = new EventSource(url, { withCredentials: true })
+  this.es = es
 
-      base = base.replace(/\/$/, "")
-      const url = base ? `${base}/api/v1/notifications/stream` : `/api/v1/notifications/stream`
+  es.onopen = () => {
+    console.log('SSE connected')
+    this.connecting = false
+  }
 
-      console.log("🔗 SSE 연결 URL:", url)
+  es.addEventListener('notification', (e) => {
+    const raw = JSON.parse(e.data)
 
-      try {
-        this.es = new EventSourcePolyfill(url, { withCredentials: true })
-      } catch (e) {
-        console.error("❌ SSE 생성 실패:", e)
-        return
-      }
+    this.notifications.unshift({
+      ...raw,
+      type: raw.type?.toLowerCase(),
+      read: false,
+    })
+    this.unreadCount++
+  })
 
-      const eventTypes = [
-        "task",
-        "mentoring",
-        "kpi",
-        "system",
-        "form",
-        "new_training",
-        "offline_form_pending",
-        "offline_next_week",
-        "offline_tomorrow",
-        "online_due_next_week",
-        "online_due_tomorrow",
-        "new_announcement"
-      ];
+  es.onerror = (e) => {
+    console.warn('⚠️ SSE error', e)
+    this.es?.close()
+    this.es = null
+    this.connecting = false
+  }
+},
 
-      eventTypes.forEach((type) => {
-        this.es.addEventListener(type, (e) => {
-          try {
-            const data = JSON.parse(e.data)
-
-            this.notifications.unshift({
-              ...data,
-              read: false,
-              type: data.type
-            })
-            this.unreadCount++
-          } catch (err) {
-            console.error(`❌ SSE(${type}) JSON 파싱 오류:`, err)
-          }
-        })
-      })
-
-      this.es.onerror = (err) => {
-        console.error("❌ SSE 오류 발생:", err)
-      }
-
-      console.log("🌐 SSE 연결 완료")
-    },
-
+    /* =========================
+     * SSE 종료
+     * ========================= */
     disconnectSSE() {
       if (this.es) {
         this.es.close()
         this.es = null
-        console.log("🔌 SSE 연결 해제됨")
+        this.connecting = false
+        console.log('🔌 SSE disconnected')
       }
     },
 
-    async markNotificationAsRead(notificationId) {
-      try {
-        await http.patch(`/api/v1/notifications/${notificationId}/read`)
-        const idx = this.notifications.findIndex(n => n.id === notificationId)
-
-        if (idx !== -1 && !this.notifications[idx].read) {
-          this.notifications[idx].read = true
-          this.unreadCount = Math.max(0, this.unreadCount - 1)
-        }
-      } catch (err) {
-        console.error(`❌ 알림 읽음 처리 실패:`, err)
+    /* =========================
+     * 알림 읽음 처리
+     * ========================= */
+    async markNotificationAsRead(id) {
+      await http.patch(`/api/v1/notifications/${id}/read`)
+      const n = this.notifications.find(n => n.id === id)
+      if (n && !n.read) {
+        n.read = true
+        this.unreadCount--
       }
     },
 
-    async deleteNotification(notificationId) {
-      try {
-        await http.delete(`/api/v1/notifications/${notificationId}`)
-
-        const idx = this.notifications.findIndex(n => n.id === notificationId)
-        if (idx !== -1) {
-          const wasUnread = !this.notifications[idx].read
-          this.notifications.splice(idx, 1)
-          if (wasUnread) this.unreadCount--
-        }
-      } catch (err) {
-        console.error("❌ 알림 삭제 실패:", err)
+    /* =========================
+     * 알림 삭제
+     * ========================= */
+    async deleteNotification(id) {
+      await http.delete(`/api/v1/notifications/${id}`)
+      const idx = this.notifications.findIndex(n => n.id === id)
+      if (idx !== -1) {
+        if (!this.notifications[idx].read) this.unreadCount--
+        this.notifications.splice(idx, 1)
       }
-    },
-  },
+    }
+  }
 })

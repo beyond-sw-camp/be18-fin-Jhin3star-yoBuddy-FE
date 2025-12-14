@@ -43,20 +43,64 @@
           {{ searching ? '검색중…' : '검색' }}
         </button>
       </div>
+      <div class="search-info-message">
+        <p>현재 신입 사용자만 검색 가능합니다.</p>
+      </div>
 
-      <div class="search-result">
-        <div
-          v-for="u in searchResult"
-          :key="u.userId"
-          class="search-item"
-          @click="selectUser(u)"
-        >
-          <div class="name">{{ u.name }}</div>
-          <div class="meta">{{ u.email }} · {{ u.departmentName }}</div>
-        </div>
+      <div class="search-result-card card">
+        <table class="user-table" v-if="searchResult && searchResult.length">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>연락처</th>
+              <th>권한</th>
+              <th>부서</th>
+              <th>입사일</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="u in searchResult" :key="u.userId" @click="selectUser(u)" style="cursor:pointer">
+              <td class="name-col">
+                <div class="avatar">
+                  <img
+                    v-if="u.profileImageUrl"
+                    :src="u.profileImageUrl"
+                    alt="profile"
+                    class="avatar-img"
+                  />
+                  <span v-else>
+                    {{ initials(u.name) }}
+                  </span>
+                </div>
+                <div class="meta">
+                  <div class="name">{{ u.name }}</div>
+                  <div class="email">{{ u.email }}</div>
+                </div>
+              </td>
+              <td>{{ u.phoneNumber }}</td>
+              <td><span :class="['tag', u.role === 'ADMIN' ? 'tag-admin' : u.role === 'MENTOR'? 'tag-mentor' : 'tag-newbie']">{{ mapUser(u).roleLabel }}</span></td>
+              <td>{{ u.departmentName }}</td>
+              <td>{{ u.joinedAt ? u.joinedAt.slice(0,10) : '' }}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div v-if="!searching && searchResult.length === 0" class="empty">
-          검색 결과가 없습니다.
+        <div v-else-if="!searching && searchResult.length === 0" class="empty-state">검색 결과가 없습니다.</div>
+        <div v-else class="empty-state">사용자를 검색해주세요.</div>
+      </div>
+
+      <div class="card-footer" v-if="totalPages > 1">
+        <div class="pagination numeric">
+          <button class="page-nav" @click="setPage(page-1)" :disabled="page<=0" aria-label="이전 페이지">&lt;</button>
+          <button
+            v-for="p in pageList"
+            :key="p"
+            :class="['page-num', { active: p === page }]"
+            @click="setPage(p)"
+          >
+            {{ p + 1 }}
+          </button>
+          <button class="page-nav" @click="setPage(page+1)" :disabled="page>=totalPages-1" aria-label="다음 페이지">&gt;</button>
         </div>
       </div>
     </template>
@@ -154,26 +198,63 @@ const searchKeyword = ref('')
 const searchResult = ref([])
 const searching = ref(false)
 
+/* ================= Pagination ================= */
+const page = ref(0)
+const size = ref(10)
+const totalPages = ref(1)
+const totalElements = ref(0)
+
+const pageList = computed(() => {
+  const total = totalPages.value || 0
+  const current = page.value || 0
+  const maxVisible = 5
+  if (total <= 0) return []
+  const start = Math.max(0, Math.min(current, total - maxVisible))
+  const end = Math.min(total, start + maxVisible)
+  const pages = []
+  for (let i = start; i < end; i++) pages.push(i)
+  return pages
+})
+
 async function searchUsers() {
   if (!searchKeyword.value.trim()) return
 
   searching.value = true
   try {
     const resp = await userService.searchUsers({
-      keyword: searchKeyword.value
+      name: searchKeyword.value,
+      page: page.value,
+      size: size.value,
+      role: 'USER'
     })
 
-    searchResult.value =``
-      Array.isArray(resp?.data?.content)
-        ? resp.data.content
-        : []
+        let filteredResults = Array.isArray(resp?.content) ? resp.content : [];
+    
+    // Add frontend filtering for role
+    filteredResults = filteredResults.filter(user => user.role === 'USER');
+
+    searchResult.value = filteredResults;
+    totalPages.value = resp?.totalPages || 1;
+    totalElements.value = resp?.totalElements || 0;
 
   } catch (e) {
     console.error('유저 검색 실패', e)
     searchResult.value = []
+    totalPages.value = 1;
+    totalElements.value = 0;
   } finally {
     searching.value = false
   }
+}
+
+function setPage(n) {
+  const maxPage = Math.max(0, totalPages.value - 1)
+  let next = n
+  if (next < 0) next = 0
+  if (next > maxPage) next = maxPage
+  if (next === page.value) return
+  page.value = next
+  searchUsers() // Trigger search on page change
 }
 
 function selectUser(u) {
@@ -208,20 +289,29 @@ function reset() {
 }
 
 async function loadDetail(id) {
+  console.log('loadDetail called with userId:', id);
   const departmentId = departmentIdFromQuery.value
-  if (!departmentId) return
+  console.log('departmentId from query:', departmentId);
+  if (!departmentId) {
+    console.warn('departmentId is missing, returning from loadDetail.');
+    return
+  }
 
   const d = await kpiService.getDashboard(departmentId)
   dashboard.value = d.data
+  console.log('Dashboard data:', dashboard.value);
 
   const u = dashboard.value.users?.find(v => v.userId === Number(id))
   user.value = u ?? null
+  console.log('Found user:', user.value);
 
   const t = await tasksService.getuser(id)
   tasks.value = t.data?.tasks ?? []
+  console.log('Tasks data:', tasks.value);
 
   const w = await kpiService.getweeklyreports(id)
   weeklyReports.value = w.data ?? []
+  console.log('Weekly reports data:', weeklyReports.value);
 }
 
 /* ================= computed ================= */
@@ -265,6 +355,29 @@ const deptRadarSeries = computed(() => [{
 
 function formatDate(v) {
   return new Date(v).toLocaleDateString()
+}
+
+function initials(name) {
+  if (!name) return ''
+  const parts = name.split('')
+  return parts.slice(0,2).join('')
+}
+
+function mapUser(u) {
+  const roleRaw = u.role || (u.roles && u.roles[0]) || ''
+  const roleUpper = String(roleRaw).toUpperCase()
+
+  return {
+    id: u.userId || u.id || null,
+    name: u.name || '',
+    email: u.email || '',
+    phone: u.phoneNumber || '',
+    role: roleUpper,
+    roleLabel: roleUpper === 'ADMIN' ? '관리자' : roleUpper === 'MENTOR' ? '멘토' : '신입',
+    department: u.departmentName || '',
+    joinDate: u.joinedAt || '',
+    profileImageUrl: u.profileImageUrl || null
+  }
 }
 
 async function exportPdf() {
@@ -383,6 +496,19 @@ async function exportPdf() {
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
+}
+.search-info-message {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background-color: #e0f2fe; /* Light blue background */
+  border: 1px solid #90cdf4; /* Blue border */
+  border-radius: 8px;
+  color: #2b6cb0; /* Darker blue text */
+  font-size: 14px;
+  text-align: center;
+}
+.search-info-message p {
+  margin: 0;
 }
 .empty {
   color: #888;
@@ -716,5 +842,131 @@ async function exportPdf() {
     flex: 1 1 auto;
     justify-content: flex-start;
   }
+}
+
+/* New styles for search results table and pagination */
+.search-result-card {
+  padding: 0; /* Remove padding as table will have its own */
+  margin-bottom: 16px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.user-table thead th {
+  text-align: left;
+  color: #7c96b3;
+  font-weight: 700;
+  padding: 12px 10px;
+  font-size: 13px;
+}
+.user-table tbody tr {
+  border-top: 1px solid #f0f4fb;
+  cursor: pointer;
+}
+.user-table tbody tr:hover {
+  background-color: #f8faff;
+}
+.user-table tbody td {
+  padding: 16px 10px;
+  vertical-align: middle;
+  color: #123;
+}
+.name-col {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #294594;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.meta .name {
+  font-weight: 700;
+  color: #10243b;
+}
+.meta .email {
+  font-size: 13px;
+  color: #6d859a;
+}
+.tag {
+  padding: 6px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tag-admin {
+  background: #ffe9e9;
+  color: #c94242;
+}
+.tag-mentor {
+  background: #f6f8d1;
+  color: #b0b900;
+}
+.tag-newbie {
+  background: #f0fff6;
+  color: #0a9a52;
+}
+
+.card-footer {
+  padding: 16px 28px;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  justify-content: center;
+}
+.pagination.numeric {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.page-nav {
+  background: transparent;
+  border: none;
+  color: #4b5563;
+  font-size: 18px;
+  padding: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.page-nav:disabled {
+  color: #c5c9d6;
+  opacity: 0.7;
+  cursor: default;
+}
+.page-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-weight: 700;
+  cursor: pointer;
+}
+.page-num.active {
+  background: #3b4aa0;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(59, 74, 160, 0.18);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #888;
 }
 </style>

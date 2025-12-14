@@ -1,13 +1,19 @@
-// vue.config.js
 module.exports = {
   devServer: {
-    port: 8081, // 프론트 개발 서버 포트
+    port: 8081,
     proxy: {
+      '^/api/v1/notifications/stream': {
+        target: 'http://localhost:8080',
+        bypass(req) {
+          return req.url
+        }
+      },
+
       '/api': {
-        target: 'http://localhost:8080', // 백엔드 포트
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        ws: true, // WebSocket / SSE 지원
+        ws: true,
       }
     }
   }
