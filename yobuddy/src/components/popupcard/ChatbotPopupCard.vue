@@ -20,7 +20,7 @@
             </div>
           </div>
         </div>
-        <button class="chatbot-close" @click="$emit('close')">×</button>
+        <button class="chatbot-close" @click.stop="$emit('close')">×</button>
       </div>
 
       <div class="chatbot-content">

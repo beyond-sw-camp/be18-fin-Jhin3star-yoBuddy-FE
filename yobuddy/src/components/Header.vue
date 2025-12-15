@@ -180,7 +180,6 @@ const breadcrumbItems = computed(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('.dropdown-wrapper')) {
         showNotificationCard.value = false
-        showChatbotCard.value = false
       }
     }
 
