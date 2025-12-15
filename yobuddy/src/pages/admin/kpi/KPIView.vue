@@ -33,16 +33,6 @@
             </option>
           </select>
         </div>
-
-        <button
-          class="pdf-btn"
-          @click="exportPdf"
-          :disabled="exporting || loading"
-          :aria-busy="exporting"
-          title="PDF로 내보내기"
-        >
-          {{ exporting ? '내보내는 중...' : 'PDF' }}
-        </button>
       </div>
     </header>
 
@@ -192,7 +182,6 @@ const overview = ref({
 
 const loading = ref(true)
 const error = ref(null)
-const exporting = ref(false)
 
 const summary = computed(() => overview.value.summary || {})
 const departments = computed(() => overview.value.departments || [])
@@ -281,28 +270,6 @@ async function loadOverview() {
 
 async function onPeriodChange() {
   await loadOverview()
-}
-
-async function exportPdf() {
-  const el = document.querySelector('.kpi-overview')
-  if (!el) return
-
-  exporting.value = true
-  try {
-    const mod = await import('html2pdf.js')
-    const html2pdf = mod.default || mod
-    await html2pdf()
-      .set({
-        margin: 8,
-        filename: `kpi-overview-${selectedPeriod.value.label}.pdf`,
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4' }
-      })
-      .from(el)
-      .save()
-  } finally {
-    exporting.value = false
-  }
 }
 
 onMounted(loadOverview)
