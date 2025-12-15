@@ -37,13 +37,7 @@
             <tr v-for="u in users" :key="u.id" @click="openDetail(u)" style="cursor:pointer">
               <td class="name-col">
                 <div class="avatar">
-                  <img
-                    v-if="u.profileImageUrl"
-                    :src="u.profileImageUrl"
-                    alt="profile"
-                    class="avatar-img"
-                  />
-                  <span v-else>
+                  <span>
                     {{ initials(u.name) }}
                   </span>
                 </div>
